@@ -5,8 +5,14 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-11
+
 ### Added
 - Review & merge a worktree agent's work: right-click › Review & merge this agent (also in the palette, and offered when closing its tab) lists every file it changed since its branch split off, committed or not, with diffs. **m** commits its leftover edits and merges the branch into yours (conflicts get the usual conflict bar), then offers to remove the worktree, branch and tab; **d** discards it all. A worktree agent's tab shows how many files it changed.
+
+### Changed
+- Lighter all-day sessions: an agent CLI that exits on its own no longer leaks its terminal; closed agent tabs stop for good; AI turns keep a hash of each file's "after" text and skip files over 1 MB; output from streaming agents is scanned once per pause instead of per chunk (about 10% less CPU while a new agent tab streams); blame no longer re-runs on every git status change; the reload flash keeps one timer; hidden tabs skip AI-marker updates until shown; language servers re-check other open files at most every 10 s, are killed if they ignore "exit", and are restarted (up to 3 times in 5 minutes) when they crash, with their stale problems cleared; a stuck `git status` or Prettier is stopped after a while; deleted folders leave nothing cached; folder change events no longer throw away the Ctrl+P file list.
+- Committing accepts: once a file's content is what HEAD has (you committed it, the AI did, or it was checked out), its AI review marks clear on their own, so they never pile up. Untracked files stay marked until committed.
 
 ### Fixed
 - The Markdown preview hung (using more and more memory) on an HTML `<img>` that isn't a local file, such as a README's centred logo or badge from a URL. A `%` in an image path (`50%.png`) crashed the app.
@@ -19,10 +25,6 @@ All notable changes to copane are listed here. The format follows
 - AI turn undo keeps CRLF line endings in CRLF checkouts, never deletes a staged file in a repo without commits, and waits until the turn has finished.
 - "Use disk" on a conflicted file that was deleted meanwhile keeps your version instead of closing the app. Merging a worktree agent stops its CLI first, so nothing it writes afterwards is lost.
 - A new agent "in a git worktree" failed with "branch already exists" after an earlier one's worktree was removed (its branch is kept): it now skips to the next free number.
-
-### Changed
-- Lighter all-day sessions: an agent CLI that exits on its own no longer leaks its terminal; closed agent tabs stop for good; AI turns keep a hash of each file's "after" text and skip files over 1 MB; output from streaming agents is scanned once per pause instead of per chunk (about 10% less CPU while a new agent tab streams); blame no longer re-runs on every git status change; the reload flash keeps one timer; hidden tabs skip AI-marker updates until shown; language servers re-check other open files at most every 10 s, are killed if they ignore "exit", and are restarted (up to 3 times in 5 minutes) when they crash, with their stale problems cleared; a stuck `git status` or Prettier is stopped after a while; deleted folders leave nothing cached; folder change events no longer throw away the Ctrl+P file list.
-- Committing accepts: once a file's content is what HEAD has (you committed it, the AI did, or it was checked out), its AI review marks clear on their own, so they never pile up. Untracked files stay marked until committed.
 
 ## [0.6.0] - 2026-10-11
 
@@ -87,7 +89,8 @@ First public release.
 - VS Code keys and settings import.
 - Release binaries for Linux and macOS (x64 and arm64), and a one-line installer.
 
-[Unreleased]: https://github.com/sevheng/copane/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/sevheng/copane/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/sevheng/copane/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/sevheng/copane/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/sevheng/copane/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/sevheng/copane/compare/v0.3.0...v0.4.0
