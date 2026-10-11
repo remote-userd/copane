@@ -124,11 +124,13 @@ export class AiReview {
     let timer: ReturnType<typeof setTimeout> | null = null
     const sweep = async () => {
       timer = null
-      for (const path of this.files()) {
-        const head = await git.headText(path)
-        if (head === null || !this.bases.has(path)) continue
-        if (lf(head) === (await this.textNow(path))) this.acceptFile(path)
-      }
+      // Checked together: each is a cached `git show` and a read.
+      await Promise.all(
+        this.files().map(async (path) => {
+          const [head, now] = await Promise.all([git.headText(path), this.textNow(path)])
+          if (head !== null && this.bases.has(path) && lf(head) === now) this.acceptFile(path)
+        }),
+      )
     }
     const off = git.subscribe(() => {
       if (!this.bases.size) return

@@ -8,7 +8,7 @@ import { AiReviewBar } from "./AiReviewBar"
 import { setConflicts } from "../git/conflictActions"
 import { ControlCharsBar, MergeConflictBar } from "./ConflictBar"
 import "./CodeEditorRenderable"
-import type { CodeEditorRenderable, LayerHighlight } from "./CodeEditorRenderable"
+import { lineAt, type CodeEditorRenderable, type LayerHighlight } from "./CodeEditorRenderable"
 import { useBuffers, useUi, useWorkspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import type { Buffer } from "./BufferStore"
@@ -186,7 +186,7 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
       if (!ta || ta.isDestroyed) return
       const signs = new Map<number, LineSign>()
       if (base !== null) {
-        for (const [line, change] of lineChanges(base.replace(/\r\n/g, "\n"), ta.plainText)) {
+        for (const [line, change] of lineChanges(base.includes("\r") ? base.replace(/\r\n/g, "\n") : base, ta.plainText)) {
           const color = change === "add" ? colors.gitAdd : change === "mod" ? colors.gitMod : colors.gitDel
           signs.set(line, { after: change === "del" ? "▁" : "▎", afterColor: color })
         }
@@ -226,7 +226,8 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
     // Updates for other files land here too; this file's list is replaced only when it changes.
     if (diags === shownDiags.current) return
     shownDiags.current = diags
-    const lines = ta.plainText.split("\n")
+    // Only the lines with problems are read (not a copy of the whole file per update).
+    const lineCount = ta.lineCount
     const ids = diagnosticStyles()
     ta.removeHighlightsByRef(DIAG_HL_REF)
     const signs = new Map<number, LineSign>()
@@ -235,8 +236,8 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
       const sev = d.severity ?? 1
       const color = sev === 1 ? colors.error : sev === 2 ? colors.warn : colors.accent
       signs.set(d.range.start.line, { before: "●", beforeColor: color })
-      for (let l = d.range.start.line; l <= Math.min(d.range.end.line, lines.length - 1); l++) {
-        const text = lines[l] ?? ""
+      for (let l = d.range.start.line; l <= Math.min(d.range.end.line, lineCount - 1); l++) {
+        const text = lineAt(ta, l)
         const from = l === d.range.start.line ? indexToCol(text, d.range.start.character) : 0
         let to = l === d.range.end.line ? indexToCol(text, d.range.end.character) : Bun.stringWidth(text)
         if (to <= from) to = from + 1 // zero-width ranges still get a visible mark

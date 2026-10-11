@@ -140,10 +140,11 @@ ws.turns = turns
 // Files the AI changed stay marked for review until accepted (Alt+N).
 const review = new AiReview(ws.buffers)
 const reviewFile = reviewStatePath(ws.root)
-await review.load(reviewFile) // what was left to review last session
 review.watch(turns)
 review.followGit(git) // committing a file accepts its AI changes
-onShutdown(review.persist(reviewFile, ws.root))
+// What was left to review last session, without holding up the first screen. Saving starts once
+// it's loaded, so an early save can't replace the file before it was read.
+void review.load(reviewFile).then(() => onShutdown(review.persist(reviewFile, ws.root)))
 ws.review = review
 
 // One batch at a time: two reloads of the same file must not interleave. A failure is a notice.
