@@ -10,7 +10,7 @@ import { HoverBox } from "../app/Modal"
 import { runCommand } from "../keymap/commands"
 import { AgentProcess, type AgentStatus } from "./AgentProcess"
 import { GitRepo } from "../git/repo"
-import { AgentWatch, desktopNotify, ringBell, type Attention } from "./alerts"
+import { AgentWatch, desktopNotify, plain, ringBell, type Attention } from "./alerts"
 
 export interface AgentChoice {
   name: string
@@ -215,16 +215,30 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
     // user may not notice while focus is in the tree or editor: bring them to it, once.
     const startedAt = Date.now()
     let asked = false
-    let seen = ""
+    let tail = ""
+    let lastScan = 0
     const decoder = new TextDecoder()
     const watchForQuestion = (data: Uint8Array) => {
-      if (asked || Date.now() - startedAt > 30_000) return
+      if (asked) return
+      const now = Date.now()
+      if (now - startedAt > 30_000) return
       // Output arrives in chunks with escape sequences between words: match on recent plain text.
-      seen = (seen + decoder.decode(data, { stream: true }))
-        .replace(/\x1b\[[0-9;?]*[ -\/]*[@-~]/g, "")
-        .replace(/\x1b\][^\x07\x1b]*(\x07|\x1b\\)/g, "")
-        .slice(-4000)
-      if (!/trust\s+this\s+folder|do\s+you\s+trust/i.test(seen.replace(/\s+/g, " "))) return
+      // A CLI can print hundreds of chunks a second: collect raw, clean and look a few times a second.
+      tail = (tail + decoder.decode(data, { stream: true })).slice(-8000)
+      if (now - lastScan < 250) {
+        // Look again once the burst settles: the question may be the last thing printed.
+        scanTimer ??= setTimeout(() => {
+          scanTimer = null
+          scanForQuestion()
+        }, 250)
+        return
+      }
+      scanForQuestion()
+    }
+    let scanTimer: ReturnType<typeof setTimeout> | null = null
+    const scanForQuestion = () => {
+      lastScan = Date.now()
+      if (asked || disposed || !/trust\s+this\s+folder|do\s+you\s+trust/i.test(plain(tail))) return
       asked = true
       if (ws.ui.get().focus !== "ai" && !ws.ui.get().modal) {
         tabs.set({ active: id })
@@ -381,6 +395,7 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
       // Output or an exit after this must not re-arm the ticker or alert about a closed tab.
       disposed = true
       clearTimeout(startTimer)
+      if (scanTimer) clearTimeout(scanTimer)
       if (ticker) clearInterval(ticker)
       renderer.off("focus", onFocus)
       renderer.off("blur", onBlur)

@@ -163,6 +163,8 @@ test("review & merge a worktree agent: its files and diffs, merge, then clean up
   await h!.step(() => modal.options.find((o) => o.key === "r")!.run())
   await until(() => !existsSync(wt.path))
   expect(existsSync(wt.path)).toBe(false)
+  // The branch goes after the worktree folder: wait for it too.
+  await until(() => gitOut(root, "branch", "--list", "copane/second-1") === "")
   expect(gitOut(root, "branch", "--list", "copane/second-1")).toBe("")
   await until(() => !h!.frame().includes("SECOND"))
   expect(h!.frame()).not.toContain("SECOND ⎇")
@@ -181,6 +183,8 @@ test("discarding a worktree agent's work removes its worktree, branch and tab", 
   await h!.step(() => h!.keys.pressKey("y"))
   await until(() => !existsSync(wt.path))
   expect(existsSync(wt.path)).toBe(false)
+  // The branch goes after the worktree folder: wait for it too.
+  await until(() => gitOut(root, "branch", "--list", "copane/second-1") === "")
   expect(gitOut(root, "branch", "--list", "copane/second-1")).toBe("")
   expect(await Bun.file(join(root, "b.txt")).text()).toBe("b\n") // nothing came back
   await until(() => !h!.frame().includes("SECOND ⎇"))
@@ -199,4 +203,20 @@ test("a new worktree agent skips a number whose branch was kept after its worktr
   await until(() => h!.frame().includes("second-agent-ready"))
   expect(h!.frame()).toContain("COPANE/SECOND-2")
   expect(existsSync(worktreeFor(root, "second", 2).path)).toBe(true)
+})
+
+test("a CLI that opens with a question brings focus to the AI pane, even when it then goes quiet", async () => {
+  const ws = createWorkspace(await fixture({ "a.txt": "a" }), { focus: "editor" })
+  const asks: AiConfig = {
+    command: "/bin/sh",
+    // Lots of output first (scans are throttled), then the question as the very last thing.
+    args: ["-c", "for i in $(seq 1 200); do echo line $i; done; printf 'Do you trust this folder?'; exec cat"],
+    maxScrollbackBytes: 100_000,
+    notify: "off",
+    agents: [],
+  }
+  h = await renderApp(ws, { tree: <text>TREE</text>, ai: <TerminalPane config={asks} /> }, { width: 140, height: 24 })
+  await until(() => ws.ui.get().focus === "ai")
+  expect(ws.ui.get().focus).toBe("ai")
+  expect(ws.ui.get().notice?.text).toContain("asking a question")
 })
