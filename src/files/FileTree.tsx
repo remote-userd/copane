@@ -235,16 +235,18 @@ export function FileTree({
                 {r.entry.name}
               </text>
             </box>
+            {/* A blank cell after the mark: glyphs like ✎ draw wider than their cell, and the
+                pane's edge would cut them. */}
             {aiMark ? (
-              <box width={2} flexShrink={0}>
+              <box width={3} flexShrink={0}>
                 <text selectable={false} fg={colors.aiEdit}>
-                  {` ${aiMark}`}
+                  {` ${aiMark} `}
                 </text>
               </box>
             ) : mark ? (
-              <box width={2} flexShrink={0}>
+              <box width={3} flexShrink={0}>
                 <text selectable={false} fg={gitColor ?? colors.dim}>
-                  {r.entry.isDir ? " •" : ` ${mark}`}
+                  {r.entry.isDir ? " • " : ` ${mark} `}
                 </text>
               </box>
             ) : null}
