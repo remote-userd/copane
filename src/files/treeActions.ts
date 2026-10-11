@@ -1,4 +1,5 @@
 import { basename, dirname, join, relative, sep } from "node:path"
+import { revealInFileManager, revealLabel } from "./reveal"
 import type { MenuItem } from "../app/state"
 import type { Workspace } from "../app/workspace"
 import { runCommand } from "../keymap/commands"
@@ -132,6 +133,12 @@ function sendToAi(ws: Workspace, row: TreeRow): void {
   void runCommand(ws, "focus.ai")
 }
 
+/** Show a file or folder in the system file manager (Explorer, Finder, ...). */
+export async function revealItem(ws: Workspace, path: string, isDir: boolean): Promise<void> {
+  const err = await revealInFileManager(path, isDir)
+  if (err) ws.notify(`Could not reveal ${rel(ws, path) || path}: ${err}`, "error")
+}
+
 export function openTreeMenu(ws: Workspace, tree: TreeModel, row: TreeRow | null, x: number, y: number): void {
   const items: MenuItem[] = [
     { label: "New File…", hint: "a", run: () => newItem(ws, tree, row, "file") },
@@ -141,6 +148,7 @@ export function openTreeMenu(ws: Workspace, tree: TreeModel, row: TreeRow | null
     items.push(
       { label: "Rename…", hint: "r", run: () => renameItem(ws, tree, row) },
       { label: "Delete…", hint: "Del", run: () => deleteItem(ws, tree, row) },
+      { label: revealLabel(), hint: "Shift+Alt+R", run: () => void revealItem(ws, row.entry.path, row.entry.isDir) },
       { label: "Copy Path", run: () => copyPath(ws, row.entry.path) },
       { label: "Copy Relative Path", run: () => copyPath(ws, rel(ws, row.entry.path)) },
       { label: `Send to AI (@${basename(row.entry.path)})`, disabled: !ws.ai, run: () => sendToAi(ws, row) },
@@ -154,6 +162,9 @@ export function openTreeMenu(ws: Workspace, tree: TreeModel, row: TreeRow | null
         },
       })
     }
+  } else {
+    // Right-click below the rows: the project folder itself.
+    items.push({ label: revealLabel(), run: () => void revealItem(ws, ws.root, true) })
   }
   ws.ui.set({ modal: { kind: "menu", x, y, items } })
 }

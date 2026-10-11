@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from "bun:test"
+import { revealLabel } from "../../src/files/reveal"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { MouseButtons } from "@opentui/core/testing"
@@ -34,18 +35,19 @@ async function answer(text: string) {
   await settle(60)
 }
 
-test("right-click a row opens the file menu; right-click empty space offers only New", async () => {
+test("right-click a row opens the file menu; right-click empty space offers New and revealing the project", async () => {
   const { h, tree, root } = await app({ "a.txt": "a", "b.txt": "b" })
   const b = h.find("b.txt")
   await h.step(() => h.mouse.click(b.x, b.y, MouseButtons.RIGHT))
   const f = h.frame()
-  for (const item of ["New File…", "New Folder…", "Rename…", "Delete…", "Copy Path", "Copy Relative Path", "Send to AI"]) expect(f).toContain(item)
+  for (const item of ["New File…", "New Folder…", "Rename…", "Delete…", revealLabel(), "Copy Path", "Copy Relative Path", "Send to AI"]) expect(f).toContain(item)
   expect(tree.selected).toBe(join(root, "b.txt"))
   await h.step(() => h.keys.pressEscape())
   await settle(150)
   await h.step(() => h.mouse.click(b.x, b.y + 10, MouseButtons.RIGHT))
   expect(h.frame()).toContain("New File…")
   expect(h.frame()).not.toContain("Rename…")
+  expect(h.frame()).toContain(revealLabel())
 })
 
 test("'a' creates a file (with subfolders) next to the selection and opens it", async () => {

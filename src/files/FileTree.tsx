@@ -5,7 +5,7 @@ import { useUi, useWorkspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import type { TreeModel } from "./TreeModel"
 import type { GitMark, GitStatus } from "./gitStatus"
-import { deleteItem, newItem, openTreeMenu, renameItem } from "./treeActions"
+import { deleteItem, newItem, openTreeMenu, renameItem, revealItem } from "./treeActions"
 import { iconFor, type IconStyle } from "./icons"
 import { PaneHeader } from "../app/PaneHeader"
 
@@ -100,6 +100,12 @@ export function FileTree({
     if (!focused) return
     const row = rows[selectedIdx]
     let handled = true
+    // Shift+Alt+R, as in VS Code's explorer: show the selected row in the system file manager.
+    if (key.meta && key.shift && key.name.toLowerCase() === "r" && !key.ctrl) {
+      key.preventDefault()
+      void revealItem(ws, row?.entry.path ?? ws.root, row ? row.entry.isDir : true)
+      return
+    }
     if (key.ctrl || key.meta) return
     switch (key.name) {
       case "a":

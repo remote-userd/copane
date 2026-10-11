@@ -23,6 +23,7 @@ const LEGACY: [string, string, CommandId][] = [
   ["Alt+. (ESC ., left unnamed by the parser)", "\x1b.", "lsp.quickFix"],
   ["Ctrl+. (CSI-u)", "\x1b[46;5u", "lsp.quickFix"],
   ["Shift+Alt+O (ESC O)", "\x1bO", "lsp.organizeImports"],
+  ["Shift+Alt+R (ESC R)", "\x1bR", "file.revealInOS"],
 ]
 
 const GLOBAL: [string, string, CommandId][] = [

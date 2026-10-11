@@ -20,6 +20,7 @@ import { formatContextForAgent } from "../ai/sendToAgent"
 import { decodeForBuffer } from "../editor/fileio"
 import { configPath } from "../config/load"
 import { importVSCodeSettings } from "../config/vscode"
+import { revealInFileManager } from "../files/reveal"
 
 /**
  * Alt+1..9 go to that tab (Alt+9 the last), as in VS Code. In a merge conflict Alt+1/2/3
@@ -452,6 +453,15 @@ export const commands = {
       } else {
         ws.ui.set({ maximized: { tree: ui.treeVisible, ai: ui.aiVisible }, treeVisible: false, aiVisible: false, focus: "editor" })
       }
+    },
+  },
+  "file.revealInOS": {
+    title: "Reveal in file manager (Explorer / Finder)",
+    async run(ws) {
+      const buf = ws.buffers.active
+      const path = buf ? (buf.source ?? buf.path) : ws.root
+      const err = await revealInFileManager(path, !buf)
+      if (err) ws.notify(`Could not reveal: ${err}`, "error")
     },
   },
   "markdown.openPreview": { title: "Markdown: open preview / back to the source", run: openPreview },

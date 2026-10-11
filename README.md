@@ -288,8 +288,9 @@ With the tree focused (Ctrl+B), or from the right-click menu on a row:
 | Shift+A | New folder |
 | r / F2 | Rename (the cursor starts before the extension) |
 | Delete | Delete permanently, after a confirmation |
+| Shift+Alt+R | Reveal in File Explorer (WSL), Reveal in Finder (macOS), or Open Containing Folder (Linux) |
 
-The menu also has Copy Path, Copy Relative Path and Send to AI (types `@path` into the AI prompt). Right-click empty space to create at the project root. Open tabs follow renames; deleting closes their tabs unless they have unsaved changes.
+The menu also has the reveal item, Copy Path, Copy Relative Path, Send to AI (types `@path` into the AI prompt), and Open Preview for Markdown files. Right-click empty space to create at the project root, or to reveal the project folder. In the editor, Shift+Alt+R reveals the open file. Open tabs follow renames; deleting closes their tabs unless they have unsaved changes.
 
 In a git repository the tree shows status: **M** modified (yellow), **U** untracked, **A** added, **R** renamed (green), **!** conflict (red). A folder shows • in the colour of the most important change inside it. Marks update when files change and when you stage or commit.
 

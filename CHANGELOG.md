@@ -9,6 +9,8 @@ All notable changes to copane are listed here. The format follows
 - Markdown preview: live beside the file (Ctrl+K V) or as a tab (Alt+Shift+V). It renders GitHub-flavoured Markdown like GitHub does: headings, strikethrough, task lists, alerts, aligned tables, footnotes, highlighted code, local images, and README HTML (centred blocks, `<b>`, `<br>`, `<img>`, `<details>`).
 - Images (PNG, JPEG, WebP, GIF) open as a tab showing the picture, drawn with kitty graphics or sixel when the terminal supports them and coloured blocks otherwise. `preview.imageProtocol` overrides the choice. Animated GIFs play, in image tabs (Space pauses) and in the Markdown preview.
 
+- Reveal in File Explorer (WSL), Reveal in Finder (macOS) or Open Containing Folder (Linux): in the file tree's right-click menu, and on Shift+Alt+R as in VS Code.
+
 ### Fixed
 - After a chord like Ctrl+K Z, the "waiting for the second key" message goes away at once.
 

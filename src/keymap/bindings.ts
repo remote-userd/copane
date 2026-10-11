@@ -97,6 +97,8 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "ctrl+alt+down": "edit.duplicateLineDown",
     // Ctrl+Shift+K arrives as Ctrl+K (a chord prefix here), so Alt+Shift+K comes first.
     "alt+shift+k": "edit.deleteLine",
+    // In the tree, the tree reveals its selected row itself.
+    "alt+shift+r": "file.revealInOS",
     "ctrl+shift+k": "edit.deleteLine",
     tab: "edit.indent",
     "shift+tab": "edit.outdent",

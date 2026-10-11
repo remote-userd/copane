@@ -63,3 +63,4 @@ Run in a real terminal, in plain mode and inside tmux.
 53. With an image tab showing, open F1 and a right-click menu over it, then close them: no picture fragments are left on top of the UI. Switch tabs and back: the picture redraws.
 54. A Markdown file with `![x](pic.png)` next to it shows the picture in the preview, while a badge URL shows its alt text.
 55. Open docs/demo.gif: it plays, and the header says "435 frames · ▶ playing". Space pauses and resumes. Switch to another tab and back: it picks up again.
+56. Right-click a file in the tree, Reveal in File Explorer: Windows Explorer opens with the file selected (Finder on macOS). Shift+Alt+R does the same for the tree's selection, and for the open file from the editor. Right-click empty space in the tree: it offers revealing the project folder.
