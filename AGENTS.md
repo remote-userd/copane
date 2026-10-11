@@ -83,6 +83,8 @@ Main flows:
 3. To see the real UI without a terminal of your own, record it with [vhs](https://github.com/charmbracelet/vhs): a tape that runs `bun run dev <path>` and takes a `Screenshot` (see `scripts/demo/demo.tape`). Clear inherited `CLAUDE*` variables first if you run inside Claude Code.
 4. User-facing changes go in the README and under `Unreleased` in `CHANGELOG.md`.
 
-## Out of scope
+## Direction: AI-first
 
-Not planned, so don't build them: a terminal panel under the editor (the AI pane runs shell commands with `!`), and a debugger.
+Most code in a copane session is written by the AI in the side pane. The editor's job is to give the AI context, show what it changed, and make reviewing, accepting and undoing that easy. Prefer features that serve that loop (reviewing changes, sending context, watching agents) over aids for typing code by hand (multi-cursor variants, folding, inlay hints and the like), which are not planned. Reading aids for reviewing AI output (syntax highlighting, Markdown preview) are in.
+
+Also not planned: a terminal panel under the editor (the AI pane runs shell commands with `!`), and a debugger.
