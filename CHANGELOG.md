@@ -5,9 +5,7 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
-### Changed
-- Less work per key, cursor move and AI output: cursor moves no longer re-render the whole UI (only the status bar and breadcrumbs follow them), tabs and the Markdown preview re-render only when their own content changes (with parsing and image sizes cached), and streaming AI output updates the pane once per stretch instead of per chunk. Polling and GIFs pause while the terminal window is in the background, and agent tabs stop ticking when idle. `CE_PERF` also logs React commits per second in `bun run dev`.
-- Faster typing in big files: a key no longer reads and hashes the whole file (the dirty check compares sizes first), the syntax-colour pass after a pause blocks half as long, git change markers diff only the edited region (so files over 20,000 lines get them too), autocomplete sends the file to the language server once instead of twice, and breadcrumbs stop re-asking for symbols after every pause.
+## [0.5.0] - 2026-10-11
 
 ### Added
 - Smooth scrolling: the wheel and PageUp/PageDown glide (fast first, easing out) in the editor and the Markdown preview; consecutive wheel steps add up, and a key stops the motion. `editor.smoothScrolling: false` turns it off.
@@ -17,6 +15,10 @@ All notable changes to copane are listed here. The format follows
 - Markdown preview: GitHub's emoji shortcodes (`:rocket:` → 🚀, not in code) and HTML tables, rendered like Markdown tables with their alignment (#14).
 - Syntax highlighting for Python, Rust, Go, C, C++, Bash, HTML, CSS, JSON/JSONC, YAML and TOML (#4, #5, #6), in the editor and in Markdown code blocks. The official Tree-sitter grammars are embedded in the binary.
 - Send problems or changes to the AI in one key (#17): Ctrl+K F types the errors and warnings (`@file#L12 error: …`) with "fix these"; Ctrl+K D types your git diff with "review these". Also `f` in the Problems list, `v` in Source control, and "Ask AI to fix" in the quick-fix menu (Alt+.).
+
+### Changed
+- Less work per key, cursor move and AI output: cursor moves no longer re-render the whole UI (only the status bar and breadcrumbs follow them), tabs and the Markdown preview re-render only when their own content changes (with parsing and image sizes cached), and streaming AI output updates the pane once per stretch instead of per chunk. Polling and GIFs pause while the terminal window is in the background, and agent tabs stop ticking when idle. `CE_PERF` also logs React commits per second in `bun run dev`.
+- Faster typing in big files: a key no longer reads and hashes the whole file (the dirty check compares sizes first), the syntax-colour pass after a pause blocks half as long, git change markers diff only the edited region (so files over 20,000 lines get them too), autocomplete sends the file to the language server once instead of twice, and breadcrumbs stop re-asking for symbols after every pause.
 
 ## [0.4.0] - 2026-10-11
 
@@ -60,7 +62,8 @@ First public release.
 - VS Code keys and settings import.
 - Release binaries for Linux and macOS (x64 and arm64), and a one-line installer.
 
-[Unreleased]: https://github.com/sevheng/copane/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/sevheng/copane/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/sevheng/copane/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/sevheng/copane/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/sevheng/copane/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/sevheng/copane/compare/v0.1.0...v0.2.0
