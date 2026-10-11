@@ -27,7 +27,9 @@ export async function git(
       stdin: opts.stdin === undefined ? "ignore" : new TextEncoder().encode(opts.stdin),
       stdout: "pipe",
       stderr: "pipe",
-      env: { ...Bun.env, GIT_TERMINAL_PROMPT: "0", ...opts.env },
+      // GIT_OPTIONAL_LOCKS=0: reads (status, diff, blame…) skip the opportunistic index refresh that
+      // takes .git/index.lock, so they never make a commit or `git add` fail. Writes still lock.
+      env: { ...Bun.env, GIT_TERMINAL_PROMPT: "0", GIT_OPTIONAL_LOCKS: "0", ...opts.env },
     })
     const timer = opts.timeoutMs ? setTimeout(() => p.kill(), opts.timeoutMs) : null
     const errChunks: string[] = []

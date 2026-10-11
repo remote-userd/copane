@@ -271,7 +271,8 @@ function parentOf(path: string): string | null {
 /** Run a command; stdout on success, null on failure (including git missing). */
 async function run(cmd: string[], cwd: string): Promise<string | null> {
   try {
-    const p = Bun.spawn(cmd, { cwd, stdout: "pipe", stderr: "ignore", stdin: "ignore" })
+    // No optional locks: see GIT_OPTIONAL_LOCKS in git/repo.ts.
+    const p = Bun.spawn(cmd, { cwd, stdout: "pipe", stderr: "ignore", stdin: "ignore", env: { ...Bun.env, GIT_OPTIONAL_LOCKS: "0" } })
     const [out, code] = await Promise.all([Bun.readableStreamToText(p.stdout), p.exited])
     return code === 0 ? out : null
   } catch {

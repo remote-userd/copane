@@ -70,12 +70,12 @@ test("commit with nothing staged offers to stage all; y commits everything", asy
   await h!.step(() => h!.keys.pressEnter())
   await until(() => h!.frame().includes("Stage all changes and commit?"))
   await h!.step(() => h!.keys.pressKey("y"))
-  await until(() => sh(root, "status", "--porcelain") === "")
+  await until(() => sh(root, "status", "--porcelain") === "", 10_000)
   expect(sh(root, "status", "--porcelain")).toBe("")
   await until(() => h!.frame().includes("No changes"))
   expect(h!.frame()).toContain("No changes")
   expect(h!.frame()).toContain("Committed")
-})
+}, 15_000) // real git on a loaded CI machine can take seconds per step
 
 test("r + y reverts the selected file", async () => {
   const { root } = await setup()

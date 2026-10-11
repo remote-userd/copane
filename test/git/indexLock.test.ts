@@ -7,7 +7,7 @@ import { fixture } from "../helpers"
 
 const ENV = { GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@t" }
 
-test("background status reads never make a commit fail on .git/index.lock", async () => {
+test("background reads (status, diff) never make a commit fail on .git/index.lock", async () => {
   const root = await fixture({ "a.txt": "0" })
   for (const args of [["init", "-q"], ["add", "."], ["commit", "-qm", "init"]]) Bun.spawnSync(["git", ...args], { cwd: root, env: { ...process.env, ...ENV } })
   const saved = { ...process.env }
@@ -20,6 +20,8 @@ test("background status reads never make a commit fail on .git/index.lock", asyn
   const readers = [0, 1].map(async () => {
     while (reading) {
       await repo.status()
+      // The source control panel shows the selected file's diff while you stage and commit.
+      await repo.diff(join(root, "a.txt"), false)
       status.refresh(0)
       await Bun.sleep(1)
     }
