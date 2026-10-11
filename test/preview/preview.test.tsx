@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { runCommand } from "../../src/keymap/commands"
 import { previewPath } from "../../src/editor/BufferStore"
-import { imageCells, localImagePath } from "../../src/preview/MarkdownPreview"
+import { imageCells, localImagePath } from "../../src/preview/images"
 import { createWorkspace, fixture, renderApp, type Harness } from "../helpers"
 import { makePng } from "../support/png"
 

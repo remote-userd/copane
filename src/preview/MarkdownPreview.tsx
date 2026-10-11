@@ -1,73 +1,9 @@
-// readFileSync: renderNode is synchronous and needs an image's size to lay it out; Bun has no sync read.
-import { readFileSync } from "node:fs"
-import { dirname, resolve } from "node:path"
 import { useEffect, useRef, useState } from "react"
 import { useKeyboard } from "@opentui/react"
-import { BoxRenderable, ImageRenderable, imageInfo, type Renderable, type ScrollBoxRenderable } from "@opentui/core"
-import type { MarkdownOptions } from "@opentui/core"
+import type { ScrollBoxRenderable } from "@opentui/core"
 import { useBuffers, useWorkspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
-import { getSyntaxStyle } from "../editor/syntaxStyle"
-import type { ImageRenderProtocol } from "@opentui/core"
-
-/** Images taller than this many rows are scaled down. */
-const MAX_IMAGE_ROWS = 20
-
-type Token = Parameters<NonNullable<MarkdownOptions["renderNode"]>>[0]
-
-/** A local image's path, or null for remote URLs (never fetched) and data URIs. */
-export function localImagePath(href: string, mdPath: string): string | null {
-  if (!href || /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith("//")) return null
-  const clean = decodeURI(href.split(/[?#]/)[0]!)
-  return resolve(dirname(mdPath), clean)
-}
-
-/**
- * Cells for an image `w`×`h` pixels within `cols`×`rows`: shrunk to fit, never enlarged past its
- * own size (taking a cell as 8×16 pixels), keeping the aspect ratio (cells are twice as tall as wide).
- */
-export function imageCells(w: number, h: number, cols: number, rows: number): { width: number; height: number } {
-  let width = Math.max(1, Math.min(cols, Math.ceil(w / 8)))
-  let height = Math.max(1, Math.round((width * h) / w / 2))
-  if (height > rows) {
-    height = Math.max(1, rows)
-    width = Math.max(1, Math.min(width, Math.round((height * 2 * w) / h)))
-  }
-  return { width, height }
-}
-
-/**
- * Renders a paragraph made only of local images as the pictures themselves. Anything else
- * (text around them, remote or missing images) keeps the default rendering: the alt text as a link.
- */
-function imageRenderer(mdPath: string, cols: () => number, protocol: ImageRenderProtocol): MarkdownOptions["renderNode"] {
-  return (token: Token, context) => {
-    if (token.type !== "paragraph" || !("tokens" in token) || !token.tokens) return null
-    const parts = token.tokens.filter((t) => !(t.type === "text" && !t.raw.trim()) && t.type !== "br")
-    if (!parts.length || parts.some((t) => t.type !== "image")) return null
-    const images: { path: string; width: number; height: number }[] = []
-    for (const t of parts) {
-      const path = localImagePath((t as { href: string }).href, mdPath)
-      if (!path) return null
-      try {
-        const info = imageInfo(readFileSync(path))
-        images.push({ path, ...imageCells(info.width, info.height, cols(), MAX_IMAGE_ROWS) })
-      } catch {
-        return null // missing or not an image
-      }
-    }
-    // renderNode gets no render context; borrow the one the default renderable was made with.
-    const fallback = context.defaultRender()
-    if (!fallback) return null
-    const ctx = fallback.ctx
-    fallback.destroy()
-    const box = new BoxRenderable(ctx, { flexDirection: "column", gap: 1 })
-    for (const img of images) {
-      box.add(new ImageRenderable(ctx, { source: img.path, fit: "fit", protocol, width: img.width, height: img.height }))
-    }
-    return box as Renderable
-  }
-}
+import { MarkdownView } from "./MarkdownView"
 
 /** Arrow keys, PgUp/PgDn, Space, Home/End scroll the preview (mounted only while it has focus). */
 function ScrollKeys({ scroll }: { scroll: React.RefObject<ScrollBoxRenderable | null> }) {
@@ -93,7 +29,7 @@ export function MarkdownPreview({ path, active, focused, version = 0 }: { path: 
   const ws = useWorkspace()
   useBuffers() // re-render when the file is opened or closed as a tab
   const scroll = useRef<ScrollBoxRenderable | null>(null)
-  const width = useRef(80)
+  const [width, setWidth] = useState(80)
   const source = ws.buffers.byPath(path)
   const live = source?.kind === "text" ? source : null
   const [text, setText] = useState(() => (live ? ws.buffers.textOf(live) : ""))
@@ -127,10 +63,6 @@ export function MarkdownPreview({ path, active, focused, version = 0 }: { path: 
     }
   }, [path, live, version])
 
-  const protocol = ws.config.preview.imageProtocol
-  // Made once per preview (previews are keyed by file), so typing doesn't rebuild the images.
-  const [renderNode] = useState(() => imageRenderer(path, () => width.current, protocol))
-
   return (
     <scrollbox
       ref={scroll}
@@ -142,14 +74,16 @@ export function MarkdownPreview({ path, active, focused, version = 0 }: { path: 
       paddingRight={2}
       paddingTop={1}
       onSizeChange={function (this: ScrollBoxRenderable) {
-        width.current = Math.max(10, this.width - 6)
+        // Less the padding and the scrollbar.
+        const w = Math.max(10, this.width - 5)
+        setWidth((old) => (old === w ? old : w))
       }}
       onMouseDown={() => {
         if (ws.ui.get().focus !== "editor") ws.ui.set({ focus: "editor" })
       }}
     >
       {focused ? <ScrollKeys scroll={scroll} /> : null}
-      <markdown content={text} syntaxStyle={getSyntaxStyle()} conceal fg={colors.text} renderNode={renderNode} />
+      <MarkdownView text={text} ctx={{ path, width, protocol: ws.config.preview.imageProtocol }} />
     </scrollbox>
   )
 }

@@ -15,6 +15,8 @@ import { SEARCH_PANEL_KEYS } from "../files/SearchPanel"
  *
  * A key that starts a chord (Ctrl+K in "ctrl+k ctrl+c") waits for the next key, as in VS Code.
  */
+const WAITING = "Waiting for the second key..."
+
 export function useAppKeymap(): ReturnType<typeof buildBindings> {
   const ws = useWorkspace()
   const bindings = useMemo(() => {
@@ -47,6 +49,8 @@ export function useAppKeymap(): ReturnType<typeof buildBindings> {
       chord.current = null
       key.preventDefault()
       key.stopPropagation()
+      // The chord is done: drop "waiting for the second key" (quiet commands would leave it up).
+      if (ws.ui.get().notice?.text.endsWith(WAITING)) ws.ui.set({ notice: null })
       const id = layers.map((l) => bindings[l].get(keys)).find(Boolean)
       if (id) void runCommand(ws, id)
       else if (k !== "escape") ws.notify(`${prettyKeys(keys)} is not a command`)
@@ -66,7 +70,7 @@ export function useAppKeymap(): ReturnType<typeof buildBindings> {
       key.preventDefault()
       key.stopPropagation()
       chord.current = k
-      ws.notify(`${prettyKeys(k)} was pressed. Waiting for the second key...`)
+      ws.notify(`${prettyKeys(k)} was pressed. ${WAITING}`)
     }
   })
 

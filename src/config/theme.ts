@@ -104,4 +104,16 @@ export const ui = {
   iconGreen: "#8cc79a",
   iconPurple: claude.purple,
   iconFolder: "#d4a27f",
+  // Markdown preview
+  mdHeading: claude.clay,
+  mdSubheading: claude.periwinkle,
+  mdLink: claude.periwinkle,
+  mdCode: "#8cc79a",
+  mdCodeBg: "#1d1d1d",
+  mdRule: "#3a3a3a",
+  mdNote: "#6aa5d6",
+  mdTip: claude.green,
+  mdImportant: claude.purple,
+  mdWarning: claude.amber,
+  mdCaution: claude.rose,
 }

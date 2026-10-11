@@ -6,8 +6,11 @@ All notable changes to copane are listed here. The format follows
 ## [Unreleased]
 
 ### Added
-- Markdown preview: live beside the file (Ctrl+K V) or as a tab (Alt+Shift+V), with tables, code blocks and local images.
+- Markdown preview: live beside the file (Ctrl+K V) or as a tab (Alt+Shift+V). It renders GitHub-flavoured Markdown like GitHub does: headings, strikethrough, task lists, alerts, aligned tables, footnotes, highlighted code, local images, and README HTML (centred blocks, `<b>`, `<br>`, `<img>`, `<details>`).
 - Images (PNG, JPEG, WebP, GIF) open as a tab showing the picture, drawn with kitty graphics or sixel when the terminal supports them and coloured blocks otherwise. `preview.imageProtocol` overrides the choice.
+
+### Fixed
+- After a chord like Ctrl+K Z, the "waiting for the second key" message goes away at once.
 
 ## [0.2.0] - 2026-10-11
 

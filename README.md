@@ -151,7 +151,12 @@ Run commands from the AI pane with `!`, for example `! bun test`.
   - **Ctrl+K V:** a live preview beside the file that follows your typing and the AI's edits.
   - **Alt+Shift+V:** the preview as its own tab; on the preview tab, it goes back to the file.
   - Both are in the editor's right-click menu, and "Open Preview" is in the tree's.
-  - It renders headings, emphasis, lists, quotes, tables and highlighted code blocks. Arrow keys, PgUp/PgDn and Home/End scroll a preview tab, and the mouse wheel scrolls both.
+  - It renders GitHub-flavoured Markdown the way GitHub shows a README:
+    - headings with rules, bold, italic, strikethrough and inline code, and links
+    - nested lists and task checkboxes, quotes, and `> [!NOTE]` alerts
+    - highlighted code blocks, tables with column alignment, footnotes
+    - the HTML READMEs use: centred `<div align="center">` blocks, `<b>`, `<br>`, `<img>`, `<details>`
+  - Arrow keys, PgUp/PgDn and Home/End scroll a preview tab, and the mouse wheel scrolls both.
   - Images in the file show in the preview when they are local. Remote images (badges, for example) aren't downloaded, so they show their alt text.
 - **Images:** PNG, JPEG, WebP and GIF (first frame) open as a tab instead of an error, with the format, size and file size above the picture. Small images keep their own size, and big ones shrink to fit. They reload when the file changes. Ctrl+L sends the image to the AI as `@path`, and Claude Code can look at it. SVG files open as text.
 - **How images are drawn:** sharp pictures in terminals with kitty graphics or sixel (kitty, WezTerm, Ghostty, foot, iTerm2, and Windows Terminal 1.22+), and coloured blocks elsewhere and inside tmux. If the picture is blank or garbled, set `"preview": { "imageProtocol": "blocks" }` (or `"sixel"`, `"kitty"`).

@@ -26,6 +26,8 @@ test("Ctrl+K is a chord prefix: Ctrl+K Ctrl+C comments, Ctrl+K Ctrl+U uncomments
   expect(h.frame()).toContain("Waiting for the second key")
   await h.step(() => h.keys.pressKey("c", { ctrl: true }))
   expect(text(h)).toBe("// const a = 1  \nconst b = 2\n")
+  // The finished chord takes its "waiting" message down.
+  expect(h.frame()).not.toContain("Waiting for the second key")
   // Adding again nests, as in VS Code; removing takes one level off.
   await h.step(() => h.keys.pressKey("k", { ctrl: true }))
   await h.step(() => h.keys.pressKey("u", { ctrl: true }))

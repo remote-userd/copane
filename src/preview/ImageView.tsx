@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { imageCells } from "./MarkdownPreview"
+import { imageCells } from "./images"
 import { useWorkspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import type { Buffer, ImageMeta } from "../editor/BufferStore"
