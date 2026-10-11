@@ -47,6 +47,12 @@ test.each(GLOBAL)("%s reaches its global command", (_name, bytes, command) => {
   expect(buildBindings().global.get(keyToString(parseKeypress(bytes)!))).toBe(command)
 })
 
+test("Ctrl+Alt+V starts reviewing AI changes, from the AI pane too", () => {
+  const key = keyToString(parseKeypress("\x1b\x16")!)
+  expect(buildBindings().global.get(key)).toBe("ai.nextChange")
+  expect(buildBindings().ai.get(key)).toBe("ai.nextChange")
+})
+
 test("Alt+N / Alt+P stay with the CLI in the AI pane", () => {
   for (const bytes of ["\x1bn", "\x1bp"]) expect(buildBindings().ai.get(keyToString(parseKeypress(bytes)!))).toBeUndefined()
 })

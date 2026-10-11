@@ -27,7 +27,7 @@ import { applyFileEdits } from "./lsp/lspActions"
 import { aiStatusSource, TerminalPane } from "./ai/TerminalPane"
 import { affectedOpenFiles, FileWatcher } from "./files/watcher"
 import { TurnLog } from "./ai/turns"
-import { AiReview } from "./ai/review"
+import { AiReview, reviewStatePath } from "./ai/review"
 import { windowFocus, windowFocused } from "./app/windowFocus"
 import pkg from "../package.json"
 
@@ -129,7 +129,10 @@ const turns = new TurnLog(ws.root, () => git.repo, async () => ((await git.repo?
 ws.turns = turns
 // Files the AI changed stay marked for review until accepted (Alt+N).
 const review = new AiReview(ws.buffers)
+const reviewFile = reviewStatePath(ws.root)
+await review.load(reviewFile) // what was left to review last session
 review.watch(turns)
+onShutdown(review.persist(reviewFile, ws.root))
 ws.review = review
 
 const watcher = new FileWatcher(ws.root, async (batch) => {

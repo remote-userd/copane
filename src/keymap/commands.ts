@@ -598,7 +598,8 @@ export const commands = {
 /** Alt+N / Alt+P: go to the next AI change and open its peek. */
 async function stepAiChange(ws: Workspace, dir: 1 | -1): Promise<void> {
   const at = await gotoAiChange(ws, dir)
-  if (at) ws.ui.set({ hunkPeek: { ...at, kind: "ai" } })
+  // From the AI pane or the tree too: the review happens in the editor.
+  if (at) ws.ui.set({ focus: "editor", hunkPeek: { ...at, kind: "ai" } })
 }
 
 export type CommandId = keyof typeof commands

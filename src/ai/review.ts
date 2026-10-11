@@ -3,9 +3,11 @@
  * text as you last accepted it (at first, the file before the turn). What differs from the base
  * is an unreviewed AI change: marked in the gutter, peeked with Alt+N, accepted (the base takes
  * the change) or undone (the buffer takes the base lines, one undo step). Once a file matches its
- * base it drops out. Session only; your own edits inside an AI change count as part of it.
+ * base it drops out. Remembered across restarts (see `persist`); your own edits inside an AI
+ * change count as part of it.
  */
-import { dirname } from "node:path"
+import { homedir } from "node:os"
+import { dirname, join } from "node:path"
 import { Store } from "../app/store"
 import type { Workspace } from "../app/workspace"
 import type { BufferStore } from "../editor/BufferStore"
@@ -14,6 +16,16 @@ import { applyHunk, hunkAt, hunks, revertHunk, type Hunk } from "../editor/hunks
 import type { TurnLog } from "./turns"
 
 const lf = (text: string) => text.replace(/\r\n/g, "\n")
+
+/** Bases bigger than this aren't remembered across restarts, nor past this total. */
+const MAX_SAVED_FILE = 1_000_000
+const MAX_SAVED_TOTAL = 20_000_000
+
+/** Where a project's unreviewed changes are kept between sessions (~/.local/state/copane/review/). */
+export function reviewStatePath(root: string): string {
+  const base = Bun.env.XDG_STATE_HOME || join(homedir(), ".local", "state")
+  return join(base, "copane", "review", `${Bun.hash(root).toString(36)}.json`)
+}
 
 export class AiReview {
   /** Bumped on every change of the bases, for useSyncExternalStore. */
@@ -49,6 +61,52 @@ export class AiReview {
     }
     take()
     return turns.store.subscribe(take)
+  }
+
+  /**
+   * Bring back what was left to review last session. Files back at their base (or gone) drop out
+   * once checked. A missing or broken file is just nothing to restore.
+   */
+  async load(path: string): Promise<void> {
+    let saved: { files?: Record<string, unknown> }
+    try {
+      saved = (await Bun.file(path).json()) as typeof saved
+    } catch {
+      return
+    }
+    for (const [file, base] of Object.entries(saved.files ?? {})) {
+      if (typeof base === "string" && !this.bases.has(file)) this.bases.set(file, base)
+    }
+    this.bump()
+    await Promise.all(this.files().map((f) => this.check(f)))
+  }
+
+  /** Keep the bases on disk as they change (written after a pause; deleted when nothing is left). */
+  persist(path: string, root: string): () => Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const save = async (): Promise<void> => {
+      timer = null
+      if (!this.bases.size) return void (await Bun.file(path).delete().catch(() => null))
+      const files: Record<string, string> = {}
+      let total = 0
+      for (const [file, base] of this.bases) {
+        if (base.length > MAX_SAVED_FILE || total + base.length > MAX_SAVED_TOTAL) continue
+        files[file] = base
+        total += base.length
+      }
+      await Bun.write(path, JSON.stringify({ root, files })).catch(() => null)
+    }
+    const off = this.store.subscribe(() => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => void save(), 500)
+    })
+    // On shutdown: write what is pending, and wait for it.
+    return async () => {
+      off()
+      if (!timer) return
+      clearTimeout(timer)
+      await save()
+    }
   }
 
   /** Files with unreviewed AI changes, in the order they were changed. */

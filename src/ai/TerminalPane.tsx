@@ -7,6 +7,7 @@ import { onShutdown } from "../app/shutdown"
 import { Store } from "../app/store"
 import { ui as colors } from "../config/theme"
 import { HoverBox } from "../app/Modal"
+import { runCommand } from "../keymap/commands"
 import { AgentProcess, type AgentStatus } from "./AgentProcess"
 import { AgentWatch, desktopNotify, ringBell, type Attention } from "./alerts"
 
@@ -95,9 +96,17 @@ function tabLabel(s: Session): string {
   return s.branch ? `${s.name} ⎇ ${s.branch}` : s.name
 }
 
+const noStore = { subscribe: () => () => {} }
+
 /** The header: a tab per agent (with its state), and + to start another. */
 function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: (x: number, y: number) => void; onClose: (id: number) => void }) {
+  const ws = useWorkspace()
   const t = useSyncExternalStore(tabs.subscribe, tabs.get)
+  // Once a turn is over, what it left to review: one click (or Ctrl+Alt+V) into the editor.
+  useSyncExternalStore(ws.review?.store.subscribe ?? noStore.subscribe, () => ws.review?.store.get() ?? 0)
+  const turnList = useSyncExternalStore(ws.turns?.store.subscribe ?? noStore.subscribe, () => ws.turns?.store.get().turns)
+  const running = turnList?.some((turn) => turn.endedAt === null) ?? false
+  const toReview = running ? 0 : (ws.review?.files().length ?? 0)
   const [frame, setFrame] = useState(0)
   const busy = isBusy
   const anyBusy = t.sessions.some((s) => busy(s.id))
@@ -146,6 +155,13 @@ function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: (x: nu
         )
       })}
       <box flexGrow={1} />
+      {toReview ? (
+        <HoverBox onPress={() => void runCommand(ws, "ai.nextChange")}>
+          <text selectable={false} fg={colors.aiEdit}>
+            {`✦ ${toReview} to review`}
+          </text>
+        </HoverBox>
+      ) : null}
       <HoverBox onPress={() => onNew(-1, -1)}>
         <text selectable={false} fg={colors.headerFg}>
           {one ? "+ agent" : "+"}
@@ -244,7 +260,10 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
       const text = what === "waiting" ? `${name} is waiting for your answer` : `${name} finished`
       setState(id, { attention: what })
       ws.ui.set({ aiAttention: what })
-      ws.notify(`${text} (Ctrl+J to look)`, what === "waiting" ? "warn" : "info")
+      // Changes waiting for review: say so, with the key that starts it from anywhere.
+      const toReview = what === "finished" ? (ws.review?.files().length ?? 0) : 0
+      const hint = toReview ? ` · ${toReview} file${toReview === 1 ? "" : "s"} to review (Ctrl+Alt+V)` : " (Ctrl+J to look)"
+      ws.notify(text + hint, what === "waiting" ? "warn" : "info")
       ringBell()
       if (how === "desktop") desktopNotify("copane", text)
     })

@@ -33,6 +33,8 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     // Not in the AI pane: CLIs use Alt+letters there (Claude Code's Alt+P picks the model).
     "alt+n": "ai.nextChange",
     "alt+p": "ai.prevChange",
+    // Also from the AI pane, where you are when the AI finishes ("view the changes").
+    "ctrl+alt+v": "ai.nextChange",
     "ctrl+alt+n": "ai.newAgent",
     "ctrl+alt+pagedown": "ai.nextAgent",
     "ctrl+alt+pageup": "ai.prevAgent",
@@ -133,6 +135,7 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "ctrl+alt+z": "ai.turns",
     // Only in the AI pane: Ctrl+W there belongs to the CLI.
     "ctrl+alt+w": "ai.closeAgent",
+    "ctrl+alt+v": "ai.nextChange",
     "ctrl+alt+n": "ai.newAgent",
     "ctrl+alt+pagedown": "ai.nextAgent",
     "ctrl+alt+pageup": "ai.prevAgent",

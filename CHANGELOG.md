@@ -6,7 +6,7 @@ All notable changes to copane are listed here. The format follows
 ## [Unreleased]
 
 ### Added
-- Review the AI's edits in the editor: lines it changed get a violet ┃ until reviewed, with a bar above the file and a count in the status bar. Alt+N jumps to the next change and shows what it replaced; **a** accepts it and moves on, **r** undoes it (one undo step), and past the last change Alt+N opens the next file. Accept file, Undo file and Accept all are on the bar and in the palette.
+- Review the AI's edits in the editor: lines it changed get a violet ┃ until reviewed, with a bar above the file and a count in the status bar. Alt+N jumps to the next change and shows what it replaced; **a** accepts it and moves on, **r** undoes it (one undo step), and past the last change Alt+N opens the next file. Accept file, Undo file and Accept all are on the bar and in the palette. Ctrl+Alt+V starts the review from anywhere, including the AI pane, whose header shows "✦ 2 to review" once the AI is done (and the "finished" notice says how many files). What's left to review is remembered across restarts.
 - The file tree shows the AI's work: ✎ on files it is editing in the current turn, ✦ on files with unreviewed changes, and a violet dot on their folders. Clicking a ✦ file opens it at its first AI change; the right-click menu can review or accept a file's AI changes, or accept a whole folder's.
 
 ## [0.5.0] - 2026-10-11
