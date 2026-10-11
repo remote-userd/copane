@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { NativeImagePool, type ImageRenderable, type ImageRenderProtocol } from "@opentui/core"
 import { GifPlayer, parseGif } from "./gif"
+import { windowFocus, windowFocused } from "../app/windowFocus"
 
 /**
  * An image that plays when it is an animated GIF (OpenTUI alone shows a GIF's first frame).
@@ -23,6 +24,9 @@ export function AnimatedImage({
   onError?: (message: string) => void
 }) {
   const ref = useRef<ImageRenderable | null>(null)
+  // Paused while the terminal window is in the background: nobody is watching.
+  const focused = useSyncExternalStore(windowFocus.subscribe, windowFocused)
+  playing &&= focused
   const [player, setPlayer] = useState<GifPlayer | null>(null)
 
   useEffect(() => {

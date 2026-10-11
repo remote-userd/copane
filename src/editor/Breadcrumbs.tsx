@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { sep } from "node:path"
 import type { BoxRenderable } from "@opentui/core"
-import { useBuffers, useWorkspace } from "../app/workspace"
+import { useBuffers, useCursor, useWorkspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import { colToIndex } from "../lsp/positions"
 import { lineAt } from "./CodeEditorRenderable"
@@ -14,6 +14,7 @@ import { lineAt } from "./CodeEditorRenderable"
 export function Breadcrumbs({ reveal }: { reveal?: (path: string) => void }) {
   const ws = useWorkspace()
   const buffers = useBuffers()
+  useCursor() // the symbol path follows the cursor
   const buf = buffers.active
   const [symbols, setSymbols] = useState<string[]>([])
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)

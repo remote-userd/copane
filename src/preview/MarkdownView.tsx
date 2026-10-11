@@ -6,7 +6,7 @@
  */
 // readFileSync: images are sized while rendering, which is synchronous; Bun has no sync read.
 import { readFileSync } from "node:fs"
-import type { ReactNode } from "react"
+import { memo, useMemo, type ReactNode } from "react"
 import { gemoji } from "gemoji"
 import { Lexer, type Token, type Tokens } from "marked"
 import { imageInfo, TextAttributes, type ImageRenderProtocol } from "@opentui/core"
@@ -76,7 +76,29 @@ const TAG_STYLE: Record<string, Partial<Style>> = {
   small: { attr: DIM },
 }
 
-const attrOf = (name: string, tag: string) => tag.match(new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"))?.slice(2).find((v) => v !== undefined)
+const attrPatterns = new Map<string, RegExp>()
+const attrOf = (name: string, tag: string) => {
+  let re = attrPatterns.get(name)
+  if (!re) attrPatterns.set(name, (re = new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, "i")))
+  return tag.match(re)?.slice(2).find((v) => v !== undefined)
+}
+
+/** Image sizes by path, size and modification time: rendering doesn't re-read and decode the file. */
+const imageSizes = new Map<string, { key: string; w: number; h: number }>()
+function imageSize(path: string): { w: number; h: number } | null {
+  const f = Bun.file(path)
+  const key = `${f.size}:${f.lastModified}`
+  const hit = imageSizes.get(path)
+  if (hit?.key === key) return hit
+  try {
+    const info = imageInfo(readFileSync(path))
+    const entry = { key, w: info.width, h: info.height }
+    imageSizes.set(path, entry)
+    return entry
+  } catch {
+    return null
+  }
+}
 
 class InlineWriter {
   chunks: Chunk[] = []
@@ -236,13 +258,10 @@ function paragraphImages(tokens: Token[], ctx: MdContext): { path: string; w: nu
   const add = (href: string): boolean => {
     const path = localImagePath(href, ctx.path)
     if (!path) return false
-    try {
-      const info = imageInfo(readFileSync(path))
-      found.push({ path, w: info.width, h: info.height })
-      return true
-    } catch {
-      return false
-    }
+    const size = imageSize(path)
+    if (!size) return false
+    found.push({ path, w: size.w, h: size.h })
+    return true
   }
   return visit(tokens) && found.length ? found : null
 }
@@ -484,9 +503,13 @@ function Blocks({ tokens, ctx, depth = 0, tight = false, base = { attr: 0 } }: {
   )
 }
 
-export function MarkdownView({ text, ctx }: { text: string; ctx: MdContext }) {
-  const { src, notes } = extractFootnotes(text)
-  const tokens = new Lexer({ gfm: true }).lex(src)
+/** Parsed once per text; re-rendered only when the text, width or image settings change. */
+export const MarkdownView = memo(function MarkdownView({ text, path, width, protocol, animate }: { text: string } & MdContext) {
+  const ctx = useMemo(() => ({ path, width, protocol, animate }), [path, width, protocol, animate])
+  const { notes, tokens } = useMemo(() => {
+    const { src, notes } = extractFootnotes(text)
+    return { notes, tokens: new Lexer({ gfm: true }).lex(src) }
+  }, [text])
   return (
     <box flexDirection="column" gap={1}>
       <Blocks tokens={tokens} ctx={ctx} />
@@ -504,4 +527,4 @@ export function MarkdownView({ text, ctx }: { text: string; ctx: MdContext }) {
       ) : null}
     </box>
   )
-}
+})

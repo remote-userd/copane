@@ -83,6 +83,9 @@ export class BufferStore {
   private nextId = 1
   private listeners = new Set<Listener>()
   private snapshot = 0
+  /** Cursor moves have their own signal: they happen on every key, and few views show them. */
+  private cursorListeners = new Set<Listener>()
+  private cursorSnapshot = 0
   private highlightTimers = new Map<number, ReturnType<typeof setTimeout>>()
   /** Hidden buffers whose colours are out of date; highlighted when shown. */
   private highlightLater = new Set<number>()
@@ -366,9 +369,17 @@ export class BufferStore {
     const { row, col } = buf.textarea.logicalCursor
     if (row !== buf.cursor.row || col !== buf.cursor.col) {
       buf.cursor = { row, col }
-      this.emit()
+      this.cursorSnapshot++
+      for (const l of this.cursorListeners) l()
     }
   }
+
+  /** Called when a buffer's cursor moves (not on other changes; see subscribe). */
+  subscribeCursor = (listener: Listener): (() => void) => {
+    this.cursorListeners.add(listener)
+    return () => this.cursorListeners.delete(listener)
+  }
+  getCursorSnapshot = (): number => this.cursorSnapshot
 
   // ---- save / reload ----
   async save(id = this.activeId ?? -1): Promise<Buffer | null> {

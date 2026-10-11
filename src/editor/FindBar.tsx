@@ -85,8 +85,20 @@ export function FindBar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [find.seed])
 
-  // Re-search when the text changes (typing in the editor, undo, an AI edit reloading the file).
-  useEffect(() => ws.buffers.onText((id) => id === ws.buffers.active?.id && setTextVersion((v) => v + 1)), [ws])
+  // Re-search when the text changes (typing in the editor, undo, an AI edit reloading the file),
+  // once edits pause: each search scans the whole file.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const off = ws.buffers.onText((id) => {
+      if (id !== ws.buffers.active?.id) return
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => setTextVersion((v) => v + 1), 60)
+    })
+    return () => {
+      off()
+      if (timer) clearTimeout(timer)
+    }
+  }, [ws])
 
   const matches: Match[] = useMemo(() => {
     const ed = editorOf(ws)

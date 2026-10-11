@@ -90,7 +90,34 @@ export function useUi(): UiState {
   return useSyncExternalStore(ws.ui.subscribe, ws.ui.get)
 }
 
-/** Re-render on any buffer store change; returns the store. */
+/**
+ * The active buffer's cursor; re-renders when it moves or another tab becomes active. Cursor moves
+ * don't reach useBuffers(), so only the views that show the position re-render on each key.
+ */
+export function useCursor(): { row: number; col: number } | null {
+  const ws = useWorkspace()
+  const b = ws.buffers
+  useSyncExternalStore(
+    (l) => {
+      const a = b.subscribe(l)
+      const c = b.subscribeCursor(l)
+      return () => (a(), c())
+    },
+    () => b.getSnapshot() * 1_000_003 + b.getCursorSnapshot(),
+  )
+  return b.active?.cursor ?? null
+}
+
+/**
+ * One value derived from the buffer store; re-renders only when it changes. `select` must return a
+ * primitive (or a stable object) so unchanged results compare equal.
+ */
+export function useBufferSelector<T>(select: (buffers: BufferStore) => T): T {
+  const ws = useWorkspace()
+  return useSyncExternalStore(ws.buffers.subscribe, () => select(ws.buffers))
+}
+
+/** Re-render on any buffer store change (not cursor moves: useCursor); returns the store. */
 export function useBuffers(): BufferStore {
   const ws = useWorkspace()
   useSyncExternalStore(ws.buffers.subscribe, ws.buffers.getSnapshot)

@@ -55,6 +55,9 @@ export function SignaturePopup() {
     if (mine === seq.current) setSig(info)
   }
 
+  // Subscribed once; refresh is read through a ref so it sees the current render's state.
+  const refreshRef = useRef(refresh)
+  refreshRef.current = refresh
   useEffect(
     () =>
       ws.buffers.onText((id) => {
@@ -66,10 +69,10 @@ export function SignaturePopup() {
           const { row, col } = ed.logicalCursor
           const line = lineAt(ed, row)
           const before = line[colToIndex(line, col) - 1]
-          void refresh(before === "(" || before === ",")
+          void refreshRef.current(before === "(" || before === ",")
         }, 0)
       }),
-    // refresh reads current state through closures; re-subscribe each render is fine.
+    [ws],
   )
 
   useEffect(() => {

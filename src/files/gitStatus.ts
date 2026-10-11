@@ -1,5 +1,6 @@
 import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { GitRepo, parseEntries, READ_ONLY, type StatusEntry } from "../git/repo"
+import { windowFocused } from "../app/windowFocus"
 
 /** One-letter git status shown in the tree. */
 export type GitMark = "M" | "A" | "U" | "D" | "R" | "!"
@@ -113,7 +114,8 @@ export class GitStatus {
     let last = await this.gitFingerprint()
     let busy = false
     this.poll = setInterval(async () => {
-      if (busy) return
+      // Nothing to show while you're in another app: catch up when the window gets focus back.
+      if (busy || !windowFocused()) return
       busy = true
       const now = await this.gitFingerprint()
       busy = false

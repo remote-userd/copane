@@ -57,7 +57,8 @@ export class AgentWatch {
     this.reported = false
     this.last = now
     const text = typeof data === "string" ? data : this.decoder.decode(data, { stream: true })
-    this.recent = plain(this.recent + text).slice(-1500)
+    // Only the end of the screen matters (a prompt sits there): clean up just the last few KB.
+    this.recent = plain((this.recent + text).slice(-4000)).slice(-1500)
   }
 
   /** Call periodically: reports the end of a stretch of output once it has gone quiet. */
@@ -69,6 +70,11 @@ export class AgentWatch {
     if (question) this.emit("waiting")
     else if (this.last - this.start >= MIN_WORK_MS) this.emit("finished")
     else this.emit("idle")
+  }
+
+  /** Whether a stretch of output is waiting to be reported (tick only matters then). */
+  get pending(): boolean {
+    return !this.reported
   }
 
   /** You answered or typed in the pane: whatever was on screen is no longer news. */

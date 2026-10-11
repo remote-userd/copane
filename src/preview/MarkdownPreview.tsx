@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react"
+import { memo, useEffect, useRef, useState } from "react"
 import { useKeyboard } from "@opentui/react"
 import "../app/SmoothScrollBox"
 import type { SmoothScrollBoxRenderable } from "../app/SmoothScrollBox"
-import { useBuffers, useWorkspace } from "../app/workspace"
+import { useBufferSelector, useWorkspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import { MarkdownView } from "./MarkdownView"
 
@@ -26,13 +26,16 @@ function ScrollKeys({ scroll }: { scroll: React.RefObject<SmoothScrollBoxRendera
  * The rendered view of a Markdown file. Follows the open tab's text as you type (and when the AI
  * edits it), or the file on disk when it isn't open.
  */
-export function MarkdownPreview({ path, active, focused, version = 0 }: { path: string; active: boolean; focused: boolean; version?: number }) {
+export const MarkdownPreview = memo(function MarkdownPreview({ path, active, focused, version = 0 }: { path: string; active: boolean; focused: boolean; version?: number }) {
   const ws = useWorkspace()
-  useBuffers() // re-render when the file is opened or closed as a tab
+  // Only whether (and in which tab) the file is open matters, not every store change.
+  const liveId = useBufferSelector((b) => {
+    const source = b.byPath(path)
+    return source?.kind === "text" ? source.id : null
+  })
+  const live = liveId === null ? null : ws.buffers.byId(liveId)
   const scroll = useRef<SmoothScrollBoxRenderable | null>(null)
   const [width, setWidth] = useState(80)
-  const source = ws.buffers.byPath(path)
-  const live = source?.kind === "text" ? source : null
   const [text, setText] = useState(() => (live ? ws.buffers.textOf(live) : ""))
 
   // The open tab: follow its text, debounced so typing stays fast.
@@ -85,7 +88,7 @@ export function MarkdownPreview({ path, active, focused, version = 0 }: { path: 
       }}
     >
       {focused ? <ScrollKeys scroll={scroll} /> : null}
-      <MarkdownView text={text} ctx={{ path, width, protocol: ws.config.preview.imageProtocol, animate: active }} />
+      <MarkdownView text={text} path={path} width={width} protocol={ws.config.preview.imageProtocol} animate={active} />
     </smooth-scrollbox>
   )
-}
+})

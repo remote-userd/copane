@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react"
 import { useTerminalDimensions } from "@opentui/react"
-import { useBuffers, useUi, useWorkspace } from "./workspace"
+import { useBuffers, useCursor, useUi, useWorkspace } from "./workspace"
 import { ui as colors } from "../config/theme"
 import { runCommand, type CommandId } from "../keymap/commands"
 import { HoverBox } from "./Modal"
@@ -61,6 +61,7 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
   const ws = useWorkspace()
   const ui = useUi()
   const buffers = useBuffers()
+  useCursor() // Ln/Col and the line's blame follow the cursor
   const dims = useTerminalDimensions()
   useSyncExternalStore(ws.lsp?.subscribe ?? none.subscribe, ws.lsp?.getSnapshot ?? none.getSnapshot)
   useSyncExternalStore(ws.git?.subscribe ?? none.subscribe, ws.git?.getSnapshot ?? none.getSnapshot)
@@ -77,7 +78,9 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
   const counts = ws.lsp?.counts() ?? { errors: 0, warnings: 0 }
   const problemsText = lspStatus ? `${g.error} ${counts.errors} ${g.warning} ${counts.warnings}` : ""
   const ta = buf?.textarea
-  const selected = ta?.hasSelection() ? ta.getSelectedText().length : 0
+  // From the selection's offsets: copying the selected text just to count it is costly after select-all.
+  const sel = ta?.hasSelection() ? ta.getSelection() : null
+  const selected = sel ? Math.abs(sel.end - sel.start) : 0
   const text = buf?.kind === "text" ? buf : null
   const pos = text
     ? `${text.dirty ? "● " : ""}Ln ${text.cursor.row + 1}, Col ${text.cursor.col + 1}${selected ? ` (${selected} selected)` : ""}`

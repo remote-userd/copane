@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useRef, useState } from "react"
 import type { LineNumberRenderable, LineSign, TextareaRenderable } from "@opentui/core"
 import { changedLines, lineChanges } from "./changeMarkers"
 import { colToIndex, indexToCol } from "../lsp/positions"
@@ -99,7 +99,18 @@ const WELCOME: [string, string][] = [
   ["F1", "All commands"],
 ]
 
-function BufferView({ buf, active, focused, wrap }: { buf: Buffer; active: boolean; focused: boolean; wrap: boolean }) {
+type BufferViewProps = { buf: Buffer; active: boolean; focused: boolean; wrap: boolean }
+
+/**
+ * Re-rendered only when what it draws from changes. Buffers are mutated in place and their text
+ * lives in the native editor, so other store changes (another tab's edit, a save) don't concern it.
+ */
+const BufferView = memo(
+  (props: BufferViewProps) => <BufferViewInner {...props} />,
+  (a, b) => a.active === b.active && a.focused === b.focused && a.wrap === b.wrap && a.buf.id === b.buf.id && a.buf.filetype === b.buf.filetype && a.buf.path === b.buf.path,
+)
+
+function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
   const ws = useWorkspace()
   const id = buf.id
   // Set below, once onContent exists; undo/redo are content changes too.

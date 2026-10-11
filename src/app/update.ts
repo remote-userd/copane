@@ -1,6 +1,7 @@
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { shutdown } from "./shutdown"
+import { windowFocused } from "./windowFocus"
 
 /**
  * Updating a running editor.
@@ -97,7 +98,8 @@ export function watchForUpdate(path: string, onUpdate: () => void, intervalMs = 
     last = f
   })
   const timer = setInterval(async () => {
-    if (busy || original === undefined) return
+    // While you're in another app, wait: the next check after you come back catches the update.
+    if (busy || original === undefined || !windowFocused()) return
     busy = true
     const now = await fingerprint(path)
     busy = false

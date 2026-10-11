@@ -8,7 +8,10 @@ import { createWorkspace, WorkspaceContext } from "./app/workspace"
 import { loadConfig } from "./config/load"
 import { createClipboard } from "./app/clipboard"
 import { loadLayout, persistLayout } from "./app/layoutState"
-import { installPerfLog } from "./app/perf"
+import { installPerfLog, perfCommit } from "./app/perf"
+import { Profiler } from "react"
+
+const noop = () => {}
 import { saveBeforeAi } from "./app/saveBeforeAi"
 import { isCompiled, setLaunchCwd, takeRestoreState, watchForUpdate } from "./app/update"
 import { FileTree } from "./files/FileTree"
@@ -24,6 +27,7 @@ import { applyFileEdits } from "./lsp/lspActions"
 import { aiStatusSource, TerminalPane } from "./ai/TerminalPane"
 import { affectedOpenFiles, FileWatcher } from "./files/watcher"
 import { TurnLog } from "./ai/turns"
+import { windowFocus, windowFocused } from "./app/windowFocus"
 import pkg from "../package.json"
 
 const USAGE = `Usage: copane [file|directory]
@@ -76,6 +80,9 @@ installSignalHandlers()
 
 const renderer = await createCliRenderer({ exitOnCtrlC: false })
 registerRenderer(renderer)
+// Polling and animations pause while the terminal window is in the background.
+renderer.on("focus", () => windowFocus.set({ focused: true }))
+renderer.on("blur", () => windowFocus.set({ focused: false }))
 // Every pane, popup and preview listens for keys; Node's leak warning at 10 would print over the UI.
 renderer.keyInput.setMaxListeners(100)
 installPerfLog(renderer)
@@ -99,6 +106,8 @@ lsp.onApplyEdit = (files) => applyFileEdits(ws, files)
 lsp.attach(ws.buffers)
 onShutdown(() => lsp.stop())
 void git.start()
+// Back from another app: catch up on git (polling paused meanwhile; the file watcher didn't).
+windowFocus.subscribe(() => windowFocused() && git.refresh(0))
 onShutdown(() => git.stop())
 // Per-file git caches follow the open tabs, so a long session doesn't keep every file it touched.
 let openCount = 0
@@ -201,17 +210,20 @@ const aiConfig = {
 }
 
 createRoot(renderer).render(
-  <WorkspaceContext.Provider value={ws}>
-    <ErrorBoundary>
-      <App
-        slots={{
-          tree: <TreeSlot />,
-          picker: <FilePicker tree={tree} />,
-          search: <SearchModal tree={tree} />,
-          ai: <TerminalPane config={aiConfig} />,
-          aiStatus: aiStatusSource,
-        }}
-      />
-    </ErrorBoundary>
-  </WorkspaceContext.Provider>,
+  // The profiler only counts with CE_PERF set (and only in `bun run dev`: see perfCommit).
+  <Profiler id="app" onRender={Bun.env.CE_PERF ? perfCommit : noop}>
+    <WorkspaceContext.Provider value={ws}>
+      <ErrorBoundary>
+        <App
+          slots={{
+            tree: <TreeSlot />,
+            picker: <FilePicker tree={tree} />,
+            search: <SearchModal tree={tree} />,
+            ai: <TerminalPane config={aiConfig} />,
+            aiStatus: aiStatusSource,
+          }}
+        />
+      </ErrorBoundary>
+    </WorkspaceContext.Provider>
+  </Profiler>,
 )

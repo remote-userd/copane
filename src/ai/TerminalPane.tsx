@@ -1,5 +1,5 @@
 import { basename, dirname, join } from "node:path"
-import { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useKeyboard, useRenderer } from "@opentui/react"
 import { EmbeddedTerminalRenderable, type BoxRenderable } from "@opentui/core"
 import { useUi, useWorkspace, type AiHandle, type Workspace } from "../app/workspace"
@@ -38,10 +38,17 @@ export interface Session {
 
 interface SessionState {
   status: string
-  /** When the CLI last printed something; "working" while that was recent. */
-  last: number
+  /** When the current stretch of output began (the header starts its spinner then). */
+  busySince: number
   attention: Attention | null
 }
+
+/**
+ * When each tab's CLI last printed something; "working" while that was recent. Kept out of the
+ * store: output arrives hundreds of times a second, and only the start of a stretch needs a render.
+ */
+const lastOutput = new Map<number, number>()
+const isBusy = (id: number) => Date.now() - (lastOutput.get(id) ?? 0) < BUSY_MS
 
 const RIGHT = 2
 const DIM = "\x1b[2m"
@@ -67,7 +74,7 @@ function describeStatus(cmd: string, s: AgentStatus): string {
 const tabs = new Store<{ sessions: Session[]; active: number; state: Record<number, SessionState> }>({ sessions: [], active: 0, state: {} })
 const setState = (id: number, patch: Partial<SessionState>) => {
   const t = tabs.get()
-  const prev = t.state[id] ?? { status: "", last: 0, attention: null }
+  const prev = t.state[id] ?? { status: "", busySince: 0, attention: null }
   tabs.set({ state: { ...t.state, [id]: { ...prev, ...patch } } })
 }
 /** Each tab's terminal, for copying its selection. */
@@ -92,7 +99,7 @@ function tabLabel(s: Session): string {
 function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: (x: number, y: number) => void; onClose: (id: number) => void }) {
   const t = useSyncExternalStore(tabs.subscribe, tabs.get)
   const [frame, setFrame] = useState(0)
-  const busy = (id: number) => Date.now() - (t.state[id]?.last ?? 0) < BUSY_MS
+  const busy = isBusy
   const anyBusy = t.sessions.some((s) => busy(s.id))
   // Tick only while output is flowing; idle panes cost nothing.
   useEffect(() => {
@@ -148,8 +155,8 @@ function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: (x: nu
   )
 }
 
-/** One tab: its terminal and CLI process. Hidden tabs keep running. */
-function AgentSession({ session, active, focused, config }: { session: Session; active: boolean; focused: boolean; config: AiConfig }) {
+/** One tab: its terminal and CLI process. Hidden tabs keep running. Memoized: it drives its terminal itself. */
+const AgentSession = memo(function AgentSession({ session, active, focused, config }: { session: Session; active: boolean; focused: boolean; config: AiConfig }) {
   const ws = useWorkspace()
   const renderer = useRenderer()
   const boxRef = useRef<BoxRenderable | null>(null)
@@ -241,17 +248,34 @@ function AgentSession({ session, active, focused, config }: { session: Session; 
       ringBell()
       if (how === "desktop") desktopNotify("copane", text)
     })
-    const ticker = setInterval(() => watch.tick(), 500)
-    ticker.unref?.()
+    // The watch only needs ticks while a stretch of output awaits its verdict.
+    let ticker: ReturnType<typeof setInterval> | null = null
+    const tick = () => {
+      watch.tick()
+      if (!watch.pending && ticker) {
+        if (ticker) clearInterval(ticker)
+        ticker = null
+      }
+    }
+    const ensureTicker = () => {
+      if (ticker) return
+      ticker = setInterval(tick, 500)
+      ticker.unref?.()
+    }
     const proc = new AgentProcess({
       command: session.command,
       args: session.args,
       cwd: session.cwd,
       onOutput: (data) => {
         term.write(data)
-        setState(id, { last: Date.now() })
+        const now = Date.now()
+        const quietBefore = !isBusy(id)
+        lastOutput.set(id, now)
+        // Only the start of a stretch re-renders (to start the spinner); its ticks do the rest.
+        if (quietBefore) setState(id, { busySince: now })
         watchForQuestion(data)
         watch.output(data)
+        ensureTicker()
       },
       onStatus: (s) => {
         // The command's name, not its path: the status bar has little room.
@@ -318,11 +342,12 @@ function AgentSession({ session, active, focused, config }: { session: Session; 
 
     return () => {
       clearTimeout(startTimer)
-      clearInterval(ticker)
+      if (ticker) clearInterval(ticker)
       renderer.off("focus", onFocus)
       renderer.off("blur", onBlur)
       offShutdown()
       handles.delete(id)
+      lastOutput.delete(id)
       terminals.delete(id)
       void proc.kill(500)
       term.destroy()
@@ -345,7 +370,7 @@ function AgentSession({ session, active, focused, config }: { session: Session; 
   }, [active, focused, ws, session.id])
 
   return <box ref={boxRef} flexGrow={1} flexDirection="column" visible={active} />
-}
+})
 
 /** Where a new worktree for `name` goes: beside the project, e.g. ../app-codex-2. */
 export function worktreeFor(root: string, name: string, n: number): { path: string; branch: string } {

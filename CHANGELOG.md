@@ -5,6 +5,9 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Less work per key, cursor move and AI output: cursor moves no longer re-render the whole UI (only the status bar and breadcrumbs follow them), tabs and the Markdown preview re-render only when their own content changes (with parsing and image sizes cached), and streaming AI output updates the pane once per stretch instead of per chunk. Polling and GIFs pause while the terminal window is in the background, and agent tabs stop ticking when idle. `CE_PERF` also logs React commits per second in `bun run dev`.
+
 ### Added
 - Smooth scrolling: the wheel and PageUp/PageDown glide (fast first, easing out) in the editor and the Markdown preview; consecutive wheel steps add up, and a key stops the motion. `editor.smoothScrolling: false` turns it off.
 - Delete a branch: Shift+Delete, the × on the selected row or a right-click in the branch picker (Ctrl+Alt+B), or "Delete a branch" in the palette. Asks first, and again before deleting unmerged work; the current branch is protected.

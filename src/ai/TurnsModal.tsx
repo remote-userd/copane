@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import { Modal } from "../app/Modal"
 import { useWorkspace } from "../app/workspace"
@@ -12,11 +12,14 @@ type Focus = "turns" | "files" | "changes"
 // toLocaleTimeString puts a narrow no-break space before AM/PM, which terminals draw zero-width.
 const time = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).replace(/\s/g, " ")
 
+/** A file's changes within one turn (the same file can appear in several turns). */
+const key = (turn: Turn, path: string) => `${turn.id}:${path}`
+
 /** +added −removed lines of a turn, from its files' changes. */
 function lineCounts(changes: Map<string, Hunk[]>, turn: Turn): { add: number; del: number } {
   let add = 0
   let del = 0
-  for (const f of turn.files) for (const h of changes.get(f.path) ?? []) (add += h.newLines), (del += h.oldLines)
+  for (const f of turn.files) for (const h of changes.get(key(turn, f.path)) ?? []) (add += h.newLines), (del += h.oldLines)
   return { add, del }
 }
 
@@ -28,18 +31,20 @@ export function TurnsModal() {
   const ws = useWorkspace()
   const dims = useTerminalDimensions()
   const log = ws.turns
-  const turns = [...useSyncExternalStore(log?.store.subscribe ?? (() => () => {}), () => log?.store.get().turns ?? [])].reverse()
+  const stored = useSyncExternalStore(log?.store.subscribe ?? (() => () => {}), () => log?.store.get().turns ?? [])
+  const turns = useMemo(() => [...stored].reverse(), [stored])
   const [focus, setFocus] = useState<Focus>("turns")
   const [ti, setTi] = useState(0)
   const [fi, setFi] = useState(0)
   const [hi, setHi] = useState(0)
   const [confirm, setConfirm] = useState<{ text: string; yes: () => Promise<void> } | null>(null)
-  // Each file's changes now (before the turn → current content); refreshed after every undo.
+  // Each turn's files' changes now (before the turn → current content), by turn and file;
+  // computed when turns arrive or after an undo, not on every move through the list.
   const [changes, setChanges] = useState(new Map<string, Hunk[]>())
   const [version, setVersion] = useState(0)
   const turn = turns[Math.min(ti, turns.length - 1)]
   const file: TurnFile | undefined = turn?.files[Math.min(fi, turn.files.length - 1)]
-  const fileHunks = file ? (changes.get(file.path) ?? []) : []
+  const fileHunks = file && turn ? (changes.get(key(turn, file.path)) ?? []) : []
   const close = () => ws.ui.set({ modal: null })
 
   useEffect(() => {
@@ -47,11 +52,11 @@ export function TurnsModal() {
     let stale = false
     void (async () => {
       const next = new Map<string, Hunk[]>()
+      const contents = new Map<string, string>() // each file read once, however many turns touched it
       for (const t of turns) {
         for (const f of t.files) {
-          if (next.has(f.path) && t !== turn) continue
-          const now = (await log.contentNow(f.path)) ?? ""
-          next.set(f.path, f.known ? hunks(f.before ?? "", now) : [])
+          if (!contents.has(f.path)) contents.set(f.path, (await log.contentNow(f.path)) ?? "")
+          next.set(key(t, f.path), f.known ? hunks(f.before ?? "", contents.get(f.path)!) : [])
         }
       }
       if (!stale) setChanges(next)
@@ -59,8 +64,7 @@ export function TurnsModal() {
     return () => {
       stale = true
     }
-    // turns changes identity each render; its length and the undo version are what matter
-  }, [log, turns.length, version, turn?.id])
+  }, [log, turns, version])
 
   const done = (text: string) => {
     setVersion((v) => v + 1)

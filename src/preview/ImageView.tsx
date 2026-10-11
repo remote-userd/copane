@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { memo, useCallback, useState } from "react"
 import { useKeyboard } from "@opentui/react"
 import { AnimatedImage } from "./AnimatedImage"
 import { imageCells } from "./images"
@@ -29,7 +29,15 @@ function PlayKeys({ toggle }: { toggle: () => void }) {
 }
 
 /** An image tab: the picture, fitted to the pane, under a line with its format and size. GIFs play. */
-export function ImageView({ buf, active, focused }: { buf: Buffer; active: boolean; focused: boolean }) {
+type ImageViewProps = { buf: Buffer; active: boolean; focused: boolean }
+
+/** Re-rendered only when the tab's state or the image itself changes. */
+export const ImageView = memo(
+  (props: ImageViewProps) => <ImageViewInner {...props} />,
+  (a, b) => a.active === b.active && a.focused === b.focused && a.buf.id === b.buf.id && a.buf.version === b.buf.version && a.buf.deleted === b.buf.deleted && a.buf.image === b.buf.image,
+)
+
+function ImageViewInner({ buf, active, focused }: ImageViewProps) {
   const ws = useWorkspace()
   const [error, setError] = useState<string | null>(null)
   const [space, setSpace] = useState({ width: 0, height: 0 })
