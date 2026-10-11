@@ -19,8 +19,8 @@ export interface TurnFile {
   before: string | null
   /** False when the content before is unknown (binary, ignored by git, no git): no undo. */
   known: boolean
-  /** Content when the turn ended (set then), to tell whether it has been edited since. */
-  after?: string | null
+  /** Hash of the content when the turn ended (set then), to tell whether it has been edited since. */
+  afterHash?: string | null
 }
 
 export interface Turn {
@@ -40,6 +40,9 @@ interface Snapshot {
 
 const MAX_TURNS = 30
 const MAX_UNTRACKED_BYTES = 1_000_000
+/** A file's "before" bigger than this isn't kept (a lockfile, a bundle): its turn can't undo it. */
+const MAX_FILE_BYTES = 1_000_000
+const hashOf = (text: string | null) => (text === null ? null : Bun.hash(text).toString(36))
 
 export class TurnLog {
   readonly store = new Store<{ turns: Turn[] }>({ turns: [] })
@@ -83,7 +86,7 @@ export class TurnLog {
     if (!turn.files.length) return Promise.resolve()
     turn.endedAt = now
     this.publish()
-    return Promise.all(turn.files.map(async (f) => (f.after = await this.contentNow(f.path)))).then(() => {})
+    return Promise.all(turn.files.map(async (f) => (f.afterHash = hashOf(await this.contentNow(f.path))))).then(() => {})
   }
 
   /**
@@ -118,7 +121,7 @@ export class TurnLog {
   /** Files of a turn changed since it ended (by you or a later turn): undoing would drop those edits. */
   async editedSince(turn: Turn): Promise<string[]> {
     const out: string[] = []
-    for (const f of turn.files) if (f.after !== undefined && (await this.contentNow(f.path)) !== f.after) out.push(f.path)
+    for (const f of turn.files) if (f.afterHash !== undefined && hashOf(await this.contentNow(f.path)) !== f.afterHash) out.push(f.path)
     return out
   }
 
@@ -127,7 +130,7 @@ export class TurnLog {
     let n = 0
     for (const f of turn.files) {
       if (!f.known || (paths && !paths.includes(f.path))) continue
-      this.ownWrites.set(f.path, f.before)
+      this.expectOwnWrite(f.path, f.before)
       if (f.before === null) await Bun.file(f.path).delete().catch(() => null)
       else await Bun.write(f.path, f.before)
       n++
@@ -143,9 +146,20 @@ export class TurnLog {
     const h = hunks(file.before, now)[index]
     if (!h) return false
     const next = revertHunk(now, h)
-    this.ownWrites.set(file.path, next)
+    this.expectOwnWrite(file.path, next)
     await Bun.write(file.path, next)
     return true
+  }
+
+  /**
+   * copane is about to write this content (an undo): when the watcher reports it, it isn't the
+   * AI's. Forgotten after a while, so an old entry can't hide a later AI write of the same text.
+   */
+  private expectOwnWrite(path: string, content: string | null): void {
+    this.ownWrites.set(path, content)
+    setTimeout(() => {
+      if (this.ownWrites.get(path) === content) this.ownWrites.delete(path)
+    }, 10_000).unref?.()
   }
 
   private publish(): void {
@@ -185,12 +199,12 @@ export class TurnLog {
     // tracked file held: fall back as without git, so a staged file is never taken for a new one.
     if (repo && snap?.sha) {
       const atStart = await repo.showAt(snap.sha, path)
-      if (atStart !== null) return atStart.includes("\0") ? unknown : { path, before: atStart, known: true }
+      if (atStart !== null) return atStart.includes("\0") || atStart.length > MAX_FILE_BYTES ? unknown : { path, before: atStart, known: true }
       // Not tracked, not untracked: new in this turn, unless git ignores it (then we can't tell).
       if (await repo.isIgnored(path)) return hint !== undefined ? { path, before: hint, known: true } : unknown
       return { path, before: null, known: true }
     }
-    return hint !== undefined && !hint.includes("\0") ? { path, before: hint, known: true } : unknown
+    return hint !== undefined && !hint.includes("\0") && hint.length <= MAX_FILE_BYTES ? { path, before: hint, known: true } : unknown
   }
 }
 

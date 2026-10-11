@@ -106,7 +106,7 @@ function rgArgs(rg: string, query: string, match: MatchOptions, globs: string[])
 async function withRg(rg: string, root: string, query: string, re: RegExp, opts: SearchOptions, limit: number): Promise<SearchResult> {
   const args = [...rgArgs(rg, query, opts.match ?? {}, opts.globs ?? []), "--line-number", "--no-heading", "--max-count=100", "-0", "--", query, "."]
   const proc = Bun.spawn(args, { cwd: root, stdout: "pipe", stderr: "ignore", stdin: "ignore" })
-  opts.signal?.addEventListener("abort", () => proc.kill())
+  opts.signal?.addEventListener("abort", () => proc.kill(), { once: true })
   const hits: Hit[] = []
   let truncated = false
   let rest = ""
@@ -191,8 +191,11 @@ async function matchingFiles(root: string, query: string, re: RegExp, opts: Sear
       stderr: "ignore",
       stdin: "ignore",
     })
+    // A newer search (or closing the panel) stops this one, as for the hit search.
+    opts.signal?.addEventListener("abort", () => proc.kill(), { once: true })
     const out = await Bun.readableStreamToText(proc.stdout)
     await proc.exited
+    if (opts.signal?.aborted) return []
     return out
       .split("\0")
       .filter(Boolean)

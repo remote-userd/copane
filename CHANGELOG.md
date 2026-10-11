@@ -21,6 +21,7 @@ All notable changes to copane are listed here. The format follows
 - A new agent "in a git worktree" failed with "branch already exists" after an earlier one's worktree was removed (its branch is kept): it now skips to the next free number.
 
 ### Changed
+- Lighter all-day sessions: an agent CLI that exits on its own no longer leaks its terminal; closed agent tabs stop for good; AI turns keep a hash of each file's "after" text and skip files over 1 MB; output from streaming agents is scanned once per pause instead of per chunk; blame no longer re-runs on every git status change; the reload flash keeps one timer; hidden tabs skip AI-marker updates until shown; language servers re-check other open files at most every 10 s, are killed if they ignore "exit", and are restarted (up to 3 times in 5 minutes) when they crash, with their stale problems cleared; a stuck `git status` or Prettier is stopped after a while; deleted folders leave nothing cached; folder change events no longer throw away the Ctrl+P file list.
 - Committing accepts: once a file's content is what HEAD has (you committed it, the AI did, or it was checked out), its AI review marks clear on their own, so they never pile up. Untracked files stay marked until committed.
 
 ## [0.6.0] - 2026-10-11

@@ -275,10 +275,11 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
     })
     // The watch only needs ticks while a stretch of output awaits its verdict.
     let ticker: ReturnType<typeof setInterval> | null = null
+    let disposed = false
     const tick = () => {
       watch.tick()
       if (!watch.pending && ticker) {
-        if (ticker) clearInterval(ticker)
+        clearInterval(ticker)
         ticker = null
       }
     }
@@ -292,6 +293,7 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
       args: session.args,
       cwd: session.cwd,
       onOutput: (data) => {
+        if (disposed) return // the tab closed; the CLI is being stopped
         term.write(data)
         const now = Date.now()
         const quietBefore = !isBusy(id)
@@ -303,6 +305,7 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
         ensureTicker()
       },
       onStatus: (s) => {
+        if (disposed) return
         // The command's name, not its path: the status bar has little room.
         setState(id, { status: describeStatus(name, s) })
         if (s.kind === "exited") {
@@ -366,6 +369,8 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
     const offShutdown = onShutdown(() => proc.kill(500))
 
     return () => {
+      // Output or an exit after this must not re-arm the ticker or alert about a closed tab.
+      disposed = true
       clearTimeout(startTimer)
       if (ticker) clearInterval(ticker)
       renderer.off("focus", onFocus)
@@ -582,7 +587,8 @@ function closeTab(id: number): void {
   handles.get(id)?.kill()
   const rest = sessions.filter((s) => s.id !== id)
   const i = sessions.findIndex((s) => s.id === id)
-  tabs.set({ sessions: rest, active: active === id ? rest[Math.max(0, i - 1)]!.id : active })
+  const { [id]: _gone, ...state } = tabs.get().state
+  tabs.set({ sessions: rest, active: active === id ? rest[Math.max(0, i - 1)]!.id : active, state })
 }
 
 /** How many files a worktree agent changed since its branch split off; stored for its tab. */

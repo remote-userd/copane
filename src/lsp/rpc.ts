@@ -89,7 +89,10 @@ export class RpcConnection {
 
   private consume(n: number): void {
     this.head += n
-    if (this.head === this.tail) this.head = this.tail = 0
+    if (this.head !== this.tail) return
+    this.head = this.tail = 0
+    // One huge answer (workspace symbols, references) grew the buffer: don't keep that for good.
+    if (this.data.length > 1024 * 1024) this.data = new Uint8Array(64 * 1024)
   }
 
   private dispatch(msg: { id?: number | string; method?: string; params?: unknown; result?: unknown; error?: { message: string } }): void {

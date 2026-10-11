@@ -82,8 +82,10 @@ export class AgentProcess {
       this.proc = proc
       this.setStatus({ kind: "running", pid: proc.pid })
       void proc.exited.then((code) => {
-        if (this.proc !== proc) return
+        if (this.proc !== proc) return // kill() owns it
         this.proc = null
+        // The PTY is ours to close (a file descriptor and native memory per CLI run otherwise).
+        closeTerminal(proc)
         this.setStatus({ kind: "exited", code, signal: proc.signalCode == null ? null : String(proc.signalCode) })
       })
     } catch (err) {
@@ -130,14 +132,18 @@ export class AgentProcess {
       this.setStatus({ kind: "exited", code, signal: proc.signalCode == null ? null : String(proc.signalCode) })
     } finally {
       clearTimeout(timer)
-      try {
-        proc.terminal?.close()
-      } catch {
-        // already closed
-      }
+      closeTerminal(proc)
     }
     // Let the sweep run if the leader exited first.
     await new Promise((r) => setTimeout(r, Math.min(graceMs, 300) + 20))
     clearTimeout(sweep)
+  }
+}
+
+function closeTerminal(proc: { terminal?: { close(): void } | null }): void {
+  try {
+    proc.terminal?.close()
+  } catch {
+    // already closed
   }
 }

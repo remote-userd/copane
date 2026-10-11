@@ -49,9 +49,11 @@ export class AiReview {
   /** Take in the files of AI turns as they are recorded. */
   watch(turns: TurnLog): () => void {
     const take = () => {
+      const live = new Set<string>()
       for (const t of turns.turns) {
         for (const f of t.files) {
           const key = `${t.id}:${f.path}`
+          live.add(key)
           if (this.seen.has(key) || !f.known) continue
           this.seen.add(key)
           // The earliest unreviewed turn's "before" stays the base: later turns add to the change.
@@ -59,6 +61,8 @@ export class AiReview {
           this.checkLater(f.path)
         }
       }
+      // Turns that dropped out of the log can't come back: forget them.
+      for (const key of this.seen) if (!live.has(key)) this.seen.delete(key)
       this.bump()
     }
     take()

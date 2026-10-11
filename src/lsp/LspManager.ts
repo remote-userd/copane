@@ -90,10 +90,13 @@ class Client {
   state: "starting" | "ready" | "failed" = "starting"
   pullTimer: ReturnType<typeof setTimeout> | null = null
   pullOthersTimer: ReturnType<typeof setTimeout> | null = null
+  lastPullOthers = 0
   /** Set while no document is open: the server is stopped when it fires. */
   idleTimer: ReturnType<typeof setTimeout> | null = null
   /** Documents changed since their diagnostics were last pulled. */
   readonly pullNow = new Set<string>()
+  private proc: { kill(signal?: number | NodeJS.Signals): void; exitCode: number | null } | null = null
+  private stopping = false
 
   constructor(
     readonly spec: ServerSpec,
@@ -101,6 +104,8 @@ class Client {
     onDiagnostics: (path: string, diags: Diagnostic[]) => void,
     onState: () => void,
     private onApplyEdit: (files: Map<string, TextEdit[]>) => void = () => {},
+    /** The server went away on its own (crashed, or closed its output). */
+    private onDied: () => void = () => {},
   ) {
     this.ready = this.start(root, onDiagnostics).then(
       (ok) => {
@@ -123,6 +128,7 @@ class Client {
     } catch {
       return false
     }
+    this.proc = proc
     const rpc = new RpcConnection(proc as never, (method, params) => {
       // Defaults everywhere, except: renaming a symbol renames it (not just a local import alias).
       if (method === "workspace/configuration")
@@ -138,7 +144,12 @@ class Client {
       return null
     })
     rpc.onClose = () => {
-      if (this.state !== "failed") this.state = "failed"
+      this.state = "failed"
+      if (this.stopping) return
+      // It closed its output but may still run (hung): make sure it's gone, then let the manager
+      // restart it (on a later tick: this can run inside the constructor, when the server dies at once).
+      this.kill()
+      setTimeout(() => this.onDied(), 0)
     }
     this.rpc = rpc
     rpc.on("textDocument/publishDiagnostics", (p) => {
@@ -194,15 +205,28 @@ class Client {
     if (this.idleTimer) clearTimeout(this.idleTimer)
     if (this.pullTimer) clearTimeout(this.pullTimer)
     if (this.pullOthersTimer) clearTimeout(this.pullOthersTimer)
+    this.stopping = true
     const rpc = this.rpc
-    if (!rpc || rpc.isClosed) return
+    if (!rpc || rpc.isClosed) return this.kill()
     void rpc
       .request("shutdown", null, 1000)
       .catch(() => null)
       .then(() => {
         rpc.notify("exit", null)
         rpc.close()
+        // A server that ignores "exit" (busy, hung) would run on with no one to talk to.
+        setTimeout(() => this.kill(), 2000).unref?.()
       })
+  }
+
+  private kill(): void {
+    if (this.proc && this.proc.exitCode === null) {
+      try {
+        this.proc.kill("SIGKILL")
+      } catch {
+        // already gone
+      }
+    }
   }
 }
 
@@ -231,6 +255,9 @@ export class LspManager {
   private snapshot = 0
   private unsubs: (() => void)[] = []
   private stopped = false
+  /** Recent crashes per server: a server that keeps dying is left stopped. */
+  private crashes = new Map<string, number[]>()
+  private resync: (() => void) | null = null
   /** Paths whose server is still being looked up (so a second sync does not open them twice). */
   private opening = new Set<string>()
   /** Files whose language has no server (looked up once). */
@@ -263,6 +290,7 @@ export class LspManager {
       for (const path of [...this.docs.keys()]) if (!open.has(path)) this.close(path)
       for (const b of open.values()) if (!this.docs.has(b.path)) this.open(b.path, b.filetype, () => buffers.textOf(b))
     }
+    this.resync = sync
     this.unsubs.push(buffers.subscribe(sync))
     this.unsubs.push(
       buffers.onText((id) => {
@@ -287,6 +315,7 @@ export class LspManager {
 
   private start(path: string, filetype: string, spec: ServerSpec, text: () => string): void {
     let client = this.clients.get(spec.key)
+    if (!client && this.gaveUp(spec.key)) return
     if (!client) {
       client = new Client(
         spec,
@@ -294,7 +323,9 @@ export class LspManager {
         (p, d) => this.setDiagnostics(p, d),
         () => this.emit(),
         (files) => this.onApplyEdit?.(files),
+        () => this.died(spec.key, created),
       )
+      const created: Client = client
       this.clients.set(spec.key, client)
       this.emit()
     }
@@ -307,6 +338,33 @@ export class LspManager {
       client.rpc!.notify("textDocument/didOpen", { textDocument: { uri: uriOf(path), languageId: doc.languageId, version: doc.version, text: text() } })
       this.schedulePull(client, path)
     })
+  }
+
+  /**
+   * A server crashed: forget its documents and their (now stale) diagnostics, and start it again
+   * for the open files. One that dies 3 times in 5 minutes stays stopped (its state says failed).
+   */
+  private died(key: string, client: Client): void {
+    if (this.stopped || this.clients.get(key) !== client) return
+    this.clients.delete(key)
+    for (const [path, doc] of [...this.docs]) {
+      if (doc.client !== client) continue
+      if (doc.changeTimer) clearTimeout(doc.changeTimer)
+      this.docs.delete(path)
+      this.diags.delete(path)
+    }
+    this.crashes.set(key, [...(this.crashes.get(key) ?? []), Date.now()])
+    this.emit()
+    // A moment's pause, so a server that dies at start can't spin.
+    if (!this.gaveUp(key)) setTimeout(() => !this.stopped && this.resync?.(), 500).unref?.()
+  }
+
+  /** Crashed 3 times in the last 5 minutes: not started again for now. */
+  private gaveUp(key: string): boolean {
+    const now = Date.now()
+    const recent = (this.crashes.get(key) ?? []).filter((t) => now - t < 5 * 60_000)
+    this.crashes.set(key, recent)
+    return recent.length >= 3
   }
 
   private change(path: string, text: () => string): void {
@@ -366,11 +424,15 @@ export class LspManager {
       client.pullNow.clear()
       for (const path of paths) this.pull(client, path)
     }, 250)
+    // Other open files may be affected too (an export renamed): re-check them after a pause, but
+    // at most every 10 s, or an agent editing all day keeps the server re-checking everything.
     if (client.pullOthersTimer) clearTimeout(client.pullOthersTimer)
+    const wait = Math.max(2000, client.lastPullOthers + 10_000 - Date.now())
     client.pullOthersTimer = setTimeout(() => {
       client.pullOthersTimer = null
+      client.lastPullOthers = Date.now()
       for (const [path, doc] of this.docs) if (doc.client === client && path !== changed) this.pull(client, path)
-    }, 2000)
+    }, wait)
   }
 
   private pull(client: Client, path: string): void {
@@ -420,6 +482,7 @@ export class LspManager {
   status(): string {
     const parts: string[] = []
     for (const c of this.clients.values()) parts.push(c.state === "ready" ? c.spec.key : c.state === "starting" ? `${c.spec.key}…` : `${c.spec.key} ✗`)
+    for (const key of this.crashes.keys()) if (!this.clients.has(key) && this.gaveUp(key)) parts.push(`${key} ✗`)
     return parts.join(" ")
   }
 

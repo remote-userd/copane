@@ -155,11 +155,21 @@ export class TreeModel {
         listChanged = true
       }
     }
-    for (const path of paths) {
-      if (listChanged) break
-      listChanged = !this.listed!.has(path) || !(await Bun.file(path).exists())
-    }
+    // Which changed paths are gone: checked together, not one after another.
+    const kinds = await Promise.all(paths.map((p) => pathKind(p)))
+    const gone = paths.filter((_, i) => kinds[i] === null)
+    // The picker's file list only needs rebuilding for files added or removed, not for edits
+    // (nor for a folder's own change event: the list holds files).
+    if (!listChanged) listChanged = gone.length > 0 || paths.some((p, i) => kinds[i] === "file" && !this.listed!.has(p))
     if (listChanged) this.forgetFiles()
+    // A deleted folder's listings and caches (an agent's temporary folders come and go all day).
+    for (const path of gone) {
+      const inside = path + sep
+      for (const d of [...this.children.keys()]) if (d === path || d.startsWith(inside)) this.children.delete(d)
+      for (const d of [...this.expanded]) if (d === path || d.startsWith(inside)) this.expanded.delete(d)
+      this.matcher.forget(path)
+      dirs.delete(path)
+    }
     const loaded = [...dirs].filter((d) => this.children.has(d))
     const listings = await Promise.all(loaded.map((d) => listDir(d, this.matcher)))
     loaded.forEach((d, i) => this.children.set(d, listings[i]!))
@@ -181,4 +191,14 @@ export class TreeModel {
     this.fileList = null
     this.listed = null
   }
+}
+
+/** What is at a path now: a file, a folder, or nothing (Bun.file().exists() says false for folders). */
+function pathKind(path: string): Promise<"file" | "dir" | null> {
+  return Bun.file(path)
+    .stat()
+    .then(
+      (s) => (s.isDirectory() ? "dir" : "file"),
+      () => null,
+    )
 }

@@ -181,8 +181,15 @@ export class GitStatus {
     await this.load()
   }
 
+  /**
+   * Bumped when HEAD or the index change (a commit, checkout, staging): what blame and the
+   * HEAD/index contents depend on. The snapshot also moves for every other status change.
+   */
+  contentsVersion = 0
+
   /** HEAD or the index changed: cached contents are stale, and listeners must refresh even if the status reads the same. */
   private forgetContents(): void {
+    this.contentsVersion++
     this.heads.clear()
     this.indexes.clear()
     this.lastOut = null
@@ -274,7 +281,8 @@ function parentOf(path: string): string | null {
 async function run(cmd: string[], cwd: string): Promise<string | null> {
   try {
     // No optional locks: see GIT_OPTIONAL_LOCKS in git/repo.ts.
-    const p = Bun.spawn(cmd, { cwd, stdout: "pipe", stderr: "ignore", stdin: "ignore", env: { ...Bun.env, GIT_OPTIONAL_LOCKS: "0" } })
+    // A git that hangs (a network mount, a stuck lock) must not stop status updates for good.
+    const p = Bun.spawn(cmd, { cwd, stdout: "pipe", stderr: "ignore", stdin: "ignore", env: { ...Bun.env, GIT_OPTIONAL_LOCKS: "0" }, timeout: 30_000 })
     const [out, code] = await Promise.all([Bun.readableStreamToText(p.stdout), p.exited])
     return code === 0 ? out : null
   } catch {

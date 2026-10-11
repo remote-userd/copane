@@ -43,7 +43,8 @@ export function looksLikeQuestion(text: string): boolean {
 export class AgentWatch {
   private start = 0
   private last = 0
-  private recent = ""
+  /** The end of the raw output (escape codes and all); cleaned up only when a stretch ends. */
+  private tail = ""
   private decoder = new TextDecoder()
   /** Set once a stretch of output has been reported, so one stretch gives one alert. */
   private reported = true
@@ -57,8 +58,9 @@ export class AgentWatch {
     this.reported = false
     this.last = now
     const text = typeof data === "string" ? data : this.decoder.decode(data, { stream: true })
-    // Only the end of the screen matters (a prompt sits there): clean up just the last few KB.
-    this.recent = plain((this.recent + text).slice(-4000)).slice(-1500)
+    // Only the end of the screen matters (a prompt sits there). Output comes in hundreds of
+    // chunks a second while an agent works: keep the raw tail here, clean it once in tick().
+    this.tail = (this.tail + text).slice(-8000)
   }
 
   /** Call periodically: reports the end of a stretch of output once it has gone quiet. */
@@ -66,7 +68,7 @@ export class AgentWatch {
     if (this.reported || now - this.last < QUIET_MS) return
     this.reported = true
     // The prompt is at the end of the screen: look only at the last output.
-    const question = looksLikeQuestion(this.recent.slice(-600))
+    const question = looksLikeQuestion(plain(this.tail).slice(-600))
     if (question) this.emit("waiting")
     else if (this.last - this.start >= MIN_WORK_MS) this.emit("finished")
     else this.emit("idle")
@@ -80,7 +82,7 @@ export class AgentWatch {
   /** You answered or typed in the pane: whatever was on screen is no longer news. */
   reset(): void {
     this.reported = true
-    this.recent = ""
+    this.tail = ""
   }
 }
 

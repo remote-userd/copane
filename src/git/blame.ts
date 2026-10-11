@@ -38,7 +38,8 @@ export function keepBlames(open: ReadonlySet<string>): void {
 export function blameFor(ws: Workspace, path: string, text: string, textKey: string): Promise<BlameLine[]> {
   const repo = ws.git?.repo
   if (!repo) return Promise.resolve([])
-  const key = `${textKey}:${ws.git!.getSnapshot()}`
+  // Blame only changes with the text or with HEAD/the index, not with every status change.
+  const key = `${textKey}:${ws.git!.contentsVersion}`
   const hit = cache.get(path)
   if (hit?.key === key) return hit.lines
   const lines = repo.blame(path, text)
@@ -75,7 +76,7 @@ export function useLineBlame(ws: Workspace): BlameLine | undefined {
     }
     // buf.version is left out on purpose: see above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, buf?.id, buf?.path, row, enabled ? ws.git!.getSnapshot() : 0])
+  }, [enabled, buf?.id, buf?.path, row, enabled ? ws.git!.contentsVersion : 0])
   useEffect(() => {
     const b = blamed.current
     const ta = buf?.textarea

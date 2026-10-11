@@ -76,8 +76,11 @@ export async function runPrettier(bin: string, path: string, text: string, cwd: 
     stdin: new TextEncoder().encode(text),
     stdout: "pipe",
     stderr: "pipe",
+    // A Prettier that hangs (a plugin waiting on something) would block format-on-save forever.
+    timeout: 20_000,
   })
   const [out, err, code] = await Promise.all([Bun.readableStreamToText(p.stdout), Bun.readableStreamToText(p.stderr), p.exited])
+  if (p.signalCode) throw new Error("prettier took too long and was stopped")
   if (code !== 0) throw new Error(err.trim().split("\n")[0] || `prettier exited with ${code}`)
   return out
 }

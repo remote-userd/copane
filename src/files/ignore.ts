@@ -42,6 +42,12 @@ export class IgnoreMatcher {
     this.ignoredDirs.clear()
   }
 
+  /** A folder was deleted: drop what's cached for it and everything inside. */
+  forget(dir: string): void {
+    const inside = dir + sep
+    for (const map of [this.cache, this.ignoredDirs]) for (const key of [...map.keys()]) if (key === dir || key.startsWith(inside)) map.delete(key)
+  }
+
   /** absPath must be inside root. */
   isIgnored(absPath: string, isDir: boolean): boolean {
     if (!absPath.startsWith(this.prefix)) return false

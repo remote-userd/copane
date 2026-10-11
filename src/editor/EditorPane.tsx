@@ -358,29 +358,34 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
     refreshMarkers()
     refreshAiMarkers()
     refreshDiagnostics()
-    const offReview = ws.review?.store.subscribe(refreshAiMarkers)
+    const offReview = ws.review?.store.subscribe(() => (activeRef.current ? refreshAiMarkers() : (stale.current = true)))
     // Hidden tabs skip git and diagnostics updates (one AI edit can bring many) and catch up when shown.
     const offGit = ws.git?.subscribe(() => (activeRef.current ? refreshMarkers() : (stale.current = true)))
     const offLsp = ws.lsp?.subscribe(() => (activeRef.current ? refreshDiagnostics() : (stale.current = true)))
-    // After a reload from disk (usually the AI), flash the lines that changed.
-    const timers: ReturnType<typeof setTimeout>[] = []
+    // After a reload from disk (usually the AI), flash the lines that changed. One flash at a
+    // time: a new reload ends the previous one (an agent can rewrite a file all day).
+    let flash: { timer: ReturnType<typeof setTimeout>; lines: number[] } | null = null
+    const endFlash = () => {
+      if (!flash) return
+      clearTimeout(flash.timer)
+      const ln = lineRef.current
+      if (ln && !ln.isDestroyed) flash.lines.forEach((l) => ln.clearLineColor(l))
+      flash = null
+      decorateCursor() // the flash may have covered the current line
+    }
     const offReload = ws.buffers.onReload((bid, before, after) => {
       if (bid !== id) return
+      endFlash()
       const lines = changedLines(before, after)
-      timers.push(
-        setTimeout(() => {
+      flash = {
+        lines,
+        timer: setTimeout(() => {
           const ln = lineRef.current
-          if (!ln || ln.isDestroyed) return
+          if (!ln || ln.isDestroyed || !flash) return
           for (const l of lines) ln.setLineColor(l, { content: colors.reloadBg, gutter: colors.reloadBg })
-          timers.push(
-            setTimeout(() => {
-              if (ln.isDestroyed) return
-              lines.forEach((l) => ln.clearLineColor(l))
-              decorateCursor() // the flash may have covered the current line
-            }, 2500),
-          )
+          flash.timer = setTimeout(endFlash, 2500)
         }, 0),
-      )
+      }
     })
     return () => {
       clearTimeout(widthTimer)
@@ -393,7 +398,7 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
       offReview?.()
       if (aiTimer.current) clearTimeout(aiTimer.current)
       offReload()
-      timers.forEach(clearTimeout)
+      if (flash) clearTimeout(flash.timer)
       if (markTimer.current) clearTimeout(markTimer.current)
       if (conflictCheck.current) clearTimeout(conflictCheck.current)
     }
@@ -414,8 +419,9 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
     if (!active || !stale.current) return
     stale.current = false
     refreshMarkers()
+    refreshAiMarkers()
     refreshDiagnostics()
-  }, [active, refreshMarkers, refreshDiagnostics])
+  }, [active, refreshMarkers, refreshAiMarkers, refreshDiagnostics])
   const onCursor = useCallback(() => {
     ws.buffers.onCursorChange(id)
     decorateCursor()

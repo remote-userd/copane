@@ -149,3 +149,27 @@ test("a server stops once its last file has been closed a while, and starts agai
   expect(lsp.status()).toBe("ts")
   lsp.stop()
 }, 30_000)
+
+test("a language server that dies is started again; one that keeps dying is left stopped", async () => {
+  const root = await fixture({ "a.ts": "x\n" })
+  const starts = join(root, "starts.log")
+  // A "server" that counts its starts and dies at once.
+  const crashing = { key: "crashy", command: ["sh", "-c", `echo start >> ${starts}; exit 1`], languages: { typescript: "typescript" } }
+  const buffers = new BufferStore({ root })
+  const lsp = new LspManager(root, {}, () => crashing)
+  lsp.attach(buffers)
+  const buf = await buffers.open("a.ts")
+  buffers.attach(buf.id, new Ta() as unknown as TextareaRenderable)
+  const count = async () => ((await Bun.file(starts).text().catch(() => "")).match(/start/g) ?? []).length
+  for (let i = 0; i < 100 && (await count()) < 3; i++) await Bun.sleep(50)
+  await Bun.sleep(300)
+  expect(await count()).toBe(3) // restarted twice, then given up
+  expect(lsp.status()).toBe("crashy ✗")
+  expect(lsp.hasServer(buf.path)).toBe(false)
+  // Another file of the language doesn't start it again either.
+  await Bun.write(join(root, "b.ts"), "y\n")
+  await buffers.open("b.ts")
+  await Bun.sleep(300)
+  expect(await count()).toBe(3)
+  lsp.stop()
+}, 15_000)
