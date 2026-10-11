@@ -1,0 +1,56 @@
+# Manual smoke checklist
+
+Run in a real terminal, in plain mode and inside tmux.
+
+1. `bun run dev some-file.ts` opens the file with syntax colours and line numbers.
+2. Type, then press Ctrl+S. The dirty dot clears and the file on disk matches.
+3. Ctrl+Z after saving marks the tab dirty again.
+4. Ctrl+P, type part of a path, press Enter. The file opens in a new tab and is revealed in the tree.
+5. Ctrl+PageDown / Ctrl+PageUp switch tabs, and undo still works after switching.
+6. Ctrl+W on a dirty tab asks to save, discard or cancel.
+7. Ctrl+B focuses the tree. Arrows, Enter and Left/Right work. Ctrl+B again hides it.
+8. Ctrl+J focuses the AI pane. Claude's prompt takes input, and Esc and Shift+Tab reach Claude.
+9. Ask Claude to edit the open file. The buffer reloads with a "Reloaded" notice, and Ctrl+Z restores your version.
+10. Make an unsaved edit, then have Claude edit the same file. The conflict bar appears. Ctrl+R takes Claude's version and Ctrl+S keeps yours.
+11. Select lines with Shift+arrows and press Ctrl+L. Claude's prompt receives `@file#Lx-y` and the snippet, without submitting.
+12. Resize the window. The editor and Claude both reflow.
+13. Exit Claude with /exit. The pane offers a restart on Enter.
+14. Ctrl+Q with unsaved changes prompts. After quitting, no `claude` process is left (`pgrep -f claude`).
+15. Set `"ai": {"command": "nope"}` in the config. The pane explains the command was not found.
+
+## Mouse
+
+16. Click in the editor: the cursor moves and the status bar shows the new line and column.
+17. Wheel over the editor: the view scrolls and the cursor stays put. Typing jumps back to it.
+18. Click the editor while the tree is focused, then type: the text goes into the editor.
+19. Click a line number, then drag down the gutter: whole lines are selected.
+20. Drag the border between the tree and the editor, and between the editor and the AI pane: both resize.
+21. Tabs: × closes, middle-click closes, a dirty tab asks first, and the wheel over the tab bar cycles.
+22. Right-click inside a selection, choose Copy, and paste in another app: the text matches, including non-ASCII.
+23. Ctrl+V pastes text copied in another app.
+24. Select text in the AI pane with the mouse: a "Copied" notice appears and the clipboard holds it.
+25. Ctrl+P, then hover, wheel and click in the list. Clicking outside the dialog closes it.
+26. Tree: right-click a row, New File, type `x/y.ts`: folder and file appear and the file opens.
+27. Tree: rename an open file with `r`: the tab name follows. Delete it with Delete: confirm, the tab closes.
+28. In a git repo: save an edit to a tracked file: it shows a yellow M and its folder a •. Commit in a shell: the marks clear within ~2 s.
+29. After the first `bun run install:cli` on WSL, close all Windows Terminal windows, reopen, and run `ce .`: tree rows show file-type icons, not boxes. TS is blue, JSON is yellow, folders show a folder icon. Set `tree.icons` to `"simple"` and restart (Ctrl+Alt+R): coloured symbols instead.
+30. Ask Claude to change a file: the changed lines flash, and the line numbers show ▎ markers. Ctrl+Alt+D lists the file with its diff. `r` then `y` reverts it.
+31. Type in a file, then ask Claude to change a different line: the bar offers "Merge both". Merging keeps both edits, and Ctrl+Z undoes the merge.
+32. Ctrl+F `total` shows n/m and highlights, Enter cycles through matches, Ctrl+F again shows replace. Ctrl+G `10:3` jumps there. Ctrl+Alt+F `qty` lists matches in all files.
+33. F1, type `maxim`, Enter: the editor fills the window. Ctrl+Alt+M restores it. Ctrl+Alt+J hides and shows the AI pane.
+34. Type in a file, then press Ctrl+J: a notice says the file was saved so the AI sees it.
+35. In a TypeScript project, open a file with a type error: a red ● and underline appear, and the status bar shows ✖ 1. F8 jumps to the error and shows its message.
+36. Type `.` after a string variable: suggestions appear. Typing filters them, and Tab inserts one. F12 on an imported function opens its file at the definition.
+37. Alt+Z on a file with long lines: they wrap, line numbers stay correct, and clicking a wrapped row puts the cursor in the right place.
+38. F2 on an imported function: give it a new name. Its definition file and all uses change. Shift+F12 lists references. Ctrl+Alt+L tidies spacing.
+39. Type `greet(` in a TypeScript file: the signature appears above the cursor, and it closes after `)`.
+40. Ctrl+D three times on a variable name, type a new name: all three change, and a longer name containing it does not. Esc ends.
+41. Layout: no boxes, single dividers between panes, and they drag to resize. Tabs show icons, and the active one is accent-coloured when the editor has focus. Breadcrumbs show folder › file › symbol. The status bar shows the branch on the left and the AI on the right.
+42. Put the cursor on a `(`: it and its partner are highlighted. On an identifier, other uses get a subtle background. The current line is slightly lighter. Indented blocks show faint guides.
+43. Edit two places in a tracked file. Alt+H on one, then `s`: only that change is staged (Ctrl+Alt+D shows it under Staged and the other under Changes).
+44. In Source Control, `m` fills an AI commit message. Enter commits, and `P` pushes (or offers to publish the branch).
+45. The status bar shows blame for the cursor line. Ctrl+Alt+G lists the file's commits with diffs.
+46. Ctrl+Alt+B, type a new name, Enter: the branch is created and checked out. Merge a conflicting branch, open the file, and Alt+3 keeps both sides.
+47. In a big repo: the first Ctrl+P opens instantly. Empty, it shows recent files. `@` lists this file's symbols (test files list describe/it blocks), and `:500` jumps.
+48. F12 or a search result, then Ctrl+Alt+← returns to where you were, and Ctrl+Alt+→ goes forward again.
+49. Typing in a 10,000-line file feels immediate (CE_PERF log under ~50 ms per key).

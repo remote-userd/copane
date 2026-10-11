@@ -1,0 +1,520 @@
+import { relative } from "node:path"
+import type { Workspace } from "../app/workspace"
+import { shutdown } from "../app/shutdown"
+import { restart } from "../app/update"
+import { openFind, wordUnderCursor } from "../editor/FindBar"
+import { gotoChange, revertHunkAt, stageHunk } from "../git/hunkActions"
+import { blameFor } from "../git/blame"
+import { navigateBack, navigateForward, recordJump } from "../app/navHistory"
+import { acceptConflict, conflictsOf, gotoConflict } from "../git/conflictActions"
+import { conflictAt } from "../editor/conflicts"
+import { NOT_COMMITTED } from "../git/repo"
+import { addNextOccurrence, multiPaste, selectAllOccurrences } from "../editor/MultiEdit"
+import { findReferences, formatDocument, goToDefinition, nextProblem, organizeImports, quickFix, renameSymbol, showHover } from "../lsp/lspActions"
+import { completeNow } from "../lsp/CompletionPopup"
+import { parseGoto } from "../editor/search"
+import { deleteLine, duplicateLine, indent, moveLine, outdent, toggleLineComment, trimWhitespace } from "../editor/lineCommands"
+import { lineAt, type CodeEditorRenderable } from "../editor/CodeEditorRenderable"
+import { BinaryFileError } from "../editor/fileio"
+import { formatContextForAgent } from "../ai/sendToAgent"
+import { decodeForBuffer } from "../editor/fileio"
+import { configPath } from "../config/load"
+import { importVSCodeSettings } from "../config/vscode"
+
+/**
+ * Alt+1..9 go to that tab (Alt+9 the last), as in VS Code. In a merge conflict Alt+1/2/3
+ * accept current / incoming / both instead.
+ */
+function altNumber(ws: Workspace, n: number): void {
+  const buf = ws.buffers.active
+  const row = buf?.textarea?.logicalCursor.row
+  if (n <= 3 && buf && row !== undefined && ws.ui.get().focus === "editor" && conflictAt(conflictsOf(buf.id), row)) {
+    return acceptConflict(ws, (["current", "incoming", "both"] as const)[n - 1]!)
+  }
+  const list = ws.buffers.list()
+  const target = n === 9 ? list.at(-1) : list[n - 1]
+  if (target) {
+    ws.buffers.activate(target.id)
+    ws.ui.set({ focus: "editor" })
+  }
+}
+
+async function reopenClosed(ws: Workspace): Promise<void> {
+  const open = new Set(ws.buffers.list().map((b) => b.path))
+  let path: string | undefined
+  while ((path = ws.buffers.closed.pop()) && open.has(path));
+  if (!path) return ws.notify("No closed tabs to reopen")
+  try {
+    await ws.buffers.open(path)
+    ws.ui.set({ focus: "editor" })
+  } catch (err) {
+    ws.notify(`Could not reopen: ${(err as Error).message}`, "error")
+  }
+}
+
+async function importVSCode(ws: Workspace): Promise<void> {
+  try {
+    const result = await importVSCodeSettings(configPath())
+    if (!result) return ws.notify("VS Code settings not found", "warn")
+    const keys = Object.entries(result.imported)
+    if (!keys.length) return ws.notify("No VS Code settings to import (only defaults there)")
+    // Settings read on use apply now; the rest (word wrap's default) after a restart.
+    Object.assign(ws.config.editor, result.imported)
+    ws.notify(`Imported from VS Code: ${keys.map(([k, v]) => `${k} ${v}`).join(", ")}. Ctrl+Alt+R applies all`)
+  } catch (err) {
+    ws.notify(`Import failed: ${(err as Error).message}`, "error")
+  }
+}
+
+/** Open the config file in a tab, creating it when missing, like VS Code's "Open Settings (JSON)". */
+async function openConfig(ws: Workspace): Promise<void> {
+  const path = configPath()
+  try {
+    if (!(await Bun.file(path).exists())) await Bun.write(path, "{\n}\n")
+    await ws.buffers.open(path)
+    ws.ui.set({ focus: "editor" })
+    ws.notify("Most settings apply after a restart (Ctrl+Alt+R)")
+  } catch (err) {
+    ws.notify(`Could not open settings: ${(err as Error).message}`, "error")
+  }
+}
+
+export interface Command {
+  title: string
+  run(ws: Workspace): void | Promise<void>
+}
+
+async function saveActive(ws: Workspace): Promise<void> {
+  const buf = ws.buffers.active
+  if (!buf) return
+  if (ws.config.editor.formatOnSave) await formatDocument(ws, { quiet: true })
+  try {
+    await ws.buffers.save(buf.id)
+    ws.notify(`Saved ${buf.relPath}`)
+  } catch (err) {
+    ws.notify(`Save failed: ${(err as Error).message}`, "error")
+  }
+}
+
+async function saveAll(ws: Workspace): Promise<boolean> {
+  for (const b of ws.buffers.list()) {
+    if (!b.dirty) continue
+    try {
+      await ws.buffers.save(b.id)
+    } catch (err) {
+      ws.notify(`Save failed for ${b.relPath}: ${(err as Error).message}`, "error")
+      return false
+    }
+  }
+  return true
+}
+
+/** Text the edit commands act on: the selection, or the whole current line (VS Code style). */
+function selectionOrLine(ws: Workspace): { text: string; wholeLine: boolean } | null {
+  const ta = ws.buffers.active?.textarea
+  if (!ta) return null
+  if (ta.hasSelection()) return { text: ta.getSelectedText(), wholeLine: false }
+  const row = ta.logicalCursor.row
+  const line = lineAt(ta, row)
+  return { text: line + "\n", wholeLine: true }
+}
+
+function selectCurrentLine(ws: Workspace): void {
+  const ta = ws.buffers.active?.textarea
+  if (!ta) return
+  const eb = ta.editBuffer
+  const row = ta.logicalCursor.row
+  const start = eb.getLineStartOffset(row)
+  const end = row + 1 < ta.lineCount ? eb.getLineStartOffset(row + 1) : eb.positionToOffset(row, Bun.stringWidth(lineAt(ta, row)))
+  ta.setSelection(start, end)
+}
+
+export async function copySelection(ws: Workspace, opts: { quiet?: boolean } = {}): Promise<void> {
+  const sel = selectionOrLine(ws)
+  if (!sel || sel.text.length === 0) return
+  const how = await ws.clipboard.copy(sel.text)
+  if (!opts.quiet) {
+    const what = sel.wholeLine ? "line" : `${sel.text.length} chars`
+    ws.notify(how === "internal" ? `Copied ${what} (editor only: no system clipboard found)` : `Copied ${what}`)
+  }
+}
+
+async function cutSelection(ws: Workspace): Promise<void> {
+  const buf = ws.buffers.active
+  const ta = buf?.textarea
+  if (!buf || !ta) return
+  const sel = selectionOrLine(ws)
+  if (!sel) return
+  await ws.clipboard.copy(sel.text)
+  if (sel.wholeLine) selectCurrentLine(ws)
+  ta.deleteSelection()
+  ws.buffers.onContentChange(buf.id)
+}
+
+async function pasteClipboard(ws: Workspace): Promise<void> {
+  const buf = ws.buffers.active
+  const ta = buf?.textarea
+  if (!buf || !ta) return
+  const raw = await ws.clipboard.paste()
+  if (raw === null) return ws.notify("Clipboard is empty", "warn")
+  const { text } = decodeForBuffer(raw)
+  if (multiPaste(ws, text)) return
+  if (ta.hasSelection()) ta.deleteSelection()
+  ta.insertText(text)
+  ws.buffers.onContentChange(buf.id)
+}
+
+function historyStep(ws: Workspace, dir: "undo" | "redo"): void {
+  const buf = ws.buffers.active
+  if (!buf?.textarea) return
+  if (dir === "undo") buf.textarea.undo()
+  else buf.textarea.redo() // the editor reports both as a content change
+}
+
+/**
+ * 1-based last line of a selection starting on 0-based `startRow`. A selection
+ * ending right after a newline (whole lines picked with Shift+Down) does not
+ * include the line it ends on.
+ */
+export function selectionLineSpan(startRow: number, text: string): { end: number; text: string } {
+  const body = text.endsWith("\n") ? text.slice(0, -1) : text
+  const newlines = body.split("\n").length - 1
+  return { end: startRow + 1 + newlines, text }
+}
+
+/** Close a tab, asking first when it has unsaved changes. */
+export function closeBuffer(ws: Workspace, id: number): void {
+  const buf = ws.buffers.byId(id)
+  if (!buf) return
+  if (!buf.dirty) return ws.buffers.close(buf.id)
+  ws.ui.set({
+    modal: {
+      kind: "confirm",
+      title: "Close tab",
+      body: `${buf.relPath} has unsaved changes.`,
+      options: [
+        {
+          key: "s",
+          label: "Save and close",
+          run: async () => {
+            closeModal(ws)
+            await ws.buffers.save(buf.id)
+            ws.buffers.close(buf.id)
+          },
+        },
+        { key: "d", label: "Discard", run: () => (closeModal(ws), ws.buffers.close(buf.id)) },
+        { key: "c", label: "Cancel", run: () => closeModal(ws) },
+      ],
+    },
+  })
+}
+
+function closeModal(ws: Workspace): void {
+  ws.ui.set({ modal: null })
+}
+
+/**
+ * Ctrl+Alt+F: the SEARCH tab of the left pane, seeded with the selection or the word under the
+ * cursor. A terminal too narrow for the pane gets the popup instead.
+ */
+function openSearch(ws: Workspace, replace: boolean): void {
+  const ui = ws.ui.get()
+  if ((process.stdout.columns ?? Infinity) < 100) return ws.ui.set({ modal: { kind: "search", replace } })
+  const ed = ui.focus === "editor" ? (ws.buffers.active?.textarea as CodeEditorRenderable | null | undefined) : null
+  const sel = ed ? (ed.hasSelection() ? ed.getSelectedText() : wordUnderCursor(ed)) : ""
+  ws.ui.set({
+    sidebar: "search",
+    treeVisible: true,
+    focus: "tree",
+    find: ui.find ? { ...ui.find, active: false } : null,
+    searchSeed: { n: (ui.searchSeed?.n ?? 0) + 1, replace, text: sel.includes("\n") ? "" : sel },
+  })
+}
+
+function setFocus(ws: Workspace, focus: "tree" | "editor" | "ai"): void {
+  const ui = ws.ui.get()
+  // Ctrl+B from the SEARCH tab goes to the file tree (VS Code's Ctrl+Shift+E).
+  if (focus === "tree" && ui.focus === "tree" && ui.sidebar === "search") return ws.ui.set({ sidebar: "files" })
+  if (focus === "tree" && ui.focus === "tree") {
+    // Second press hides the tree and returns to the editor.
+    ws.ui.set({ treeVisible: false, focus: "editor" })
+    return
+  }
+  ws.ui.set({
+    focus,
+    ...(focus === "tree" ? { sidebar: "files" as const } : {}),
+    treeVisible: focus === "tree" ? true : ui.treeVisible,
+    aiVisible: focus === "ai" ? true : ui.aiVisible,
+  })
+  if (focus === "ai") ws.ai?.focus()
+}
+
+/** Quit or restart, asking first when there are unsaved changes. */
+function leave(ws: Workspace, how: "quit" | "restart"): void {
+  const go = () => {
+    if (how === "quit") return void shutdown(0)
+    const files = ws.buffers.list().map((b) => b.path)
+    void restart({ files, active: ws.buffers.active?.path ?? null })
+  }
+  if (!ws.buffers.hasDirty()) return go()
+  const n = ws.buffers.list().filter((b) => b.dirty).length
+  const verb = how === "quit" ? "quit" : "restart"
+  ws.ui.set({
+    modal: {
+      kind: "confirm",
+      title: "Unsaved changes",
+      body: `${n} file${n === 1 ? " has" : "s have"} unsaved changes.`,
+      options: [
+        { key: "s", label: `Save all and ${verb}`, run: async () => void ((await saveAll(ws)) && go()) },
+        { key: "d", label: `Discard and ${verb}`, run: go },
+        { key: "c", label: "Cancel", run: () => closeModal(ws) },
+      ],
+    },
+  })
+}
+
+export const AI_ASK = {
+  explain: "Explain what this code does and anything surprising about it.",
+  fix: "Find bugs in this code and fix them. Keep the change minimal and explain it.",
+  tests: "Write tests for this code next to the existing tests, then run them.",
+}
+
+/**
+ * Put the current file, or the selected lines, into the AI prompt (Ctrl+L). With an
+ * instruction, add it and submit, so a menu click becomes one finished request.
+ */
+function sendContext(ws: Workspace, instruction?: string): void {
+  const buf = ws.buffers.active
+  if (!buf) return ws.notify("No file open", "warn")
+  const ai = ws.ai
+  if (!ai) return ws.notify("AI terminal is not running", "warn")
+  const ta = buf.textarea
+  const selection = ta?.hasSelection() ? ta.getSelection() : null
+  let range: { start: number; end: number; text: string } | null = null
+  if (ta && selection) {
+    const text = ta.getSelectedText()
+    const startRow = ta.editBuffer.offsetToPosition(selection.start)?.row ?? 0
+    range = { start: startRow + 1, ...selectionLineSpan(startRow, text) }
+  }
+  const { reference, snippet } = formatContextForAgent(relative(ws.root, buf.path), range)
+  ai.type(reference)
+  if (snippet) ai.paste(snippet)
+  setFocus(ws, "ai")
+  if (instruction) {
+    ai.type(" " + instruction)
+    // Give the CLI a moment to take the paste before Enter.
+    setTimeout(() => ai.submit(), 150)
+  }
+}
+
+export const commands = {
+  "app.quit": { title: "Quit", run: (ws) => leave(ws, "quit") },
+  "app.restart": { title: "Restart (load a newly installed version)", run: (ws) => leave(ws, "restart") },
+  "file.save": { title: "Save file", run: saveActive },
+  "file.saveAll": { title: "Save all files", run: async (ws) => void (await saveAll(ws)) },
+  "file.picker": { title: "Go to file", run: (ws) => ws.ui.set({ modal: { kind: "picker" } }) },
+  "file.symbolInFile": { title: "Go to symbol in file", run: (ws) => ws.ui.set({ modal: { kind: "picker", query: "@" } }) },
+  "file.symbolInProject": { title: "Go to symbol in project", run: (ws) => ws.ui.set({ modal: { kind: "picker", query: "#" } }) },
+  "focus.tree": { title: "Toggle / focus file tree", run: (ws) => setFocus(ws, "tree") },
+  "focus.editor": { title: "Focus editor", run: (ws) => setFocus(ws, "editor") },
+  "focus.ai": { title: "Focus AI terminal", run: (ws) => setFocus(ws, "ai") },
+  "find.open": { title: "Find in file (again: toggle replace)", run: (ws) => openFind(ws, false) },
+  "find.replace": { title: "Find and replace", run: (ws) => openFind(ws, true) },
+  "edit.gotoLine": {
+    title: "Go to line[:column]",
+    run(ws) {
+      const buf = ws.buffers.active
+      const ed = buf?.textarea as CodeEditorRenderable | null | undefined
+      if (!buf || !ed) return ws.notify("No file open", "warn")
+      ws.ui.set({
+        modal: {
+          kind: "prompt",
+          title: "Go to line",
+          label: `Line[:column], 1–${ed.lineCount} (now ${buf.cursor.row + 1})`,
+          initial: "",
+          submit: async (value) => {
+            const r = parseGoto(value, ed.lineCount)
+            if (typeof r === "string") return r
+            ws.ui.set({ modal: null, focus: "editor" })
+            recordJump(ws)
+            ed.goTo(r.row, r.col)
+            ws.buffers.onCursorChange(buf.id)
+            return null
+          },
+        },
+      })
+    },
+  },
+  "edit.addOccurrence": { title: "Add next occurrence (multi-cursor)", run: (ws) => addNextOccurrence(ws) },
+  "edit.allOccurrences": { title: "Select all occurrences (multi-cursor)", run: (ws) => selectAllOccurrences(ws) },
+  "lsp.complete": { title: "Suggest completions", run: () => completeNow() },
+  "lsp.hover": { title: "Show type info / docs under the cursor", run: (ws) => showHover(ws) },
+  "lsp.definition": { title: "Go to definition", run: (ws) => goToDefinition(ws) },
+  "lsp.nextProblem": { title: "Next problem in this file", run: (ws) => nextProblem(ws) },
+  "lsp.rename": { title: "Rename symbol (all files)", run: (ws) => renameSymbol(ws) },
+  "lsp.quickFix": { title: "Quick fix… (code actions at the cursor)", run: (ws) => quickFix(ws) },
+  "lsp.organizeImports": { title: "Organize imports", run: (ws) => organizeImports(ws) },
+  "lsp.references": { title: "Find all references", run: (ws) => findReferences(ws) },
+  "lsp.format": { title: "Format document", run: (ws) => formatDocument(ws) },
+  "lsp.problems": { title: "Problems (errors and warnings)", run: (ws) => ws.ui.set({ modal: { kind: "problems" } }) },
+  "git.peekHunk": {
+    title: "Show the change at the cursor (stage / revert)",
+    run(ws) {
+      const buf = ws.buffers.active
+      if (!buf?.textarea) return ws.notify("No file open", "warn")
+      ws.ui.set({ hunkPeek: { bufId: buf.id, row: buf.textarea.logicalCursor.row } })
+    },
+  },
+  // Conflicts come first: while a file has them, Alt+F5 / Shift+Alt+F5 step through those.
+  "git.nextChange": { title: "Next change (or merge conflict) in file", run: (ws) => void (gotoConflict(ws, 1) || gotoChange(ws, 1)) },
+  "git.prevChange": { title: "Previous change (or merge conflict) in file", run: (ws) => void (gotoConflict(ws, -1) || gotoChange(ws, -1)) },
+  "conflict.acceptCurrent": { title: "Merge conflict: accept current", run: (ws) => acceptConflict(ws, "current") },
+  "conflict.acceptIncoming": { title: "Merge conflict: accept incoming", run: (ws) => acceptConflict(ws, "incoming") },
+  "conflict.acceptBoth": { title: "Merge conflict: accept both", run: (ws) => acceptConflict(ws, "both") },
+  "git.branches": { title: "Switch or create a branch", run: (ws) => (ws.git?.repo ? ws.ui.set({ modal: { kind: "branches" } }) : ws.notify("Not a git repository", "warn")) },
+  "git.stageHunk": {
+    title: "Stage the change at the cursor",
+    run: async (ws) => {
+      const row = ws.buffers.active?.textarea?.logicalCursor.row ?? 0
+      const err = await stageHunk(ws, row)
+      ws.notify(err ?? "Staged this change", err ? "error" : "info")
+    },
+  },
+  "git.revertHunk": {
+    title: "Revert the change at the cursor",
+    run: async (ws) => {
+      const row = ws.buffers.active?.textarea?.logicalCursor.row ?? 0
+      const err = await revertHunkAt(ws, row)
+      if (err) ws.notify(err, "error")
+    },
+  },
+  "nav.back": { title: "Go back (previous location)", run: (ws) => navigateBack(ws) },
+  "nav.forward": { title: "Go forward", run: (ws) => navigateForward(ws) },
+  "git.fileHistory": {
+    title: "File history (git log)",
+    run(ws) {
+      if (!ws.git?.repo) return ws.notify("Not a git repository", "warn")
+      ws.ui.set({ modal: { kind: "history", path: ws.buffers.active?.path ?? null } })
+    },
+  },
+  "git.blameLine": {
+    title: "Show the commit that last changed this line",
+    run: async (ws) => {
+      const buf = ws.buffers.active
+      if (!buf || !ws.git?.repo) return ws.notify("Not a git repository", "warn")
+      const lines = await blameFor(ws, buf.path, ws.buffers.textOf(buf), buf.lastTextHash)
+      const b = lines[buf.cursor.row]
+      if (!b || b.sha === NOT_COMMITTED) return ws.notify("This line is not committed yet")
+      ws.ui.set({ modal: { kind: "history", path: buf.path, sha: b.sha } })
+    },
+  },
+  "git.changes": { title: "Source control: stage, commit, push", run: (ws) => ws.ui.set({ modal: { kind: "scm" } }) },
+  "search.files": { title: "Search in all files", run: (ws) => openSearch(ws, false) },
+  "search.replace": { title: "Replace in all files", run: (ws) => openSearch(ws, true) },
+  "view.wordWrap": {
+    title: "Toggle word wrap",
+    run(ws) {
+      const on = !ws.ui.get().wordWrap
+      ws.ui.set({ wordWrap: on })
+      ws.notify(on ? "Word wrap on" : "Word wrap off")
+    },
+  },
+  "view.toggleAi": {
+    title: "Show / hide the AI pane",
+    run(ws) {
+      const ui = ws.ui.get()
+      const show = !ui.aiVisible
+      ws.ui.set({ aiVisible: show, maximized: null, focus: show ? ui.focus : ui.focus === "ai" ? "editor" : ui.focus })
+      if (show && ui.focus === "ai") ws.ai?.focus()
+    },
+  },
+  "view.maximizeEditor": {
+    title: "Maximize editor (hide tree and AI) / restore",
+    run(ws) {
+      const ui = ws.ui.get()
+      if (ui.maximized) {
+        ws.ui.set({ treeVisible: ui.maximized.tree, aiVisible: ui.maximized.ai, maximized: null })
+      } else {
+        ws.ui.set({ maximized: { tree: ui.treeVisible, ai: ui.aiVisible }, treeVisible: false, aiVisible: false, focus: "editor" })
+      }
+    },
+  },
+  "buffer.next": { title: "Next tab", run: (ws) => ws.buffers.cycle(1) },
+  "buffer.reopenClosed": { title: "Reopen closed tab", run: reopenClosed },
+  "buffer.goto1": { title: "Go to tab 1", run: (ws) => altNumber(ws, 1) },
+  "buffer.goto2": { title: "Go to tab 2", run: (ws) => altNumber(ws, 2) },
+  "buffer.goto3": { title: "Go to tab 3", run: (ws) => altNumber(ws, 3) },
+  "buffer.goto4": { title: "Go to tab 4", run: (ws) => altNumber(ws, 4) },
+  "buffer.goto5": { title: "Go to tab 5", run: (ws) => altNumber(ws, 5) },
+  "buffer.goto6": { title: "Go to tab 6", run: (ws) => altNumber(ws, 6) },
+  "buffer.goto7": { title: "Go to tab 7", run: (ws) => altNumber(ws, 7) },
+  "buffer.goto8": { title: "Go to tab 8", run: (ws) => altNumber(ws, 8) },
+  "buffer.goto9": { title: "Go to the last tab", run: (ws) => altNumber(ws, 9) },
+  "buffer.prev": { title: "Previous tab", run: (ws) => ws.buffers.cycle(-1) },
+  "buffer.close": {
+    title: "Close tab",
+    run(ws) {
+      const buf = ws.buffers.active
+      if (buf) closeBuffer(ws, buf.id)
+    },
+  },
+  "buffer.reloadFromDisk": {
+    title: "Reload file from disk",
+    run: async (ws) => {
+      const b = ws.buffers.active
+      if (b) await ws.buffers.reloadFromDisk(b.id)
+    },
+  },
+  "buffer.keepLocal": {
+    title: "Keep local changes",
+    run: (ws) => {
+      const b = ws.buffers.active
+      if (b) ws.buffers.keepLocal(b.id)
+    },
+  },
+  "edit.copy": { title: "Copy", run: (ws) => copySelection(ws) },
+  "edit.cut": { title: "Cut", run: cutSelection },
+  "edit.paste": { title: "Paste", run: pasteClipboard },
+  "edit.selectAll": {
+    title: "Select all",
+    run: (ws) => {
+      const ta = ws.buffers.active?.textarea
+      ta?.selectAll()
+      if (ta) ws.buffers.onCursorChange(ws.buffers.active!.id)
+    },
+  },
+  "edit.toggleComment": { title: "Toggle line comment", run: (ws) => toggleLineComment(ws) },
+  "edit.addComment": { title: "Add line comment", run: (ws) => toggleLineComment(ws, "add") },
+  "edit.removeComment": { title: "Remove line comment", run: (ws) => toggleLineComment(ws, "remove") },
+  "edit.trimWhitespace": { title: "Trim trailing whitespace", run: trimWhitespace },
+  "edit.moveLineUp": { title: "Move line up", run: (ws) => moveLine(ws, -1) },
+  "edit.moveLineDown": { title: "Move line down", run: (ws) => moveLine(ws, 1) },
+  "edit.duplicateLineUp": { title: "Duplicate line (copy up)", run: (ws) => duplicateLine(ws, -1) },
+  "edit.duplicateLineDown": { title: "Duplicate line (copy down)", run: (ws) => duplicateLine(ws, 1) },
+  "edit.deleteLine": { title: "Delete line", run: deleteLine },
+  "edit.indent": { title: "Indent", run: (ws) => indent(ws) },
+  "edit.indentLine": { title: "Indent line", run: (ws) => indent(ws, true) },
+  "edit.outdent": { title: "Outdent", run: outdent },
+  "edit.undo": { title: "Undo", run: (ws) => historyStep(ws, "undo") },
+  "edit.redo": { title: "Redo", run: (ws) => historyStep(ws, "redo") },
+  "app.palette": { title: "Command palette", run: (ws) => ws.ui.set({ modal: { kind: "palette" } }) },
+  "app.openConfig": { title: "Open settings (JSON)", run: openConfig },
+  "app.importVSCode": { title: "Import VS Code settings (word wrap, format on save, ...)", run: importVSCode },
+  "app.help": { title: "Keyboard shortcuts", run: (ws) => ws.ui.set({ modal: { kind: "help" } }) },
+  "ai.sendContext": { title: "Send file / selection to AI", run: (ws) => sendContext(ws) },
+  "ai.explain": { title: "AI: explain this code", run: (ws) => sendContext(ws, AI_ASK.explain) },
+  "ai.fix": { title: "AI: find and fix bugs here", run: (ws) => sendContext(ws, AI_ASK.fix) },
+  "ai.tests": { title: "AI: write tests for this", run: (ws) => sendContext(ws, AI_ASK.tests) },
+
+} satisfies Record<string, Command>
+
+export type CommandId = keyof typeof commands
+
+export async function runCommand(ws: Workspace, id: CommandId): Promise<void> {
+  try {
+    await commands[id].run(ws)
+  } catch (err) {
+    if (err instanceof BinaryFileError) ws.notify(err.message, "warn")
+    else ws.notify(`${commands[id].title} failed: ${(err as Error).message}`, "error")
+  }
+}

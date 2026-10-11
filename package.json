@@ -1,0 +1,51 @@
+{
+  "name": "copane",
+  "version": "0.1.0",
+  "description": "Terminal code editor with an AI coding CLI (Claude Code by default) in a side pane",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sevheng/copane.git"
+  },
+  "homepage": "https://github.com/sevheng/copane#readme",
+  "bugs": {
+    "url": "https://github.com/sevheng/copane/issues"
+  },
+  "keywords": [
+    "editor",
+    "terminal",
+    "tui",
+    "ai",
+    "claude",
+    "claude-code",
+    "bun",
+    "opentui"
+  ],
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/main.tsx",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "build": "bun build --compile --minify --bytecode --format=esm --define process.env.NODE_ENV='\"production\"' src/main.tsx --outfile dist/copane",
+    "install:cli": "sh scripts/install.sh"
+  },
+  "dependencies": {
+    "@opentui/core": "0.5.17",
+    "@opentui/react": "0.5.17",
+    "diff": "8.0.2",
+    "ignore": "^7.0.12",
+    "react": "^19.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "bun-types": "^1.4.3",
+    "jsonc-parser": "3.3.1",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "bun": ">=1.4.3"
+  },
+  "packageManager": "bun@1.4.3"
+}
