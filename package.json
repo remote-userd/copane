@@ -1,6 +1,6 @@
 {
   "name": "copane",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Terminal code editor with an AI coding CLI (Claude Code by default) in a side pane",
   "license": "MIT",
   "repository": {
@@ -35,13 +35,13 @@
     "@opentui/react": "0.5.17",
     "diff": "8.0.2",
     "ignore": "^7.0.12",
+    "jsonc-parser": "3.3.1",
     "react": "^19.2",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
     "bun-types": "^1.4.3",
-    "jsonc-parser": "3.3.1",
     "typescript": "^7.0.2"
   },
   "engines": {

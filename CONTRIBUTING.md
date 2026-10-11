@@ -1,0 +1,39 @@
+# Contributing to copane
+
+Thanks for helping. Bug reports, ideas and pull requests are all welcome.
+
+## Setup
+
+You need [Bun](https://bun.sh) 1.4.3 or later, git, and a Linux or macOS terminal (WSL works).
+
+```sh
+git clone https://github.com/sevheng/copane.git
+cd copane
+bun install
+bun run dev [path]   # run from source; Ctrl+Alt+R restarts it with your changes
+```
+
+## Before you open a pull request
+
+- `bun run typecheck` passes.
+- `bun test` passes. Tests use real temporary git repos and the project's TypeScript 7 `tsc --lsp`, so they take about a minute.
+- New behaviour has a test next to the existing ones in `test/`, mirroring `src/`.
+- Walk through the items in [`scripts/smoke.md`](scripts/smoke.md) your change touches. They cover what tests can't, such as a real terminal, tmux and the clipboard.
+- User-facing changes are described in the README and listed under `Unreleased` in [`CHANGELOG.md`](CHANGELOG.md).
+
+Keep pull requests focused: one fix or feature each.
+
+## Conventions
+
+[`CLAUDE.md`](CLAUDE.md) has the full list. The two that matter most:
+
+- **Bun first.** Use Bun's APIs (`Bun.file`, `Bun.write`, `Bun.spawn`, `Bun.env`) and fall back to `node:` modules only where Bun has none.
+- **Terminal keys.** Legacy terminals can't send many combinations: Ctrl+H is Backspace, Ctrl+Shift+letter arrives as Ctrl+letter, and Shift+Enter is Enter. New bindings use Alt or Ctrl+Alt, and come with a key-parse test.
+
+Match the style of the code around you. Comments explain *why*, not *what*.
+
+## Releasing (maintainers)
+
+1. Bump `version` in `package.json`, and move the `Unreleased` notes in `CHANGELOG.md` under the new version.
+2. Commit, then push a matching tag: `git tag v0.2.0 && git push origin v0.2.0`.
+3. The Release workflow builds Linux and macOS binaries (x64 and arm64) on native runners and publishes them with `SHA256SUMS`. `install.sh` and `copane --upgrade` pick up the new release automatically.

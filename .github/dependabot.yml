@@ -1,0 +1,7 @@
+version: 2
+updates:
+  # Only the workflow actions. Package bumps stay manual: OpenTUI is pinned on purpose.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

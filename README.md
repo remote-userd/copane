@@ -49,8 +49,8 @@ Linux, macOS, or Windows through WSL:
 curl -fsSL https://raw.githubusercontent.com/sevheng/copane/main/install.sh | sh
 ```
 
-This installs `copane` and a short `ce` alias in `~/.local/bin`. No Bun or Node needed. Run it again to update.
-`VERSION=v0.1.0` pins a release, `PREFIX=/usr/local` installs elsewhere, and `ALIAS=cx` (or `ALIAS=`) changes the alias.
+This installs `copane` and a short `ce` alias in `~/.local/bin`, plus the bundled Nerd Font for file-tree icons. No Bun or Node needed.
+`VERSION=v0.1.0` pins a release, `PREFIX=/usr/local` installs elsewhere, `ALIAS=cx` (or `ALIAS=`) changes the alias, and `FONT=0` skips the font.
 You can also download a binary from [Releases](https://github.com/sevheng/copane/releases/latest).
 
 You'll want [Claude Code](https://docs.claude.com/en/docs/claude-code) (`claude`) on your PATH, or set another CLI in the [config](#config).
@@ -63,7 +63,7 @@ ce src/main.ts       # a file (its project folder is the workspace)
 ce ~/projects/app    # another folder
 ```
 
-**Updating while it runs:** after installing a new version, every open editor shows
+**Updating:** `ce --upgrade` installs the latest release in place (or run the install line again). After an update, every open editor shows
 "⟳ Update installed: restart" in the status bar. Click it or press Ctrl+Alt+R: unsaved files
 prompt first, then the editor restarts on the new version with the same folder and tabs.
 
@@ -292,9 +292,7 @@ The tree shows file-type icons. Set the style in the config: `{ "tree": { "icons
 | `simple` (default) | coloured symbols: ◆ TS, { JSON, ¶ Markdown, ± git | any font |
 | `none` | no icons | |
 
-With a release install, get any [Nerd Font](https://www.nerdfonts.com/font-downloads), choose it in your terminal, and set `tree.icons` to `"nerd"`.
-
-From source, `bun run install:cli` sets this up. It installs the bundled **CaskaydiaMono Nerd Font**, which is Cascadia Mono plus icons, from `assets/fonts/`. It works offline. It is the non-Mono variant, so icons are drawn full size instead of squeezed into one letter's width.
+Both install scripts set this up by running `copane --install-font`, which you can also run yourself. It installs the bundled **CaskaydiaMono Nerd Font**, which is Cascadia Mono plus icons, from `assets/fonts/`. It works offline. It is the non-Mono variant, so icons are drawn full size instead of squeezed into one letter's width.
 
 - **WSL with Windows Terminal:**
   - **Font:** installed for your Windows user, with no admin needed.
@@ -302,7 +300,7 @@ From source, `bun run install:cli` sets this up. It installs the bundled **Caska
   - **Editor:** `tree.icons` is set to `"nerd"`, unless you already set it.
   - Close every Windows Terminal window and open it again, once, to load the font. A new tab or a `ce` restart is not enough, because Windows Terminal reads fonts only when it starts.
 - **macOS and Linux:** the font is copied to `~/Library/Fonts` or `~/.local/share/fonts`. Choose "CaskaydiaMono Nerd Font" in your terminal, then set `tree.icons` to `"nerd"`.
-- **Skip it:** use `FONT=0 bun run install:cli`. Once the font is set up, later installs skip this step; `FONT=force bun run install:cli` redoes it.
+- **Skip it:** set `FONT=0` when installing. Once the font is set up, later installs skip this step; `FONT=force copane --install-font` redoes it.
 - **Undo:** set `tree.icons` to `"simple"`, or restore the `settings.json.bak-…` file in Windows Terminal's settings folder.
 
 If icons show as boxes, your terminal isn't using a Nerd Font yet. On Windows, fully close and reopen Windows Terminal.
@@ -353,16 +351,12 @@ bun run typecheck
 
 `scripts/smoke.md` is the manual checklist for things the tests cannot cover.
 
-To release, bump `version` in `package.json`, commit, and push a matching tag (`git tag v0.2.0 && git push --tags`).
-The Release workflow builds Linux and macOS binaries (x64 and arm64) and publishes them with checksums.
-
 ## Contributing
 
 If copane saves you a context switch, a ⭐ on GitHub helps other people find it.
 
-Issues and pull requests are welcome. Before opening a PR, run `bun run typecheck` and `bun test`,
-and walk through the parts of `scripts/smoke.md` your change touches. `CLAUDE.md` lists the
-project conventions (Bun APIs first, terminal key gotchas).
+Issues and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests and conventions,
+and [CHANGELOG.md](CHANGELOG.md) for what's new.
 
 ## License
 

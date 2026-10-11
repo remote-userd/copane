@@ -26,6 +26,8 @@ import { affectedOpenFiles, FileWatcher } from "./files/watcher"
 import pkg from "../package.json"
 
 const USAGE = `Usage: copane [file|directory]
+       copane --upgrade        install the latest release
+       copane --install-font   install the bundled Nerd Font for file-tree icons
        copane --version
 
 Opens a terminal code editor with an AI CLI (default: claude) in a side pane.
@@ -38,6 +40,15 @@ async function parseArgs(argv: string[]): Promise<{ root: string; file: string |
   }
   if (argv.includes("-v") || argv.includes("--version")) {
     console.log(`copane ${pkg.version}`)
+    process.exit(0)
+  }
+  if (argv.includes("--upgrade")) {
+    const { upgrade } = await import("./setup/upgrade")
+    process.exit(await upgrade())
+  }
+  if (argv.includes("--install-font")) {
+    const { main } = await import("./setup/installFont")
+    await main()
     process.exit(0)
   }
   const arg = argv.find((a) => !a.startsWith("-"))

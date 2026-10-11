@@ -57,7 +57,7 @@ export const configSchema = z
       .prefault({}),
     tree: z
       .object({
-        /** File-type icons: "nerd" needs a Nerd Font in the terminal (install:cli sets one up). */
+        /** File-type icons: "nerd" needs a Nerd Font in the terminal (`copane --install-font` sets one up). */
         icons: z.enum(["nerd", "simple", "none"]).default("simple"),
       })
       .prefault({}),

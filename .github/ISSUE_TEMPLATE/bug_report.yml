@@ -1,0 +1,55 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ce some-project
+        2. Press ...
+        3. See ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: copane version
+      description: Output of `ce --version`
+      placeholder: copane 0.2.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: Ubuntu 24.04 on WSL 2 / macOS 15
+    validations:
+      required: true
+  - type: input
+    id: terminal
+    attributes:
+      label: Terminal
+      description: The terminal app, and tmux or screen if you use one.
+      placeholder: Windows Terminal 1.22, inside tmux 3.4
+    validations:
+      required: true
+  - type: input
+    id: ai
+    attributes:
+      label: AI CLI
+      description: The `ai.command` you use, with its version.
+      placeholder: claude 2.1.0
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, config (`~/.config/copane/config.json`), error messages.

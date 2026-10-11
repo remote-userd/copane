@@ -47,7 +47,7 @@ if [ -n "$ALIAS" ]; then
 fi
 # File-tree icons need a Nerd Font in the terminal: install the bundled one (FONT=0 skips).
 if [ "${FONT-1}" != 0 ]; then
-  bun run scripts/install-font.ts || echo "Icons: font setup skipped"
+  "$BIN" --install-font || echo "Icons: font setup skipped"
 fi
 
 case ":$PATH:" in

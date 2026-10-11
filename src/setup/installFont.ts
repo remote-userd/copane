@@ -1,6 +1,7 @@
 /**
  * Install the bundled Nerd Font and point the terminal at it, so the file tree can show icons.
- * Run by scripts/install.sh after the binary is installed (skip with FONT=0).
+ * Run by `copane --install-font`, which both install scripts call after installing (skip with FONT=0),
+ * or from source with `bun run src/setup/installFont.ts`. The font files are embedded in the binary.
  *
  * - WSL: installs the font for the current Windows user (no admin) and sets it as the default
  *   font in Windows Terminal, unless you picked another font there. Backs up settings.json.
@@ -13,18 +14,21 @@
  * Test hooks: CE_FONT_WT_SETTINGS (use this settings.json, skip discovery),
  * CE_FONT_SKIP_INSTALL=1 (don't install font files).
  */
-import { homedir } from "node:os"
-import { dirname, join, resolve } from "node:path"
+// mkdtemp: Bun has no temp-folder API.
+import { mkdtemp, rm } from "node:fs/promises"
+import { homedir, tmpdir } from "node:os"
+import { dirname, join } from "node:path"
 import { applyEdits, modify, parse, type ParseError } from "jsonc-parser"
-import { configPath } from "../src/config/load"
+import { configPath } from "../config/load"
+import bold from "../../assets/fonts/CaskaydiaMonoNerdFont-Bold.ttf" with { type: "file" }
+import regular from "../../assets/fonts/CaskaydiaMonoNerdFont-Regular.ttf" with { type: "file" }
 
 export const FACE = "CaskaydiaMono Nerd Font"
 /** The face earlier installs set: switched to FACE, since its icons are squeezed into one cell. */
 export const OLD_FACE = "CaskaydiaMono Nerd Font Mono"
-const FONT_DIR = resolve(import.meta.dir, "../assets/fonts")
 export const FONT_FILES = [
-  { file: "CaskaydiaMonoNerdFont-Regular.ttf", registry: "CaskaydiaMono NF Regular (TrueType)" },
-  { file: "CaskaydiaMonoNerdFont-Bold.ttf", registry: "CaskaydiaMono NF Bold (TrueType)" },
+  { file: "CaskaydiaMonoNerdFont-Regular.ttf", src: regular, registry: "CaskaydiaMono NF Regular (TrueType)" },
+  { file: "CaskaydiaMonoNerdFont-Bold.ttf", src: bold, registry: "CaskaydiaMono NF Bold (TrueType)" },
 ]
 const FORMAT = { tabSize: 4, insertSpaces: true, eol: "\n" }
 
@@ -155,12 +159,24 @@ function utf16Base64(text: string): string {
 const powershell = (script: string) => sh(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", utf16Base64(script)])
 
 async function installWindows(): Promise<string> {
-  const files = []
-  for (const f of FONT_FILES) {
-    const winPath = await sh(["wslpath", "-w", join(FONT_DIR, f.file)])
-    if (!winPath) throw new Error(`cannot map ${f.file} to a Windows path`)
-    files.push({ ...f, winPath })
+  // The embedded files have no path Windows can see: copy them to a real folder first.
+  const dir = await mkdtemp(join(tmpdir(), "copane-font-"))
+  try {
+    const files = []
+    for (const f of FONT_FILES) {
+      const path = join(dir, f.file)
+      await Bun.write(path, Bun.file(f.src))
+      const winPath = await sh(["wslpath", "-w", path])
+      if (!winPath) throw new Error(`cannot map ${f.file} to a Windows path`)
+      files.push({ ...f, winPath })
+    }
+    return await runWindowsInstall(files)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
   }
+}
+
+async function runWindowsInstall(files: { winPath: string; file: string; registry: string }[]): Promise<string> {
   const out = await powershell(windowsFontScript(files))
   const n = Number(out?.split(/\s+/).pop())
   if (out === null || !Number.isInteger(n)) throw new Error(`PowerShell font install failed${out ? `: ${out}` : ""}`)
@@ -172,7 +188,7 @@ async function installUnix(dir: string, after?: () => Promise<unknown>): Promise
   for (const f of FONT_FILES) {
     const dest = join(dir, f.file)
     if (await Bun.file(dest).exists()) continue
-    await Bun.write(dest, Bun.file(join(FONT_DIR, f.file))) // copies; creates the folder
+    await Bun.write(dest, Bun.file(f.src)) // copies; creates the folder
     n++
   }
   if (n) await after?.()
@@ -263,7 +279,7 @@ export async function main(): Promise<void> {
     if ((await isWsl()) || Bun.env.CE_FONT_WT_SETTINGS) {
       // Already set up (checked without PowerShell, which takes a second or more): nothing to do.
       if (!skipInstall && Bun.env.FONT !== "force" && (await setUpBefore())) {
-        say("font: already set up (FONT=force bun run install:cli redoes it)")
+        say("font: already set up (FONT=force copane --install-font redoes it)")
         say(await enableIcons())
         console.log("Icons:\n" + lines.join("\n"))
         return
