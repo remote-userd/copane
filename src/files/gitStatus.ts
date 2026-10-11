@@ -1,5 +1,5 @@
 import { isAbsolute, join, relative, resolve, sep } from "node:path"
-import { GitRepo, parseEntries, type StatusEntry } from "../git/repo"
+import { GitRepo, parseEntries, READ_ONLY, type StatusEntry } from "../git/repo"
 
 /** One-letter git status shown in the tree. */
 export type GitMark = "M" | "A" | "U" | "D" | "R" | "!"
@@ -226,7 +226,8 @@ export class GitStatus {
     }
     this.running = true
     try {
-      const out = await run(["git", "status", "--porcelain=v1", "-z", "-uall", "--branch"], this.root)
+      // Runs every few seconds in the background: never take the index lock (see READ_ONLY).
+      const out = await run(["git", ...READ_ONLY, "status", "--porcelain=v1", "-z", "-uall", "--branch"], this.root)
       if (out === null || this.stopped || out === this.lastOut) return
       this.lastOut = out
       this.branch = out.startsWith("## ") ? parseBranch(out.slice(0, out.indexOf("\0") >>> 0)) : null

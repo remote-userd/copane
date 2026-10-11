@@ -5,6 +5,9 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Staging and committing no longer fail at random with "index.lock: File exists": the background git status no longer takes git's index lock.
+
 ## [0.3.0] - 2026-10-11
 
 ### Added

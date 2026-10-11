@@ -2,6 +2,13 @@ import { join, relative, sep } from "node:path"
 
 /** Git operations for the editor. Every call runs `git` in the repository's top folder. */
 
+/**
+ * For status reads: `git status` otherwise takes .git/index.lock to refresh its cache, and a
+ * commit or `git add` running at that moment fails with "index.lock: File exists". VS Code
+ * passes the same flag for its background reads.
+ */
+export const READ_ONLY = ["--no-optional-locks"]
+
 export interface RunResult {
   ok: boolean
   out: string
@@ -164,7 +171,7 @@ export class GitRepo {
   }
 
   async status(): Promise<StatusEntry[]> {
-    const r = await this.run(["status", "--porcelain=v1", "-z", "-uall"])
+    const r = await this.run([...READ_ONLY, "status", "--porcelain=v1", "-z", "-uall"])
     return r.ok ? parseEntries(r.out, this.top) : []
   }
 
