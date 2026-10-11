@@ -22,7 +22,7 @@ export function Breadcrumbs({ reveal }: { reveal?: (path: string) => void }) {
   const boxRef = useRef<BoxRenderable | null>(null)
   const [width, setWidth] = useState(0)
 
-  // Re-ask for the symbol path when the cursor settles (and when the text changes).
+  // Re-ask for the symbol path when the cursor settles.
   const row = buf?.cursor.row ?? 0
   const col = buf?.cursor.col ?? 0
   useEffect(() => {
@@ -39,7 +39,8 @@ export function Breadcrumbs({ reveal }: { reveal?: (path: string) => void }) {
     return () => {
       if (timer.current) clearTimeout(timer.current)
     }
-  }, [ws, buf, row, col, buf?.version])
+    // Not on every edit (buf.version): each re-ask flushes the text and requests the file's symbols.
+  }, [ws, buf, row, col])
 
   if (!buf) return null
   const parts = buf.relPath.split(sep)

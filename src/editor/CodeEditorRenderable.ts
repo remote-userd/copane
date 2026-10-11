@@ -127,6 +127,12 @@ export class CodeEditorRenderable extends TextareaRenderable {
     return bytes ? decoder.decode(bytes) : ""
   }
 
+  /** The text's size in UTF-8 bytes, without reading it (constant time). */
+  get byteSize(): number {
+    const eb = this.native()
+    return eb ? eb.lib.textBufferGetByteSize(eb.textBufferPtr) : new TextEncoder().encode(super.plainText).length
+  }
+
   /** Text between two buffer offsets (end may run past the end), sized like plainText. */
   private textRange(start: number, end: number): string {
     const eb = this.native()
@@ -497,7 +503,7 @@ export class CodeEditorRenderable extends TextareaRenderable {
     if (this.hasSelection()) this.deleteCharBackward()
     const { row, line, index } = this.cursorLine()
     const unit = () => {
-      const lines = this.plainText.slice(0, 200_000).split("\n")
+      const lines = this.textRange(0, 200_000).split("\n") // the start of the file is enough to guess
       return indentString(lines, indentUnit(lines))
     }
     const { text, caret } = enterText(line, index, unit)

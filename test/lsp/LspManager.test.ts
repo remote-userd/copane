@@ -47,7 +47,16 @@ test("TypeScript 7 server: diagnostics follow edits; completion, hover, definiti
   await until(() => lsp.diagnostics(buf.path).length === 1)
   expect(lsp.diagnostics(buf.path)[0]!.message).toContain("toFixed")
 
-  const items = await lsp.completion(buf.path, { line: 1, character: 7 }, ta.plainText)
+  // A typed character, then completion: the server gets the new text once.
+  const rpc = (lsp as unknown as { docs: Map<string, { client: { rpc: { notify: (m: string, p: unknown) => void } } }> }).docs.get(buf.path)!.client.rpc
+  const sent: string[] = []
+  const notify = rpc.notify.bind(rpc)
+  rpc.notify = (m, p) => (sent.push(m), notify(m, p))
+  ta.plainText = "export const n: number = 1\nn.toFixe\n"
+  buffers.onContentChange(buf.id)
+  const items = await lsp.completion(buf.path, { line: 1, character: 8 })
+  expect(sent.filter((m) => m === "textDocument/didChange")).toHaveLength(1)
+  rpc.notify = notify
   expect(items.map((i) => i.label)).toContain("toFixed")
   expect(await lsp.hover(buf.path, { line: 0, character: 13 })).toContain("const n: number")
   const def = await lsp.definition(buf.path, { line: 1, character: 0 })

@@ -12,6 +12,8 @@ export interface Conflict {
 }
 
 export function findConflicts(text: string): Conflict[] {
+  // Most files have none: one substring search instead of splitting every line.
+  if (!text.includes("<<<<<<<")) return []
   const lines = text.split("\n")
   const out: Conflict[] = []
   let open: { start: number; base: number | null; mid: number | null } | null = null

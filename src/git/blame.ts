@@ -64,7 +64,7 @@ export function useLineBlame(ws: Workspace): BlameLine | undefined {
     let live = true
     timer.current = setTimeout(async () => {
       const text = ws.buffers.textOf(buf)
-      const lines = await blameFor(ws, buf.path, text, buf.lastTextHash)
+      const lines = await blameFor(ws, buf.path, text, `${buf.id}:${buf.version}`)
       if (!live) return
       blamed.current = { id: buf.id, row, text: text.split("\n", row + 1)[row] ?? "" }
       setLine(lines[row])
@@ -73,7 +73,7 @@ export function useLineBlame(ws: Workspace): BlameLine | undefined {
       live = false
       if (timer.current) clearTimeout(timer.current)
     }
-    // lastTextHash is left out on purpose: see above.
+    // buf.version is left out on purpose: see above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, buf?.id, buf?.path, row, enabled ? ws.git!.getSnapshot() : 0])
   useEffect(() => {
@@ -82,7 +82,7 @@ export function useLineBlame(ws: Workspace): BlameLine | undefined {
     if (!enabled || !buf || !ta || b?.id !== buf.id || b.row !== row || line?.sha === NOT_COMMITTED) return
     if (lineAt(ta, row) !== b.text) setLine(UNCOMMITTED)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buf?.lastTextHash])
+  }, [buf?.version])
   return line
 }
 

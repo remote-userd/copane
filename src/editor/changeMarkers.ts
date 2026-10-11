@@ -5,16 +5,25 @@ export type LineChange = "add" | "mod" | "del"
 /**
  * Per-line changes of `current` against `base` (0-based line indexes in `current`).
  * A deletion is reported on the line that now follows it (the last line at end of file).
- * Above `maxLines` lines on either side the diff is skipped (returns an empty map).
+ * When the changed region spans more than `maxLines` lines on either side, the diff is skipped
+ * (returns an empty map).
  */
 export function lineChanges(base: string, current: string, maxLines = 20_000): Map<number, LineChange> {
   const out = new Map<number, LineChange>()
   if (base === current) return out
   const a = base.split("\n")
   const b = current.split("\n")
-  if (a.length > maxLines || b.length > maxLines) return out
-  const parts = diffArrays(a, b)
-  let line = 0
+  // Typing changes a few lines of a big file: diff only the region between the common first and
+  // last lines (the diff's cost grows with the lines it covers).
+  let head = 0
+  while (head < a.length && head < b.length && a[head] === b[head]) head++
+  let tail = 0
+  while (tail < a.length - head && tail < b.length - head && a[a.length - 1 - tail] === b[b.length - 1 - tail]) tail++
+  const midA = a.slice(head, a.length - tail)
+  const midB = b.slice(head, b.length - tail)
+  if (midA.length > maxLines || midB.length > maxLines) return out
+  const parts = diffArrays(midA, midB)
+  let line = head
   for (let i = 0; i < parts.length; i++) {
     const p = parts[i]!
     const n = p.count ?? p.value.length

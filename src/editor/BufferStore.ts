@@ -57,8 +57,6 @@ export interface Buffer {
   diskMtimeMs: number
   /** Bumped on every content change; stale async highlight results are dropped. */
   version: number
-  /** Hash of the textarea text at the last content-change check. */
-  lastTextHash: string
   cursor: { row: number; col: number }
   textarea: TextareaRenderable | null
   /** Text to load into the textarea when it mounts. */
@@ -176,7 +174,6 @@ export class BufferStore {
       diskText: loaded.text,
       conflictBase: null,
       version: 0,
-      lastTextHash: loaded.hash,
       cursor: { row: 0, col: 0 },
       textarea: null,
       pendingText: loaded.text,
@@ -221,7 +218,6 @@ export class BufferStore {
       diskHash: "",
       diskMtimeMs: 0,
       version: 0,
-      lastTextHash: "",
       cursor: { row: 0, col: 0 },
       textarea: null,
       pendingText: null,
@@ -322,9 +318,11 @@ export class BufferStore {
     if (!buf) return
     buf.textarea = textarea
     if (textarea && buf.pendingText !== null) {
-      textarea.setText(buf.pendingText)
-      buf.lastTextHash = hashText(buf.pendingText)
+      const text = buf.pendingText
+      textarea.setText(text)
       buf.pendingText = null
+      // The editor reports loading the text as a change: remember it so that report changes nothing.
+      this.synced.set(buf, { size: this.textSize(buf), lines: textarea.lineCount, hash: hashText(text) })
       this.scheduleHighlight(buf, 0)
     }
   }
@@ -333,7 +331,7 @@ export class BufferStore {
   replaceText(buf: Buffer, text: string): void {
     if (!buf.textarea) return
     buf.textarea.replaceText(text)
-    this.syncContent(buf)
+    this.syncContent(buf, true)
   }
 
   onContentChange(id: number): void {
@@ -343,24 +341,53 @@ export class BufferStore {
   }
 
   /**
-   * Recompute dirty state from the current text. Called on content changes, which include
-   * undo/redo (the editor reports those itself: natively they are only a cursor move).
+   * What each buffer's text was at its last sync: size and line count always, the hash when it
+   * was computed. A report with a different size or line count is a change, known without
+   * reading the text; only an equal one is hashed and compared (the editor re-reporting a change
+   * copane made and already synced, or a same-size edit like undoing a one-letter replacement).
    */
-  private syncContent(buf: Buffer): void {
-    const text = buf.textarea!.plainText
-    const h = hashText(text)
-    const changed = h !== buf.lastTextHash
-    buf.lastTextHash = h
+  private synced = new WeakMap<Buffer, { size: number; lines: number; hash: string | null }>()
+  private textSize(buf: Buffer): number {
+    const ta = buf.textarea!
+    return (ta as { byteSize?: number }).byteSize ?? new TextEncoder().encode(ta.plainText).length
+  }
+
+  /**
+   * Recompute dirty state after the text changed, and tell listeners. Called on content changes,
+   * which include undo/redo (the editor reports those itself: natively only a cursor move). A full read and hash on
+   * every key costs milliseconds in a big file, so sizes decide first (see `synced`). `hashNow`:
+   * copane made this change itself; remember its hash so the editor's echo of it is recognised.
+   */
+  private syncContent(buf: Buffer, hashNow = false): void {
+    const ta = buf.textarea!
+    const size = this.textSize(buf)
+    const lines = ta.lineCount
+    const prev = this.synced.get(buf)
+    let hash: string | null = null
+    const hashed = () => (hash ??= hashText(ta.plainText))
+    // Same size and lines as last time: compare hashes; an echo or no-op changes nothing.
+    if (prev && prev.size === size && prev.lines === lines && prev.hash !== null && prev.hash === hashed()) return
+    if (hashNow) hashed()
     buf.version++
-    const dirty = h !== buf.diskHash
+    // A different size from the file on disk is dirty; an equal one needs the hash to tell.
+    const dirty = size !== this.diskBytes(buf) || hashed() !== buf.diskHash
+    this.synced.set(buf, { size, lines, hash })
     if (dirty !== buf.dirty) {
       buf.dirty = dirty
       this.emit()
     }
-    if (changed) {
-      this.scheduleHighlight(buf)
-      for (const l of this.textListeners) l(buf.id)
-    }
+    this.scheduleHighlight(buf)
+    for (const l of this.textListeners) l(buf.id)
+  }
+
+  /** UTF-8 size of the disk text, remembered until the disk text changes. */
+  private diskSizes = new WeakMap<Buffer, { text: string; bytes: number }>()
+  private diskBytes(buf: Buffer): number {
+    const hit = this.diskSizes.get(buf)
+    if (hit?.text === buf.diskText) return hit.bytes
+    const bytes = new TextEncoder().encode(buf.diskText).length
+    this.diskSizes.set(buf, { text: buf.diskText, bytes })
+    return bytes
   }
 
   onCursorChange(id: number): void {
@@ -544,11 +571,12 @@ export class BufferStore {
     for (const l of this.reloadListeners) l(buf.id, before, text)
     const { row, col } = ta.logicalCursor
     ta.replaceText(text)
-    buf.lastTextHash = hashText(text)
     const lines = ta.lineCount
     const r = Math.min(row, Math.max(0, lines - 1))
     ta.setCursor(r, col)
     buf.version++
+    // The editor reports this change too: remember the text so that report changes nothing.
+    this.synced.set(buf, { size: this.textSize(buf), lines: ta.lineCount, hash: hashText(text) })
     this.scheduleHighlight(buf, 0)
   }
 

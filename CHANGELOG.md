@@ -7,6 +7,7 @@ All notable changes to copane are listed here. The format follows
 
 ### Changed
 - Less work per key, cursor move and AI output: cursor moves no longer re-render the whole UI (only the status bar and breadcrumbs follow them), tabs and the Markdown preview re-render only when their own content changes (with parsing and image sizes cached), and streaming AI output updates the pane once per stretch instead of per chunk. Polling and GIFs pause while the terminal window is in the background, and agent tabs stop ticking when idle. `CE_PERF` also logs React commits per second in `bun run dev`.
+- Faster typing in big files: a key no longer reads and hashes the whole file (the dirty check compares sizes first), the syntax-colour pass after a pause blocks half as long, git change markers diff only the edited region (so files over 20,000 lines get them too), autocomplete sends the file to the language server once instead of twice, and breadcrumbs stop re-asking for symbols after every pause.
 
 ### Added
 - Smooth scrolling: the wheel and PageUp/PageDown glide (fast first, easing out) in the editor and the Markdown preview; consecutive wheel steps add up, and a key stops the motion. `editor.smoothScrolling: false` turns it off.

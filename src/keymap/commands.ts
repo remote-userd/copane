@@ -423,7 +423,7 @@ export const commands = {
     run: async (ws) => {
       const buf = ws.buffers.active
       if (!buf || !ws.git?.repo) return ws.notify("Not a git repository", "warn")
-      const lines = await blameFor(ws, buf.path, ws.buffers.textOf(buf), buf.lastTextHash)
+      const lines = await blameFor(ws, buf.path, ws.buffers.textOf(buf), `${buf.id}:${buf.version}`)
       const b = lines[buf.cursor.row]
       if (!b || b.sha === NOT_COMMITTED) return ws.notify("This line is not committed yet")
       ws.ui.set({ modal: { kind: "history", path: buf.path, sha: b.sha } })

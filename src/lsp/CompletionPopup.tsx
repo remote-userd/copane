@@ -49,7 +49,7 @@ async function triggerCompletion(ws: Workspace, set: (s: State | null) => void, 
     if (explicit) ws.notify("No language server for this file", "warn")
     return
   }
-  const items = await ws.lsp.completion(c.buf.path, { line: c.row, character: c.index }, c.ed.plainText)
+  const items = await ws.lsp.completion(c.buf.path, { line: c.row, character: c.index })
   // The user may have moved on while the server was thinking.
   const now = cursorContext(ws)
   if (!now || now.row !== c.row || now.start !== c.start || now.buf.id !== c.buf.id) return

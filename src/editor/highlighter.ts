@@ -17,6 +17,8 @@ export interface LineHighlight {
 /**
  * Tree-sitter returns ranges as JS string indices over the whole document.
  * The edit buffer wants per-line display-column ranges. Convert, splitting multi-line ranges.
+ * Runs on the main thread after every pause in typing, over every highlight of the file, so it
+ * avoids per-highlight allocations: on ASCII-only lines (most code) a column is just an offset.
  */
 export function mapHighlights(
   text: string,
@@ -24,9 +26,23 @@ export function mapHighlights(
   resolveStyle: (group: string) => number | null,
 ): LineHighlight[] {
   const lineStarts: number[] = [0]
-  for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) === 10) lineStarts.push(i + 1)
+  const wide: boolean[] = [] // per line: has non-ASCII characters (columns need measuring)
+  let nonAscii = false
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i)
+    if (c === 10) {
+      wide.push(nonAscii)
+      nonAscii = false
+      lineStarts.push(i + 1)
+    } else if (c > 127) nonAscii = true
+  }
+  wide.push(nonAscii)
 
+  // Highlights come mostly in document order: step from the previous line, search only on jumps.
+  let hint = 0
   const lineOf = (idx: number): number => {
+    if (lineStarts[hint]! <= idx && (hint + 1 >= lineStarts.length || lineStarts[hint + 1]! > idx)) return hint
+    if (hint + 2 < lineStarts.length && lineStarts[hint + 1]! <= idx && lineStarts[hint + 2]! > idx) return ++hint
     let lo = 0
     let hi = lineStarts.length - 1
     while (lo < hi) {
@@ -34,15 +50,12 @@ export function mapHighlights(
       if (lineStarts[mid]! <= idx) lo = mid
       else hi = mid - 1
     }
-    return lo
+    return (hint = lo)
   }
 
-  // Display width cache per line prefix is overkill; ASCII fast path covers most code.
   const colOf = (line: number, idx: number): number => {
     const start = lineStarts[line]!
-    const prefix = text.slice(start, idx)
-    // eslint-disable-next-line no-control-regex
-    return /^[\x00-\x7F]*$/.test(prefix) ? prefix.length : Bun.stringWidth(prefix)
+    return wide[line] ? Bun.stringWidth(text.slice(start, idx)) : idx - start
   }
 
   const lineEnd = (line: number): number => {
@@ -50,19 +63,23 @@ export function mapHighlights(
     return next === undefined ? text.length : next - 1
   }
 
+  // A few dozen distinct groups across many thousands of highlights.
+  const styles = new Map<string, number | null>()
   const out: LineHighlight[] = []
   for (const [startIdx, endIdx, group] of highlights) {
     if (endIdx <= startIdx) continue
-    const styleId = resolveStyle(group)
+    let styleId = styles.get(group)
+    if (styleId === undefined) styles.set(group, (styleId = resolveStyle(group)))
     if (styleId === null) continue
     const firstLine = lineOf(startIdx)
-    const lastLine = lineOf(Math.max(startIdx, endIdx - 1))
+    const lastLine = endIdx - 1 < lineEnd(firstLine) ? firstLine : lineOf(Math.max(startIdx, endIdx - 1))
     for (let line = firstLine; line <= lastLine; line++) {
       const segStart = line === firstLine ? startIdx : lineStarts[line]!
       const segEnd = line === lastLine ? Math.min(endIdx, lineEnd(line)) : lineEnd(line)
       if (segEnd <= segStart) continue
       out.push({ line, start: colOf(line, segStart), end: colOf(line, segEnd), styleId })
     }
+    if (lastLine !== firstLine) hint = firstLine // keep stepping from where the next highlight starts
   }
   return out
 }

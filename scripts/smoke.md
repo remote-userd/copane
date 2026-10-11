@@ -53,7 +53,7 @@ Run in a real terminal, in plain mode and inside tmux.
 46. Ctrl+Alt+B, type a new name, Enter: the branch is created and checked out. Merge a conflicting branch, open the file, and Alt+3 keeps both sides.
 47. In a big repo: the first Ctrl+P opens instantly. Empty, it shows recent files. `@` lists this file's symbols (test files list describe/it blocks), and `:500` jumps.
 48. F12 or a search result, then Ctrl+Alt+← returns to where you were, and Ctrl+Alt+→ goes forward again.
-49. Typing in a 10,000-line file feels immediate (CE_PERF log under ~50 ms per key).
+49. Typing in a 10,000-line file feels immediate (CE_PERF log under ~50 ms per key). Colours, the ● dirty dot, git change markers and breadcrumbs still follow the edits, and undoing back to the saved text clears the dot.
 
 ## Markdown and images
 

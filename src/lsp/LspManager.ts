@@ -442,16 +442,10 @@ export class LspManager {
     return doc
   }
 
-  async completion(path: string, pos: Position, text: string): Promise<CompletionItem[]> {
+  async completion(path: string, pos: Position): Promise<CompletionItem[]> {
+    // flush sends the pending edit (the character just typed) once; the text is read only then.
     const doc = await this.flush(path)
     if (!doc) return []
-    // Send pending edits right away so the server sees the character just typed.
-    if (doc.changeTimer) {
-      clearTimeout(doc.changeTimer)
-      doc.changeTimer = null
-    }
-    doc.version++
-    doc.client.rpc!.notify("textDocument/didChange", { textDocument: { uri: uriOf(path), version: doc.version }, contentChanges: [{ text }] })
     try {
       const r = await doc.client.rpc!.request<CompletionItem[] | { items: CompletionItem[] } | null>("textDocument/completion", {
         textDocument: { uri: uriOf(path) },
