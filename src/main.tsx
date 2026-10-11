@@ -103,7 +103,7 @@ setInternalErrorHandler(
   async (err) => {
     const n = await saveRecovery(ws)
     const message = err instanceof Error ? err.message : String(err)
-    ws.notify(`Internal error: ${message}${n ? ` (unsaved changes backed up)` : ""}. Details in ~/.local/state/copane/errors.log`, "error")
+    ws.notify(`Internal error: ${message}${n ? ` (unsaved changes backed up)` : ""}. F1 › Report a problem sends it to the AI to file`, "error")
   },
   () => saveRecovery(ws),
 )

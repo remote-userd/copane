@@ -20,6 +20,7 @@ import { BinaryFileError, ControlCharsError, DiskChangedError } from "../editor/
 import type { Buffer } from "../editor/BufferStore"
 import { formatContextForAgent } from "../ai/sendToAgent"
 import { sendChangesForReview, sendProblems } from "../ai/askAi"
+import { reportProblem } from "../ai/reportIssue"
 import { acceptAiChangeAt, gotoAiChange, undoAiChangeAt, undoAiFile } from "../ai/review"
 import { decodeForBuffer } from "../editor/fileio"
 import { configPath } from "../config/load"
@@ -388,6 +389,7 @@ function sendContext(ws: Workspace, instruction?: string): void {
 export const commands = {
   "app.quit": { title: "Quit", run: (ws) => leave(ws, "quit") },
   "app.restart": { title: "Restart (load a newly installed version)", run: (ws) => leave(ws, "restart") },
+  "app.reportProblem": { title: "Report a problem (the AI drafts a GitHub issue)", run: (ws) => reportProblem(ws) },
   "app.installUpdate": {
     title: "Install the latest copane release",
     run: async (ws) => {

@@ -1,7 +1,7 @@
 import type { CliRenderer } from "@opentui/core"
 import { appendFileSync, mkdirSync } from "node:fs"
 import { homedir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 
 type Hook = () => void | Promise<void>
 
@@ -112,14 +112,19 @@ async function onInternalError(err: unknown): Promise<void> {
   }
 }
 
-/** Append to ~/.local/state/copane/errors.log (for bug reports). Never throws. */
+/** Where internal errors are logged (for bug reports: see ai/reportIssue.ts). */
+export function errorLogPath(): string {
+  return join(Bun.env.XDG_STATE_HOME || join(homedir(), ".local", "state"), "copane", "errors.log")
+}
+
+/** Append to the error log. Never throws. */
 function logError(err: unknown): void {
   try {
-    const base = Bun.env.XDG_STATE_HOME || join(homedir(), ".local", "state")
+    const path = errorLogPath()
     const text = err instanceof Error ? (err.stack ?? err.message) : String(err)
     // Synchronous: this may be the last thing the process does. Bun has no append API.
-    mkdirSync(join(base, "copane"), { recursive: true })
-    appendFileSync(join(base, "copane", "errors.log"), `${new Date().toISOString()} ${text}\n`)
+    mkdirSync(dirname(path), { recursive: true })
+    appendFileSync(path, `${new Date().toISOString()} ${text}\n`)
   } catch {
     // no log, then
   }

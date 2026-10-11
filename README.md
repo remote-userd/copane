@@ -395,6 +395,8 @@ bun run typecheck
 
 If copane saves you a context switch, a ⭐ on GitHub helps other people find it.
 
+**Found a bug?** Press F1 and run **Report a problem**: your AI in the side pane gets copane's version, your platform and the end of the error log (with your paths shortened), asks what happened, checks for an existing issue, and shows you the report. It only posts it (with `gh`) after you say yes, or gives you a ready-made link to open.
+
 Issues and pull requests are welcome, including ones written with an AI coding agent. Look for
 [`good first issue`](https://github.com/sevheng/copane/labels/good%20first%20issue) and
 [`agent-friendly`](https://github.com/sevheng/copane/labels/agent-friendly) issues; each says where to start and what "done" means.

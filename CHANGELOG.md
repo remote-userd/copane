@@ -6,6 +6,7 @@ All notable changes to copane are listed here. The format follows
 ## [Unreleased]
 
 ### Added
+- Report a problem (F1): the AI in the side pane gets copane's version, platform, terminal and the end of the error log (paths shortened), asks what happened, searches existing issues, and shows the drafted GitHub issue; it posts it with `gh` only after you say yes, or gives you a pre-filled link. Internal-error notices point to it.
 - Automatic updates, like Claude Code's: once a day the installed binary checks GitHub and installs a new release in the background; the status bar then offers a restart, and the next start runs it anyway. `"update": "notify"` only says a release is out (a click in the status bar installs it), `"off"` never checks. If installing fails (no permission to replace the binary), it falls back to notifying.
 
 ## [0.7.0] - 2026-10-11
