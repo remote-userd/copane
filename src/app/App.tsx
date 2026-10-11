@@ -155,7 +155,7 @@ export function App({ slots = {} }: { slots?: AppSlots }) {
       {ui.modal?.kind === "search" ? slots.search : null}
       {ui.modal?.kind === "diff" ? <DiffModal bufId={ui.modal.bufId} /> : null}
       {ui.modal?.kind === "scm" ? <SourceControlPanel /> : null}
-      {ui.modal?.kind === "branches" ? <BranchPicker /> : null}
+      {ui.modal?.kind === "branches" ? <BranchPicker mode={ui.modal.mode ?? "switch"} /> : null}
       {ui.modal?.kind === "history" ? <HistoryModal path={ui.modal.path} sha={ui.modal.sha} /> : null}
       {ui.modal?.kind === "palette" ? <CommandPalette bindings={bindings} /> : null}
       {ui.modal?.kind === "info" ? <InfoPopup x={ui.modal.x} y={ui.modal.y} text={ui.modal.text} /> : null}

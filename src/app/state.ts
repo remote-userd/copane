@@ -33,7 +33,7 @@ export type Modal =
   | { kind: "search"; replace?: boolean; restore?: boolean }
   | { kind: "diff"; bufId: number }
   | { kind: "scm" }
-  | { kind: "branches" }
+  | { kind: "branches"; mode?: "switch" | "delete" }
   | { kind: "history"; path: string | null; sha?: string }
   | { kind: "palette" }
   | { kind: "info"; x: number; y: number; text: string }

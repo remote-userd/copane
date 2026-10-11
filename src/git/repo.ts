@@ -332,6 +332,16 @@ export class GitRepo {
     return r.ok ? null : firstError(r.err)
   }
 
+  /**
+   * Delete a local branch. Without `force`, git refuses one whose commits aren't merged anywhere;
+   * that comes back as `unmerged` so the caller can ask before forcing.
+   */
+  async deleteBranch(name: string, force = false): Promise<{ ok: true } | { error: string; unmerged?: boolean }> {
+    const r = await this.run(["branch", force ? "-D" : "-d", "--", name])
+    if (r.ok) return { ok: true }
+    return { error: firstError(r.err), unmerged: /not fully merged/i.test(r.err) }
+  }
+
   async createBranch(name: string): Promise<string | null> {
     const r = await this.run(["switch", "-c", name])
     return r.ok ? null : firstError(r.err)

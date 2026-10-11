@@ -388,6 +388,10 @@ export const commands = {
   "conflict.acceptIncoming": { title: "Merge conflict: accept incoming", run: (ws) => acceptConflict(ws, "incoming") },
   "conflict.acceptBoth": { title: "Merge conflict: accept both", run: (ws) => acceptConflict(ws, "both") },
   "git.branches": { title: "Switch or create a branch", run: (ws) => (ws.git?.repo ? ws.ui.set({ modal: { kind: "branches" } }) : ws.notify("Not a git repository", "warn")) },
+  "git.deleteBranch": {
+    title: "Delete a branch",
+    run: (ws) => (ws.git?.repo ? ws.ui.set({ modal: { kind: "branches", mode: "delete" } }) : ws.notify("Not a git repository", "warn")),
+  },
   "git.stageHunk": {
     title: "Stage the change at the cursor",
     run: async (ws) => {

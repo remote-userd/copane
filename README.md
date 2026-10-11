@@ -156,7 +156,7 @@ With `"ai": { "notify": "desktop" }` you also get a system notification: a Windo
   - **Navigation:** **Alt+F5 / Shift+Alt+F5** jump to the next / previous change, as in VS Code.
 - **Blame:** the status bar shows who last changed the cursor's line, for example `Ann · 3 days ago · Fix totals`. Lines you haven't committed show `Not committed yet`. Click it for the commit. Turn it off with `git.blame: false`.
 - **Ctrl+Alt+G, file history:** the file's commits, with each commit's changes. `y` copies a commit id.
-- **Ctrl+Alt+B, branches:** switch with fuzzy search, or type a new name to create a branch. It offers to save unsaved files first, and shows git's own error if the switch fails.
+- **Ctrl+Alt+B, branches:** switch with fuzzy search, or type a new name to create a branch. It offers to save unsaved files first, and shows git's own error if the switch fails. **Shift+Delete** deletes the selected branch (or use **Delete a branch** in the palette). It asks first, and asks again before deleting a branch with commits that aren't merged anywhere. The current branch can't be deleted.
 - **Merge conflicts:** your side is tinted green and the incoming side blue. A bar shows the count and **Accept current / incoming / both** (Alt+1 / Alt+2 / Alt+3 while the cursor is in a conflict), and Alt+F5 goes to the next conflict. When you're done, save and stage the file.
 
 ## Markdown and images

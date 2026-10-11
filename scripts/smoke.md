@@ -73,3 +73,4 @@ Run in a real terminal, in plain mode and inside tmux.
 63. Edit one of the turn's files yourself, then `u` in Ctrl+Alt+Z: it warns that the file changed since and asks before undoing.
 64. Ctrl+Alt+N, "New claude": a second tab starts. Ask each tab something different; switch with Ctrl+Alt+PageDown: both keep their sessions, the hidden one's tab shows a spinner while it works and ✓ when done. Ctrl+L sends to the visible tab.
 65. Ctrl+Alt+N, "New claude in a git worktree": a worktree appears beside the project (`git worktree list`) on branch copane/claude-1, and the tab shows the branch. Right-click › Close this agent › Remove worktree: the folder goes, the branch stays.
+66. Ctrl+Alt+B, select a merged branch, Shift+Delete, y: it's gone (`git branch`). Do the same on a branch with its own commit: a second warning about unmerged commits appears, and only a second y deletes it. Shift+Delete on the current branch only explains it can't.
