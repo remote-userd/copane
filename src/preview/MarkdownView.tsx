@@ -7,6 +7,7 @@
 // readFileSync: images are sized while rendering, which is synchronous; Bun has no sync read.
 import { readFileSync } from "node:fs"
 import type { ReactNode } from "react"
+import { gemoji } from "gemoji"
 import { Lexer, type Token, type Tokens } from "marked"
 import { imageInfo, TextAttributes, type ImageRenderProtocol } from "@opentui/core"
 import { filetypeOf } from "../editor/grammars"
@@ -46,6 +47,14 @@ export function decodeEntities(s: string): string {
     if (e[0] === "#") return String.fromCodePoint(e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10))
     return ENTITIES[e.toLowerCase()] ?? m
   })
+}
+
+let shortcodes: Map<string, string> | null = null
+/** GitHub's emoji shortcodes (`:rocket:` → 🚀); unknown ones stay as written. */
+export function replaceShortcodes(text: string): string {
+  if (!text.includes(":")) return text
+  shortcodes ??= new Map(gemoji.flatMap((g) => g.names.map((n) => [n, g.emoji] as const)))
+  return text.replace(/:([a-z0-9_+-]+):/gi, (m, name: string) => shortcodes!.get(name.toLowerCase()) ?? m)
 }
 
 /** Inline HTML tags mapped to styles; anything else is dropped and its text kept. */
@@ -92,7 +101,7 @@ class InlineWriter {
       const tag = part.match(/^<(\/?)([a-z][a-z0-9-]*)([^>]*)>$/i)
       if (part.startsWith("<!--")) continue
       if (!tag) {
-        this.push(decodeEntities(part), extra)
+        this.push(replaceShortcodes(decodeEntities(part)), extra)
         continue
       }
       const [, close, rawName] = tag
@@ -118,7 +127,7 @@ class InlineWriter {
       case "text":
         if ("tokens" in t && t.tokens?.length) this.tokens(t.tokens, extra)
         // A line break inside a paragraph is a space, as on GitHub.
-        else this.push(decodeEntities(t.text).replace(/\n/g, " "), extra)
+        else this.push(replaceShortcodes(decodeEntities(t.text).replace(/\n/g, " ")), extra)
         break
       case "escape":
         this.push(decodeEntities(t.text), extra)
@@ -360,9 +369,40 @@ function Heading({ token }: { token: Tokens.Heading }) {
 }
 
 /** HTML blocks: centring wrappers, <details>, images and line breaks; other tags are dropped. */
+/**
+ * A simple HTML table (rows of <th>/<td>) as the same structure Markdown tables use, so it renders
+ * the same way. The first row is the header (with <th> or not); align= and text-align set columns.
+ */
+export function htmlTable(html: string): Tokens.Table | null {
+  const rows = [...html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map((r) =>
+    [...r[1]!.matchAll(/<(th|td)\b([^>]*)>([\s\S]*?)<\/\1>/gi)].map((c) => {
+      const attrs = c[2]!
+      const align = (attrOf("align", `<x${attrs}>`) ?? attrs.match(/text-align\s*:\s*(left|center|right)/i)?.[1])?.toLowerCase()
+      const text = c[3]!.replace(/\s+/g, " ").trim()
+      const known = align === "left" || align === "center" || align === "right" ? (align as "left" | "center" | "right") : null
+      return { text, align: known }
+    }),
+  )
+  const width = Math.max(0, ...rows.map((r) => r.length))
+  if (!rows.length || !width) return null
+  const cell = (c: { text: string } | undefined, header: boolean): Tokens.TableCell => ({ text: c?.text ?? "", tokens: Lexer.lexInline(c?.text ?? ""), header, align: null })
+  const [head, ...body] = rows
+  return {
+    type: "table",
+    raw: html,
+    align: Array.from({ length: width }, (_, i) => rows.map((r) => r[i]?.align).find(Boolean) ?? null),
+    header: Array.from({ length: width }, (_, i) => cell(head![i], true)),
+    rows: body.map((r) => Array.from({ length: width }, (_, i) => cell(r[i], false))),
+  }
+}
+
 function HtmlBlock({ raw, ctx, base }: { raw: string; ctx: MdContext; base: Style }) {
   const text = raw.replace(/<!--[\s\S]*?-->/g, "").trim()
   if (!text) return null
+  if (/<table\b/i.test(text)) {
+    const table = htmlTable(text)
+    if (table) return <Table token={table} ctx={ctx} />
+  }
   const imgs = paragraphImages(Lexer.lexInline(text), ctx)
   if (imgs) return <LocalImages images={imgs} ctx={ctx} />
   const summary = text.match(/<summary>([\s\S]*?)<\/summary>/i)

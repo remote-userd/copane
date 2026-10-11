@@ -77,3 +77,19 @@ test("extractFootnotes numbers references in order of use and drops unknown ones
 test("decodeEntities", () => {
   expect(decodeEntities("&copy; &amp; &lt;b&gt; &#65; &#x42; &unknown;")).toBe("© & <b> A B &unknown;")
 })
+
+test("emoji shortcodes become emoji, except in code", async () => {
+  const f = await render(":rocket: Ship it :white_check_mark: :not_a_real_code: `:rocket:`\n\n```\n:tada:\n```\n")
+  expect(f).toContain("🚀 Ship it ✅ :not_a_real_code:")
+  expect(f).toContain(":rocket:") // the code span
+  expect(f).toContain(":tada:") // the code block
+})
+
+test("HTML tables render like Markdown tables, with alignment", async () => {
+  const f = await render('<table>\n<tr><th>Name</th><th align="right">Price</th></tr>\n<tr><td><b>Cable</b></td><td style="text-align: right">9</td></tr>\n<tr><td>Keyboard</td><td>49</td></tr>\n</table>\n')
+  expect(f).toContain("┌")
+  expect(f).toMatch(/│ Name\s+│\s+Price │/)
+  expect(f).toMatch(/│ Cable\s+│\s+9 │/)
+  expect(f).toMatch(/│ Keyboard │\s+49 │/)
+  expect(f).not.toMatch(/<\/?(table|tr|td|th|b)\b/)
+})

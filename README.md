@@ -166,7 +166,8 @@ With `"ai": { "notify": "desktop" }` you also get a system notification: a Windo
     - headings with rules, bold, italic, strikethrough and inline code, and links
     - nested lists and task checkboxes, quotes, and `> [!NOTE]` alerts
     - highlighted code blocks, tables with column alignment, footnotes
-    - the HTML READMEs use: centred `<div align="center">` blocks, `<b>`, `<br>`, `<img>`, `<details>`
+    - the HTML READMEs use: centred `<div align="center">` blocks, `<b>`, `<br>`, `<img>`, `<details>`, and `<table>`s
+    - GitHub's emoji shortcodes (`:rocket:` → 🚀)
   - Arrow keys, PgUp/PgDn and Home/End scroll a preview tab, and the mouse wheel scrolls both.
   - Images in the file show in the preview when they are local. Remote images (badges, for example) aren't downloaded, so they show their alt text.
 - **Images:** PNG, JPEG, WebP and GIF open as a tab instead of an error, with the format, size and file size above the picture. Animated GIFs play (Space pauses), in image tabs and in the Markdown preview, and stop while hidden. Small images keep their own size, and big ones shrink to fit. They reload when the file changes. Ctrl+L sends the image to the AI as `@path`, and Claude Code can look at it. SVG files open as text.

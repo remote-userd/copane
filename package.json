@@ -34,6 +34,7 @@
     "@opentui/core": "0.5.17",
     "@opentui/react": "0.5.17",
     "diff": "8.0.2",
+    "gemoji": "8.1.0",
     "ignore": "^7.0.12",
     "jsonc-parser": "3.3.1",
     "marked": "17.0.1",
