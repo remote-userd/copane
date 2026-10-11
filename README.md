@@ -4,7 +4,7 @@
 
 **Your editor and your AI coding agent, side by side in one terminal.**
 
-A fast, keyboard-first code editor with Claude Code (or any AI CLI) living in the next pane:
+A fast code editor, at home with the keyboard and the mouse, with Claude Code (or any AI CLI) living in the next pane:
 ask for a change, watch it land in your buffer, review the diff, keep it or undo it.
 
 [![Release](https://img.shields.io/github/v/release/sevheng/copane)](https://github.com/sevheng/copane/releases/latest)
@@ -32,6 +32,7 @@ their work. Usually that means juggling two apps. copane puts both in one window
   a live Markdown preview, and images right in the terminal.
 - **🌿 Git built in.** Stage hunks, commit (with AI-written messages), push, blame, file history,
   branches and merge-conflict resolution.
+- **🖱️ Mouse too.** Click, drag to select, drag dividers (double-click resets them), right-click menus everywhere, and a smoothly gliding scroll wheel.
 - **⌨️ VS Code keys.** Ctrl+P, F1, Ctrl+D, F12, F2… and **Import VS Code settings** in one step.
 - **🚀 Fast and light.** One self-contained binary, instant start in big repos, ~30 ms per keystroke in an 11,000-line file.
 
