@@ -114,6 +114,7 @@ function BufferView({ buf, active, focused, wrap }: { buf: Buffer; active: boole
       if (r) {
         r.autoIndent = ws.config.editor.autoIndent
         r.autoClosingBrackets = ws.config.editor.autoClosingBrackets
+        r.smoothScroll = ws.config.editor.smoothScrolling
         r.onPointer = (e) => {
           if (e.type === "down") exitMultiEdit(ws)
           ws.buffers.onCursorChange(id)

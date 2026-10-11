@@ -6,6 +6,7 @@ All notable changes to copane are listed here. The format follows
 ## [Unreleased]
 
 ### Added
+- Smooth scrolling: the wheel and PageUp/PageDown glide (fast first, easing out) in the editor and the Markdown preview; consecutive wheel steps add up, and a key stops the motion. `editor.smoothScrolling: false` turns it off.
 - Delete a branch: Shift+Delete, the × on the selected row or a right-click in the branch picker (Ctrl+Alt+B), or "Delete a branch" in the palette. Asks first, and again before deleting unmerged work; the current branch is protected.
 - Several agents side by side (#18): Ctrl+Alt+N opens another CLI in an AI pane tab (`ai.agents` lists extra ones), optionally in its own git worktree on a new branch. Tabs keep running when hidden and show working / done / needs you; Ctrl+Alt+PageDown/PageUp switch, and "send to AI" goes to the visible tab. Close a tab with its ×, a middle-click or Ctrl+Alt+W; closing a worktree tab offers to remove the worktree (the branch stays).
 - AI turns (Ctrl+Alt+Z, #15): every prompt that changes files becomes a turn listing the files, +/− counts and each change since before the turn. Undo the whole turn, one file or one change; files the AI created are removed. Exact even with your own uncommitted edits (a `git stash create` snapshot at the start of each turn), and works with any AI CLI.
@@ -20,6 +21,7 @@ All notable changes to copane are listed here. The format follows
 - Double-click a pane divider to reset that pane to its default width.
 
 ### Fixed
+- Commits could still fail on "index.lock" while the source control panel showed a diff: every git read copane runs now skips optional locks.
 - Large dialogs (source control, history, help) fade the screen behind them, so their margins no longer show stray letters and icons from the panes (#13).
 - Staging and committing no longer fail at random with "index.lock: File exists": the background git status no longer takes git's index lock.
 

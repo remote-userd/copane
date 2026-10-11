@@ -121,6 +121,7 @@ With `"ai": { "notify": "desktop" }` you also get a system notification: a Windo
   - **`#name`:** searches symbols across the project, through the language server.
   - **`:120`:** goes to a line.
 - **Ctrl+Alt+← / →:** back and forward through your jumps (definition, references, search results, go to line, picker).
+- **Smooth scrolling:** the mouse wheel and PageUp/PageDown glide, in the editor and the Markdown preview, so your eyes can follow where the text goes. A key stops the motion at once, so typing never waits. `editor.smoothScrolling: false` makes scrolling jump instead.
 - **Long files:** stay responsive. Syntax colours and indent guides are computed for the whole file, but only lines near the screen are drawn. An 11,000-line file takes about 30 ms per keystroke.
 - **`CE_PERF=/tmp/ce-perf.log ce`:** logs how long each keypress takes to reach the screen.
 
@@ -362,7 +363,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
 ```json
 {
   "ai": { "command": "claude", "args": [], "startHidden": false, "notify": "bell", "agents": [{ "name": "codex", "command": "codex" }] },
-  "editor": { "highlightMaxBytes": 1000000, "copyOnSelect": false, "saveBeforeAi": true, "autocomplete": true, "wordWrap": false, "highlightCursor": true, "indentGuides": true, "autoIndent": true, "autoClosingBrackets": true, "formatter": "auto", "formatOnSave": false },
+  "editor": { "highlightMaxBytes": 1000000, "copyOnSelect": false, "saveBeforeAi": true, "autocomplete": true, "wordWrap": false, "highlightCursor": true, "indentGuides": true, "autoIndent": true, "autoClosingBrackets": true, "formatter": "auto", "formatOnSave": false, "smoothScrolling": true },
   "lsp": { "python": { "command": ["pylsp"] } },
   "tree": { "icons": "simple" },
   "preview": { "imageProtocol": "auto" },

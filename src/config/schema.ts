@@ -47,6 +47,8 @@ export const configSchema = z
         formatter: z.enum(["auto", "prettier", "lsp"]).default("auto"),
         /** Format the file on Ctrl+S, like VS Code's editor.formatOnSave. */
         formatOnSave: z.boolean().default(false),
+        /** Glide when scrolling (mouse wheel, PageUp/PageDown, the Markdown preview) instead of jumping. */
+        smoothScrolling: z.boolean().default(true),
         /** Copy the editor selection to the clipboard when the mouse button is released. */
         copyOnSelect: z.boolean().default(false),
       })

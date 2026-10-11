@@ -1,18 +1,19 @@
 import { useEffect, useRef, useState } from "react"
 import { useKeyboard } from "@opentui/react"
-import type { ScrollBoxRenderable } from "@opentui/core"
+import "../app/SmoothScrollBox"
+import type { SmoothScrollBoxRenderable } from "../app/SmoothScrollBox"
 import { useBuffers, useWorkspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import { MarkdownView } from "./MarkdownView"
 
 /** Arrow keys, PgUp/PgDn, Space, Home/End scroll the preview (mounted only while it has focus). */
-function ScrollKeys({ scroll }: { scroll: React.RefObject<ScrollBoxRenderable | null> }) {
+function ScrollKeys({ scroll }: { scroll: React.RefObject<SmoothScrollBoxRenderable | null> }) {
   useKeyboard((key) => {
     const box = scroll.current
     if (!box) return
     const page = Math.max(1, box.height - 2)
     const by: Record<string, number> = { up: -1, down: 1, pageup: -page, pagedown: page, space: page }
-    if (key.name in by) box.scrollBy(by[key.name]!)
+    if (key.name in by) box.glideBy(by[key.name]!)
     else if (key.name === "home") box.scrollTop = 0
     else if (key.name === "end") box.scrollTop = box.scrollHeight
     else return
@@ -28,7 +29,7 @@ function ScrollKeys({ scroll }: { scroll: React.RefObject<ScrollBoxRenderable | 
 export function MarkdownPreview({ path, active, focused, version = 0 }: { path: string; active: boolean; focused: boolean; version?: number }) {
   const ws = useWorkspace()
   useBuffers() // re-render when the file is opened or closed as a tab
-  const scroll = useRef<ScrollBoxRenderable | null>(null)
+  const scroll = useRef<SmoothScrollBoxRenderable | null>(null)
   const [width, setWidth] = useState(80)
   const source = ws.buffers.byPath(path)
   const live = source?.kind === "text" ? source : null
@@ -64,8 +65,9 @@ export function MarkdownPreview({ path, active, focused, version = 0 }: { path: 
   }, [path, live, version])
 
   return (
-    <scrollbox
+    <smooth-scrollbox
       ref={scroll}
+      {...({ smooth: ws.config.editor.smoothScrolling } as object)}
       visible={active}
       flexGrow={1}
       flexBasis={0}
@@ -73,7 +75,7 @@ export function MarkdownPreview({ path, active, focused, version = 0 }: { path: 
       paddingLeft={2}
       paddingRight={2}
       paddingTop={1}
-      onSizeChange={function (this: ScrollBoxRenderable) {
+      onSizeChange={function (this: { width: number }) {
         // Less the padding and the scrollbar.
         const w = Math.max(10, this.width - 5)
         setWidth((old) => (old === w ? old : w))
@@ -84,6 +86,6 @@ export function MarkdownPreview({ path, active, focused, version = 0 }: { path: 
     >
       {focused ? <ScrollKeys scroll={scroll} /> : null}
       <MarkdownView text={text} ctx={{ path, width, protocol: ws.config.preview.imageProtocol, animate: active }} />
-    </scrollbox>
+    </smooth-scrollbox>
   )
 }

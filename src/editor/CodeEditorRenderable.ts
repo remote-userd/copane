@@ -1,4 +1,5 @@
 import { Renderable, TextareaRenderable, type KeyEvent, type MouseEvent, type RenderContext, type TextareaOptions } from "@opentui/core"
+import { Glide } from "../app/glide"
 
 export interface LayerHighlight {
   line: number
@@ -370,6 +371,8 @@ export class CodeEditorRenderable extends TextareaRenderable {
   }
 
   override handleKeyPress(key: KeyEvent): boolean {
+    // Typing never waits for a scroll animation: a key ends it where it is.
+    this.stopGlide()
     return this.editorKey(key) || super.handleKeyPress(key)
   }
 
@@ -449,17 +452,45 @@ export class CodeEditorRenderable extends TextareaRenderable {
 
   /** PageUp/PageDown: move the cursor a screen and scroll with it, so it keeps its place on screen. */
   private page(dir: -1 | 1, select: boolean): boolean {
+    const n = Math.max(1, this.editorView.getViewport().height - 1)
+    // Smoothly, the cursor and the view travel together a few lines per frame (the native view
+    // would snap back to a cursor left off screen, so they can't move separately).
+    if (this.smoothScroll) this.glideBy(dir * n, (k) => this.pageBy(k, select))
+    else this.pageBy(dir * n, select)
+    return true
+  }
+
+  /** Move the cursor `k` lines and the view with it. */
+  private pageBy(k: number, select: boolean): void {
     const view = this.editorView
     const vp = view.getViewport()
-    const n = Math.max(1, vp.height - 1)
-    for (let i = 0; i < n; i++) {
-      if (dir < 0) this.moveCursorUp({ select })
+    for (let i = 0; i < Math.abs(k); i++) {
+      if (k < 0) this.moveCursorUp({ select })
       else this.moveCursorDown({ select })
     }
     const maxY = Math.max(0, view.getTotalVirtualLineCount() - vp.height)
-    view.setViewport(vp.offsetX, Math.max(0, Math.min(maxY, vp.offsetY + dir * n)), vp.width, vp.height, false)
+    view.setViewport(vp.offsetX, Math.max(0, Math.min(maxY, vp.offsetY + k)), vp.width, vp.height, false)
     this.requestRender()
-    return true
+  }
+
+  // ---- smooth scrolling ----
+
+  private glider = new Glide()
+  /** Glide scrolls instead of jumping (editor.smoothScrolling). */
+  get smoothScroll(): boolean {
+    return this.glider.enabled
+  }
+  set smoothScroll(on: boolean) {
+    this.glider.enabled = on
+  }
+
+  private glideBy(total: number, move: (k: number) => void): void {
+    this.glider.by(total, (k) => (this.isDestroyed ? this.glider.stop() : move(k)))
+  }
+
+  /** End a scroll animation where it is. */
+  stopGlide(): void {
+    this.glider.stop()
   }
 
   private enter(): boolean {
@@ -628,17 +659,23 @@ export class CodeEditorRenderable extends TextareaRenderable {
   private scrollView(event: MouseEvent): void {
     if (!event.scroll) return
     const { direction, delta } = event.scroll
+    // Shift+wheel scrolls horizontally, like most editors.
+    const dir = event.modifiers.shift ? ({ up: "left", down: "right", left: "up", right: "down" } as const)[direction] : direction
+    const vertical = dir === "up" || dir === "down"
+    const amount = dir === "up" || dir === "left" ? -delta : delta
+    // Vertical wheel steps glide; sideways ones are rare and stay instant.
+    if (this.smoothScroll && vertical) this.glideBy(amount, (k) => this.scrollViewBy(0, k))
+    else this.scrollViewBy(vertical ? 0 : amount, vertical ? amount : 0)
+  }
+
+  /** Scroll the view (not the cursor) by dx columns and dy lines, parking the cursor as needed. */
+  private scrollViewBy(dx: number, dy: number): void {
     const view = this.editorView
     const vp = view.getViewport()
     const maxY = Math.max(0, view.getTotalVirtualLineCount() - vp.height)
-    let { offsetX: x, offsetY: y } = vp
-    // Shift+wheel scrolls horizontally, like most editors.
-    const dir = event.modifiers.shift ? ({ up: "left", down: "right", left: "up", right: "down" } as const)[direction] : direction
-    if (dir === "up") y = Math.max(0, y - delta)
-    else if (dir === "down") y = Math.min(maxY, y + delta)
-    else if (dir === "left") x = Math.max(0, x - delta)
-    else if (dir === "right") x = x + delta
-    if (x === vp.offsetX && y === vp.offsetY) return
+    const x = Math.max(0, vp.offsetX + dx)
+    const y = Math.max(0, Math.min(maxY, vp.offsetY + dy))
+    if (x === vp.offsetX && y === vp.offsetY) return this.stopGlide() // reached the top or bottom
     // With a selection the native cursor is its active end; let it ride as the native view wants.
     if (this.hasSelection()) {
       view.setViewport(x, y, vp.width, vp.height, true)
