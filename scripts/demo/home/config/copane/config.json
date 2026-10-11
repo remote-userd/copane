@@ -1,5 +1,6 @@
 // The demo's own config, so the recording doesn't depend on yours.
 {
   "ai": { "command": "claude", "args": ["--permission-mode", "acceptEdits"] },
-  "tree": { "icons": "nerd" }
+  "tree": { "icons": "nerd" },
+  "update": "off"
 }

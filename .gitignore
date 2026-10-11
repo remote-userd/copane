@@ -11,3 +11,5 @@ coverage/
 # Recording the demo lets tools write state here; only the pane layout is part of the demo.
 scripts/demo/home/state/*
 !scripts/demo/home/state/copane/
+scripts/demo/home/state/copane/*
+!scripts/demo/home/state/copane/layout.json

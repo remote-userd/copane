@@ -47,7 +47,8 @@ Show
 Type "ce ."
 Sleep 500ms
 Enter
-Wait+Screen@30s /ready/
+# Claude is ready for input once its prompt line is drawn.
+Wait+Screen@30s /accept edits on/
 Sleep 1.5s
 
 # Open a file with Ctrl+P.
@@ -65,15 +66,15 @@ Type "the total is wrong, fix it"
 Sleep 500ms
 Enter
 
-# Claude edits the file: the buffer reloads, changed lines flash, the gutter marks them.
+# Claude edits the file: the buffer reloads, its lines get a violet ┃, the tree marks the file ✦.
 Wait+Screen@120s /Reloaded/
 Sleep 4s
 
-# Review every change with its diff.
-Ctrl+Alt+D
+# Review it from the AI pane: jump to the AI's change, see what it replaced, accept it.
+Ctrl+Alt+V
 Sleep 4s
-Escape
-Sleep 1s
+Type "a"
+Sleep 2.5s
 
 # Quit (the AI pane stops with the editor).
 Ctrl+Q

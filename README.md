@@ -114,6 +114,12 @@ Run commands from the AI pane with `!`, for example `! bun test`.
 
 With `"ai": { "notify": "desktop" }` you also get a system notification: a Windows toast on WSL, Notification Center on macOS, `notify-send` on Linux. `"off"` turns it all off.
 
+## Your work is safe
+
+- **Errors don't close the editor.** An internal error shows as a notice, your unsaved changes are backed up and come back on the next start (Ctrl+Z drops them), and the details go to `~/.local/state/copane/errors.log`. A drawing error offers Ctrl+R to redraw the editor with every file as it was.
+- **Saving never overwrites a change you haven't seen.** If a file changed on disk without the editor noticing (the file watcher can miss changes on WSL drives), Ctrl+S asks whether to overwrite or compare, and **Save all** lists the files that need a decision.
+- **Encodings stay intact.** Files that aren't UTF-8 aren't opened (saving would corrupt their accented characters), a UTF-8 byte-order mark is kept, and files with control characters (form feeds…) show a warning and ask before saving.
+
 ## Big projects
 
 - **Ctrl+P:** an empty query lists recently opened files first. The file index is built in the background at startup, so the first Ctrl+P is instant.
@@ -128,7 +134,7 @@ With `"ai": { "notify": "desktop" }` you also get a system notification: a Windo
 ## Look
 
 - **Panes:** the panes have no boxes. A thin divider separates them: drag it to resize, double-click it to go back to the default width.
-- **Headers:** each pane has one. The left pane has two tabs, `FILES` (the tree) and `SEARCH` (search and replace in all files); click one to switch. The editor's header is its tab row, with icons, and the active tab is accent-coloured while the editor has focus. The AI pane shows the command and `● ready`, or a spinner while it's working.
+- **Headers:** each pane has one. The left pane has two tabs, `FILES` (the tree) and `SEARCH` (search and replace in all files); click one to switch. The editor's header is its tab row, with icons, and the active tab is accent-coloured while the editor has focus. The AI pane shows the command with `●` while it runs, or a spinner while it's working.
 - **Breadcrumbs:** under the tabs, `src › editor › EditorPane.tsx › BufferView` shows the folder path, the file and the symbol under the cursor. Click a folder to show it in the tree.
 - **Status bar,** left to right:
   - **Git branch,** with ↑ahead / ↓behind counts. Click it to review changes.
