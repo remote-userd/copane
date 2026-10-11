@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { safely } from "./safely"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import type { Modal as ModalState } from "./state"
 import { useWorkspace } from "./workspace"
@@ -17,7 +18,7 @@ export function ContextMenu({ menu }: { menu: Menu }) {
     const item = menu.items[i]
     if (!item || item.disabled) return
     close()
-    void item.run()
+    void safely(ws, item.run)
   }
   const step = (d: number) => {
     if (!enabled.length) return

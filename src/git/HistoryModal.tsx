@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { openFile } from "../app/navHistory"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import { Modal } from "../app/Modal"
 import { useWorkspace } from "../app/workspace"
@@ -49,7 +50,7 @@ export function HistoryModal({ path, sha }: { path: string | null; sha?: string 
     else if (key.name === "y" && current) void ws.clipboard.copy(current.sha).then(() => ws.notify(`Copied ${current.sha}`))
     else if (key.name === "return" && path) {
       close()
-      void ws.buffers.open(path).then(() => ws.ui.set({ focus: "editor" }))
+      void openFile(ws, path)
     }
   })
 

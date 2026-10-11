@@ -9,6 +9,7 @@
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { Store } from "../app/store"
+import { openFile } from "../app/navHistory"
 import type { Workspace } from "../app/workspace"
 import type { BufferStore } from "../editor/BufferStore"
 import type { CodeEditorRenderable } from "../editor/CodeEditorRenderable"
@@ -304,8 +305,8 @@ export async function gotoAiChange(ws: Workspace, dir: 1 | -1, quiet = false): P
 
 /** Open a file in the editor and wait until its editor is mounted and sized (the peek is placed by both). */
 async function openReady(ws: Workspace, path: string): Promise<void> {
-  const opened = await ws.buffers.open(path)
-  ws.ui.set({ focus: "editor" })
+  const opened = await openFile(ws, path)
+  if (!opened) return
   for (let i = 0; i < 50 && !((opened.textarea?.width ?? 0) > 1 && ws.buffers.active === opened); i++) await Bun.sleep(10)
 }
 

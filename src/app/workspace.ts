@@ -42,8 +42,10 @@ export interface AgentTabs {
   session(id: number): { id: number; name: string; cwd: string; branch: string | null } | undefined
   /** The visible tab's id. */
   activeId(): number
-  /** Close a tab right away (no questions; its worktree is the caller's business). */
+  /** Close a tab right away (no questions; its worktree is the caller's business). The last tab is replaced by a fresh one in the project. */
   close(id: number): void
+  /** Stop a tab's CLI and wait until it has exited (before touching its files). */
+  stop(id: number): Promise<void>
   /** Recount what a worktree agent changed (shown on its tab). */
   recount(id: number): void
 }

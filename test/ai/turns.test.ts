@@ -98,3 +98,36 @@ test("without git, an open tab's last disk text is the 'before'; otherwise it ca
     [null, false],
   ])
 })
+
+test("in a CRLF checkout, undo writes the file back with CRLF (the repo stores LF)", async () => {
+  const root = await fixture({ ".gitattributes": "*.txt text eol=crlf\n", "a.txt": "one\ntwo\n" })
+  for (const args of [["init", "-q"], ["add", "."], ["commit", "-qm", "init"]]) Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
+  // Check out again so the working file gets CRLF, as git would on clone.
+  unlinkSync(join(root, "a.txt"))
+  Bun.spawnSync(["git", "checkout", "--", "a.txt"], { cwd: root, env: ENV })
+  expect(readFileSync(join(root, "a.txt"), "utf8")).toBe("one\r\ntwo\r\n")
+  const git = new GitRepo(root)
+  const log = new TurnLog(root, () => git, async () => [])
+  await log.begin("p")
+  writeFileSync(join(root, "a.txt"), "AI\r\n")
+  await log.fileChanged(join(root, "a.txt"))
+  await log.end()
+  expect(log.turns[0]!.files[0]!.before).toBe("one\r\ntwo\r\n")
+  await log.undo(log.turns[0]!)
+  expect(readFileSync(join(root, "a.txt"), "utf8")).toBe("one\r\ntwo\r\n")
+})
+
+test("before the first commit, a staged file the AI edits is unknown, never 'new' (undo would delete it)", async () => {
+  const root = await fixture({ "a.ts": "staged work\n" })
+  for (const args of [["init", "-q"], ["add", "."]]) Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
+  const git = new GitRepo(root)
+  const log = new TurnLog(root, () => git, async () => (await git.status()).filter((e) => e.untracked).map((e) => e.path))
+  await log.begin("p")
+  writeFileSync(join(root, "a.ts"), "AI\n")
+  await log.fileChanged(join(root, "a.ts"))
+  await log.end()
+  const f = log.turns[0]!.files[0]!
+  expect(f.known).toBe(false)
+  expect(await log.undo(log.turns[0]!)).toBe(0)
+  expect(existsSync(join(root, "a.ts"))).toBe(true)
+})

@@ -83,7 +83,12 @@ export function BranchPicker({ mode = "switch" }: { mode?: "switch" | "delete" }
       setConfirm({
         text: "You have unsaved files. Save them all and switch? (y/n)",
         yes: async () => {
-          for (const b of dirty) await ws.buffers.save(b.id)
+          try {
+            for (const b of dirty) await ws.buffers.save(b.id)
+          } catch (err) {
+            // Not switching with unsaved work: say why (a file changed on disk, no permission…).
+            return ws.notify(`Not switching: ${(err as Error).message}`, "warn")
+          }
           await act()
         },
       })

@@ -1,4 +1,5 @@
 import type { CodeEditorRenderable } from "../editor/CodeEditorRenderable"
+import type { Buffer } from "../editor/BufferStore"
 import type { Workspace } from "./workspace"
 
 /**
@@ -34,6 +35,21 @@ export function recordJump(ws: Workspace): void {
   forward.length = 0
 }
 
+/**
+ * Open a file in the editor and focus it. A file that can't be opened (binary, unreadable, gone)
+ * is a notice, not an error: callers fire and forget this from lists and links.
+ */
+export async function openFile(ws: Workspace, path: string): Promise<Buffer | null> {
+  try {
+    const buf = await ws.buffers.open(path)
+    ws.ui.set({ focus: "editor" })
+    return buf
+  } catch (err) {
+    ws.notify(err instanceof Error ? err.message : String(err), "warn")
+    return null
+  }
+}
+
 /** Open a file and select a range once its editor exists (it mounts on the next render). */
 export async function openAt(
   ws: Workspace,
@@ -45,8 +61,9 @@ export async function openAt(
 ): Promise<void> {
   // A jump: remember where we were so Ctrl+Alt+← comes back here.
   if (opts.record !== false) recordJump(ws)
-  const buf = await ws.buffers.open(path)
-  ws.ui.set({ focus: "editor", modal: null })
+  const buf = await openFile(ws, path)
+  if (!buf) return
+  ws.ui.set({ modal: null })
   for (let i = 0; i < 40; i++) {
     const ed = ws.buffers.byId(buf.id)?.textarea as CodeEditorRenderable | null | undefined
     if (ed && !ed.isDestroyed && ed.lineCount > line) {

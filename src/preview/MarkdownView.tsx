@@ -426,10 +426,14 @@ function HtmlBlock({ raw, ctx, base }: { raw: string; ctx: MdContext; base: Styl
   if (imgs) return <LocalImages images={imgs} ctx={ctx} />
   const summary = text.match(/<summary>([\s\S]*?)<\/summary>/i)
   const inner = (summary ? text.replace(summary[0], "") : text).replace(/<\/?(details|div|p|center|picture|source)\b[^>]*>/gi, "").trim()
+  const blocks = inner ? new Lexer({ gfm: true }).lex(inner) : []
+  // HTML that lexes back into an HTML block (an <img> that isn't a local file, say) would render
+  // this component again, forever: show it inline instead (an <img> becomes "🖼 alt").
+  const loops = blocks.some((t) => t.type === "html" && t.raw.trim() === inner)
   return (
     <box flexDirection="column">
       {summary ? <Inline tokens={Lexer.lexInline(`▸ ${summary[1]!.trim()}`)} base={{ ...base, attr: base.attr | BOLD }} /> : null}
-      {inner ? <Blocks tokens={new Lexer({ gfm: true }).lex(inner)} ctx={ctx} base={base} /> : null}
+      {loops ? <Inline tokens={Lexer.lexInline(inner)} base={base} /> : inner ? <Blocks tokens={blocks} ctx={ctx} base={base} /> : null}
     </box>
   )
 }

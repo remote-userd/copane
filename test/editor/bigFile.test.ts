@@ -27,3 +27,15 @@ test("line reads past 1 MB and with many bytes per character", () => {
   expect(ed.plainText).toBe("")
   expect(ed.lineText(0)).toBe("")
 })
+
+test("selections over 1 MB are read whole (typing a bracket or cutting used to drop the rest)", () => {
+  const ed = new CodeEditorRenderable(renderer, { width: 40, height: 10 })
+  const text = ("x".repeat(99) + "é\n").repeat(25_000) // ~2.5 MB
+  ed.setText(text)
+  ed.selectLines(0, 24_999)
+  const sel = ed.getSelectedText()
+  expect(sel.length).toBeGreaterThan(2_400_000)
+  expect(text.startsWith(sel)).toBe(true)
+  ed.selectLines(1, 1)
+  expect(ed.getSelectedText()).toBe("x".repeat(99) + "é\n")
+})

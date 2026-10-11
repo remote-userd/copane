@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import { Modal } from "../app/Modal"
+import { safely } from "../app/safely"
 import { useWorkspace } from "../app/workspace"
 import { openAt } from "../app/navHistory"
 import { ui as colors } from "../config/theme"
@@ -108,9 +109,12 @@ export function TurnsModal() {
     else if (key.name === "tab") setFocus((f) => (key.shift ? (f === "turns" ? "changes" : f === "files" ? "turns" : "files") : f === "turns" ? "files" : f === "files" ? "changes" : "turns"))
     else if (key.name === "down" || key.name === "j") move(1)
     else if (key.name === "up" || key.name === "k") move(-1)
-    else if (key.name === "u" && turn) void undoTurn(turn)
-    else if (key.name === "x" && turn && file) void undoFile(turn, file)
-    else if (key.name === "r" && file && fileHunks[hi]) void undoChange(file, hi)
+    else if ((key.name === "u" || key.name === "x" || key.name === "r") && turn && !turn.endedAt) {
+      // Undoing while the AI still writes would race its next edit (and lose it, or ours).
+      ws.notify("The AI is still working on this turn: undo once it has finished", "warn")
+    } else if (key.name === "u" && turn) void safely(ws, () => undoTurn(turn))
+    else if (key.name === "x" && turn && file) void safely(ws, () => undoFile(turn, file))
+    else if (key.name === "r" && file && fileHunks[hi]) void safely(ws, () => undoChange(file, hi))
     else if (key.name === "return" && file) open(file, focus === "changes" ? fileHunks[hi] : fileHunks[0])
   })
 

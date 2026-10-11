@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { openFile } from "../app/navHistory"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import { join } from "node:path"
 import { HoverBox, Modal } from "../app/Modal"
@@ -59,7 +60,9 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
 
   const merge = async () => {
     if (!session?.branch || !repo || !agent) return
-    setStatus({ text: "Merging…", kind: "busy" })
+    // The agent must not write while its work is committed and merged: stop its CLI first.
+    setStatus({ text: "Stopping the agent, then merging…", kind: "busy" })
+    await ws.agents?.stop(sessionId)
     const err = await agent.commitAll(`Work from ${session.name}`)
     if (err) return setStatus({ text: `Couldn't commit the agent's leftover work: ${err}`, kind: "error" })
     const r = await repo.merge(session.branch)
@@ -78,6 +81,7 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
     setConfirm({
       text: `Throw away ${n} changed file${n === 1 ? "" : "s"}, the worktree and branch ${session.branch} for good? (y/n)`,
       yes: async () => {
+        await ws.agents?.stop(sessionId)
         const err = await repo.removeWorktree(session.cwd, true)
         if (err) return setStatus({ text: `Couldn't remove the worktree: ${err}`, kind: "error" })
         await repo.deleteBranch(session.branch!, true)
@@ -91,7 +95,7 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
   const open = () => {
     if (!change || !session || change.status === "D") return
     close()
-    void ws.buffers.open(join(session.cwd, change.rel)).then(() => ws.ui.set({ focus: "editor" }))
+    void openFile(ws, join(session.cwd, change.rel))
   }
 
   const viewH = dims.height - 8
@@ -212,7 +216,9 @@ function afterMerge(ws: Workspace, sessionId: number, cwd: string, branch: strin
           run: async () => {
             ws.ui.set({ modal: null })
             ws.agents?.close(sessionId)
-            const err = await repo?.removeWorktree(cwd, true)
+            // Everything was committed and merged: a clean removal. Anything new since (the
+            // agent was stopped first, but an editor tab could have saved there) keeps it.
+            const err = await repo?.removeWorktree(cwd)
             if (!err) await repo?.deleteBranch(branch)
             ws.notify(err ? `Merged; worktree kept: ${err}` : `Merged ${branch} and removed its worktree`, err ? "warn" : "info")
           },

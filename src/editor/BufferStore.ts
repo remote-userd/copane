@@ -1,7 +1,7 @@
 import { relative, resolve, basename, extname, sep } from "node:path"
 import { imageInfo, type TextareaRenderable } from "@opentui/core"
 import { filetypeOf } from "./grammars"
-import { hashText, loadFile, saveFile, type Eol } from "./fileio"
+import { ControlCharsError, DiskChangedError, hashText, loadFile, saveFile, type Eol, type LoadedFile } from "./fileio"
 import { mergeTexts } from "./merge"
 import { applyHighlights, computeHighlights, mapHighlights } from "./highlighter"
 import { getSyntaxStyle } from "./syntaxStyle"
@@ -48,6 +48,8 @@ export interface Buffer {
   /** File was deleted on disk. */
   deleted: boolean
   sanitized: boolean
+  /** The file starts with a UTF-8 byte-order mark: written back on save. */
+  bom: boolean
   /** Last text read from or written to disk: the common base when the AI edits a file you changed. */
   diskText: string
   /** On a conflict: the base your edits started from (theirs is diskText). */
@@ -152,7 +154,7 @@ export class BufferStore {
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err
       // New file: empty buffer, created on first save.
-      loaded = { text: "", eol: "\n", sanitized: false, mtimeMs: 0, hash: hashText("") }
+      loaded = { text: "", eol: "\n", sanitized: false, bom: false, mtimeMs: 0, hash: hashText("") }
       isNew = true
     }
     const buf: Buffer = {
@@ -169,6 +171,7 @@ export class BufferStore {
       conflict: false,
       deleted: isNew,
       sanitized: loaded.sanitized,
+      bom: loaded.bom,
       diskHash: loaded.hash,
       diskMtimeMs: loaded.mtimeMs,
       diskText: loaded.text,
@@ -213,6 +216,7 @@ export class BufferStore {
       conflict: false,
       deleted: false,
       sanitized: false,
+      bom: false,
       diskText: "",
       conflictBase: null,
       diskHash: "",
@@ -316,6 +320,8 @@ export class BufferStore {
   attach(id: number, textarea: TextareaRenderable | null): void {
     const buf = this.byId(id)
     if (!buf) return
+    // The editor going away (the app re-rendering after an error) must not take the text with it.
+    if (!textarea && buf.textarea && !buf.textarea.isDestroyed) buf.pendingText = buf.textarea.plainText
     buf.textarea = textarea
     if (textarea && buf.pendingText !== null) {
       const text = buf.pendingText
@@ -409,20 +415,62 @@ export class BufferStore {
   getCursorSnapshot = (): number => this.cursorSnapshot
 
   // ---- save / reload ----
-  async save(id = this.activeId ?? -1): Promise<Buffer | null> {
+  /**
+   * Write a buffer to its file. Refuses (DiskChangedError) to overwrite a change on disk the
+   * buffer doesn't have: a conflict not decided yet, or a change the watcher missed (WSL, a
+   * very large project). `force` overwrites anyway (the user chose "overwrite").
+   */
+  async save(id = this.activeId ?? -1, opts: { force?: boolean } = {}): Promise<Buffer | null> {
     const buf = this.byId(id)
     if (!buf || buf.kind !== "text") return null
+    if (!opts.force) {
+      if (buf.sanitized) throw new ControlCharsError(buf.relPath)
+      if (buf.conflict) throw new DiskChangedError(buf.relPath)
+      if (!buf.deleted && (await this.changedUnseen(buf))) throw new DiskChangedError(buf.relPath)
+    }
     const text = this.textOf(buf)
-    const result = await saveFile(buf.path, text, buf.eol)
+    const result = await saveFile(buf.path, text, buf.eol, buf.bom)
     buf.diskHash = result.hash
     buf.diskMtimeMs = result.mtimeMs
     buf.diskText = text
-    buf.dirty = false
+    // Keys typed while the file was being written keep the buffer dirty.
+    buf.dirty = hashText(this.textOf(buf)) !== result.hash
     buf.conflict = false
     buf.conflictBase = null
     buf.deleted = false
+    buf.sanitized = false // the user chose to save without them
     this.emit()
     return buf
+  }
+
+  /**
+   * Whether the file changed on disk since the buffer last read or wrote it, without the watcher
+   * telling us. If so, the buffer is put in conflict (as a reported change would) and true returned.
+   */
+  private async changedUnseen(buf: Buffer): Promise<boolean> {
+    const stat = await Bun.file(buf.path).stat().catch(() => null)
+    if (!stat || stat.mtimeMs === buf.diskMtimeMs) return false
+    const loaded = await loadFile(buf.path).catch(() => null)
+    if (!loaded || loaded.hash === buf.diskHash) {
+      if (loaded) buf.diskMtimeMs = loaded.mtimeMs // touched, not changed
+      return false
+    }
+    this.markConflict(buf, loaded)
+    return buf.conflict
+  }
+
+  /** The file on disk changed under unsaved edits: keep both, and let the user decide. */
+  private markConflict(buf: Buffer, loaded: LoadedFile): void {
+    // Keep the first base if the AI edits again before the conflict is resolved.
+    if (!buf.conflict) buf.conflictBase = buf.diskText
+    buf.conflict = true
+    buf.diskText = loaded.text
+    buf.diskHash = loaded.hash
+    buf.diskMtimeMs = loaded.mtimeMs
+    // Dirty status is relative to disk; recompute against the new disk content.
+    buf.dirty = hashText(this.textOf(buf)) !== loaded.hash
+    if (!buf.dirty) buf.conflict = false
+    this.emit()
   }
 
   /**
@@ -450,16 +498,7 @@ export class BufferStore {
     buf.deleted = false
     if (loaded.hash === buf.diskHash) return "ignored" // our own save, or a touch
     if (buf.dirty) {
-      // Keep the first base if the AI edits again before the conflict is resolved.
-      if (!buf.conflict) buf.conflictBase = buf.diskText
-      buf.conflict = true
-      buf.diskText = loaded.text
-      buf.diskHash = loaded.hash
-      buf.diskMtimeMs = loaded.mtimeMs
-      // Dirty status is relative to disk; recompute against the new disk content.
-      buf.dirty = hashText(this.textOf(buf)) !== loaded.hash
-      if (!buf.dirty) buf.conflict = false
-      this.emit()
+      this.markConflict(buf, loaded)
       return buf.conflict ? "conflict" : "reloaded"
     }
     this.replaceContents(buf, loaded.text)
@@ -499,9 +538,16 @@ export class BufferStore {
   }
 
   /** Conflict resolution: take the disk version (undoable). */
-  async reloadFromDisk(id: number): Promise<void> {
+  /** Take the file's text from disk. "gone": it no longer exists (the buffer keeps its text, flagged deleted). */
+  async reloadFromDisk(id: number): Promise<"reloaded" | "gone"> {
     const buf = this.byId(id)
-    if (!buf) return
+    if (!buf) return "gone"
+    if (!(await Bun.file(buf.path).exists())) {
+      buf.deleted = true
+      buf.conflict = false
+      this.emit()
+      return "gone"
+    }
     const loaded = await loadFile(buf.path)
     this.replaceContents(buf, loaded.text)
     buf.eol = loaded.eol
@@ -511,7 +557,9 @@ export class BufferStore {
     buf.dirty = false
     buf.conflict = false
     buf.conflictBase = null
+    buf.deleted = false
     this.emit()
+    return "reloaded"
   }
 
   /** Conflict resolution: keep local edits; the next save overwrites disk. */

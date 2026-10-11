@@ -9,6 +9,15 @@ All notable changes to copane are listed here. The format follows
 - Review & merge a worktree agent's work: right-click › Review & merge this agent (also in the palette, and offered when closing its tab) lists every file it changed since its branch split off, committed or not, with diffs. **m** commits its leftover edits and merges the branch into yours (conflicts get the usual conflict bar), then offers to remove the worktree, branch and tab; **d** discards it all. A worktree agent's tab shows how many files it changed.
 
 ### Fixed
+- The Markdown preview hung (using more and more memory) on an HTML `<img>` that isn't a local file, such as a README's centred logo or badge from a URL. A `%` in an image path (`50%.png`) crashed the app.
+- An internal error no longer closes the editor: it shows as a notice, unsaved changes are backed up and come back on the next start (Ctrl+Z drops them), and details go to `~/.local/state/copane/errors.log`. A rendering error offers Ctrl+R to draw the editor again with every file as it was.
+- Opening a binary or unreadable file from Source control, history, AI turns, search results or Ctrl+click showed nothing and could close the app; it's now a notice. The same for failing actions in menus and dialogs.
+- Saving no longer overwrites a change on disk the editor didn't know about (the file watcher can miss changes on WSL drives): Ctrl+S asks to overwrite or compare, and "Save all" lists what needs a decision. Keys typed during a save keep the file marked unsaved.
+- Files that aren't UTF-8 are no longer opened (saving used to corrupt their accented characters); a UTF-8 byte-order mark is kept; files with control characters (form feeds…) show a warning, and saving asks first. Project-wide replace skips files that aren't UTF-8.
+- Selecting more than 1 MB (Ctrl+A in a big file) then typing a bracket or cutting dropped everything past the first megabyte.
+- Formatting, renames and quick fixes are no longer applied to text that changed while the language server worked (they could garble it).
+- AI turn undo keeps CRLF line endings in CRLF checkouts, never deletes a staged file in a repo without commits, and waits until the turn has finished.
+- "Use disk" on a conflicted file that was deleted meanwhile keeps your version instead of closing the app. Merging a worktree agent stops its CLI first, so nothing it writes afterwards is lost.
 - A new agent "in a git worktree" failed with "branch already exists" after an earlier one's worktree was removed (its branch is kept): it now skips to the next free number.
 
 ### Changed

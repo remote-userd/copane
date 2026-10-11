@@ -6,7 +6,7 @@ import { indentGuides, indentUnit, matchBracket, wordOccurrences } from "./decor
 import { findConflicts } from "./conflicts"
 import { AiReviewBar } from "./AiReviewBar"
 import { setConflicts } from "../git/conflictActions"
-import { MergeConflictBar } from "./ConflictBar"
+import { ControlCharsBar, MergeConflictBar } from "./ConflictBar"
 import "./CodeEditorRenderable"
 import type { CodeEditorRenderable, LayerHighlight } from "./CodeEditorRenderable"
 import { useBuffers, useUi, useWorkspace } from "../app/workspace"
@@ -505,6 +505,7 @@ export function EditorPane() {
       <Tabs focused={paneFocused} />
       {active ? <Breadcrumbs reveal={(p) => ws.ui.set({ revealPath: p, focus: "tree", treeVisible: true })} /> : null}
       {active?.kind === "text" && (active.conflict || active.deleted) ? <ConflictBar buf={active} /> : null}
+      {active?.kind === "text" && active.sanitized ? <ControlCharsBar /> : null}
       {active?.kind === "text" ? <MergeConflictBar bufId={active.id} /> : null}
       {active?.kind === "text" ? <AiReviewBar path={active.path} /> : null}
       {ui.find && active?.kind === "text" ? <FindBar /> : null}

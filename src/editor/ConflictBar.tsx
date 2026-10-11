@@ -13,7 +13,12 @@ function resolve(ws: Workspace, buf: Buffer, how: "merge" | "disk" | "mine"): vo
   if (how === "merge") {
     if (ws.buffers.mergeConflict(buf.id)) ws.notify("Merged: your edits plus the change on disk (Ctrl+Z undoes)")
     else ws.notify("Both changed the same lines; compare and pick one", "warn")
-  } else if (how === "disk") void ws.buffers.reloadFromDisk(buf.id).then(() => ws.notify("Using the version on disk (Ctrl+Z brings yours back)"))
+  } else if (how === "disk") {
+    void ws.buffers
+      .reloadFromDisk(buf.id)
+      .then((r) => ws.notify(r === "gone" ? "The file is no longer on disk; your version is kept (Ctrl+S saves it)" : "Using the version on disk (Ctrl+Z brings yours back)", r === "gone" ? "warn" : "info"))
+      .catch((err: Error) => ws.notify(`Could not read the file: ${err.message}`, "error"))
+  }
   else {
     ws.buffers.keepLocal(buf.id)
     ws.notify("Keeping your version; saving will overwrite the file")
@@ -21,18 +26,29 @@ function resolve(ws: Workspace, buf: Buffer, how: "merge" | "disk" | "mine"): vo
 }
 
 const Btn = ({ label, onPress, strong }: { label: string; onPress: () => void; strong?: boolean }) => (
-  <HoverBox onPress={onPress} paddingX={1} bg={strong ? "#3b3415" : undefined} hoverBg="#4d4520">
+  <HoverBox onPress={onPress} paddingX={1} bg={strong ? colors.warnBarBg : undefined} hoverBg={colors.warnBarHoverBg}>
     <text selectable={false} fg={strong ? colors.warn : colors.text}>
       {label}
     </text>
   </HoverBox>
 )
 
+/** Above a file whose control characters were dropped when it was read: saving would lose them. */
+export function ControlCharsBar() {
+  return (
+    <box height={1} flexShrink={0} backgroundColor={colors.warnBarBg} paddingLeft={1} overflow="hidden">
+      <text selectable={false} fg={colors.warn}>
+        ⚠ This file has control characters (form feeds, escape codes…) the editor can't show; saving removes them.
+      </text>
+    </box>
+  )
+}
+
 export function ConflictBar({ buf }: { buf: Buffer }) {
   const ws = useWorkspace()
   if (!buf.conflict) {
     return (
-      <box height={1} flexShrink={0} backgroundColor="#3b3415" paddingLeft={1} overflow="hidden">
+      <box height={1} flexShrink={0} backgroundColor={colors.warnBarBg} paddingLeft={1} overflow="hidden">
         <text selectable={false} fg={colors.warn}>
           {buf.deleted ? "⚠ Not on disk. Ctrl+S creates it." : "⚠ Changed on disk."}
         </text>
@@ -42,7 +58,7 @@ export function ConflictBar({ buf }: { buf: Buffer }) {
   const canMerge = ws.buffers.mergePreview(buf.id) !== null
   return (
     // Wraps onto a second line in a narrow pane rather than hiding buttons.
-    <box flexDirection="row" flexWrap="wrap" flexShrink={0} backgroundColor="#2a2716">
+    <box flexDirection="row" flexWrap="wrap" flexShrink={0} backgroundColor={colors.mergeBarBg}>
       <box paddingLeft={1} paddingRight={1} flexShrink={0}>
         <text selectable={false} fg={colors.warn}>
           ⚠ Changed on disk
@@ -130,7 +146,7 @@ export function MergeConflictBar({ bufId }: { bufId: number }) {
   const list = useConflicts(bufId)
   if (!list.length) return null
   return (
-    <box flexDirection="row" flexWrap="wrap" flexShrink={0} backgroundColor="#2a2716">
+    <box flexDirection="row" flexWrap="wrap" flexShrink={0} backgroundColor={colors.mergeBarBg}>
       <box paddingLeft={1} paddingRight={1} flexShrink={0}>
         <text selectable={false} fg={colors.warn}>
           ⚠ {list.length} merge conflict{list.length === 1 ? "" : "s"}

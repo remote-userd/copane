@@ -1,4 +1,7 @@
 import type { CliRenderer } from "@opentui/core"
+import { appendFileSync, mkdirSync } from "node:fs"
+import { homedir } from "node:os"
+import { join } from "node:path"
 
 type Hook = () => void | Promise<void>
 
@@ -36,7 +39,7 @@ export function onShutdown(hook: Hook): () => void {
  * Run shutdown hooks, restore the terminal and exit. `after` runs once the terminal is back
  * to normal (used to start a new editor process); its result replaces the exit code.
  */
-export async function shutdown(exitCode = 0, after?: () => Promise<number | void>): Promise<never> {
+export async function shutdown(exitCode = 0, after?: () => Promise<number | void>, error?: unknown): Promise<never> {
   if (shuttingDown) return new Promise<never>(() => {})
   shuttingDown = true
   for (const hook of hooks.splice(0)) {
@@ -67,17 +70,65 @@ export async function shutdown(exitCode = 0, after?: () => Promise<number | void
       exitCode = 1
     }
   }
+  // Printed once the terminal is back to normal, so it stays readable.
+  if (error !== undefined) console.error(error)
   process.exit(exitCode)
+}
+
+/**
+ * What to do with an internal error (an exception or rejection nobody caught). The app sets one
+ * that backs up unsaved work and shows the error; without it (startup), an error quits.
+ */
+let internalErrorHandler: ((err: unknown) => void | Promise<void>) | null = null
+let crashSaver: (() => Promise<unknown>) | null = null
+export function setInternalErrorHandler(handler: typeof internalErrorHandler, saver: typeof crashSaver): void {
+  internalErrorHandler = handler
+  crashSaver = saver
+}
+
+/** Back up unsaved work (when the app has said how), never throwing. */
+export async function saveForCrash(): Promise<void> {
+  await crashSaver?.().catch(() => null)
+}
+
+const recentErrors: number[] = []
+/** Errors this close together mean something is stuck in a loop: stop instead of flooding. */
+const ERROR_BURST = 5
+const ERROR_WINDOW_MS = 10_000
+
+async function onInternalError(err: unknown): Promise<void> {
+  logError(err)
+  const now = Date.now()
+  recentErrors.push(now)
+  while (recentErrors.length && now - recentErrors[0]! > ERROR_WINDOW_MS) recentErrors.shift()
+  if (!internalErrorHandler || recentErrors.length >= ERROR_BURST) {
+    await saveForCrash()
+    return void shutdown(1, undefined, err)
+  }
+  try {
+    await internalErrorHandler(err)
+  } catch {
+    // the handler itself failed: nothing more to do than keep running
+  }
+}
+
+/** Append to ~/.local/state/copane/errors.log (for bug reports). Never throws. */
+function logError(err: unknown): void {
+  try {
+    const base = Bun.env.XDG_STATE_HOME || join(homedir(), ".local", "state")
+    const text = err instanceof Error ? (err.stack ?? err.message) : String(err)
+    // Synchronous: this may be the last thing the process does. Bun has no append API.
+    mkdirSync(join(base, "copane"), { recursive: true })
+    appendFileSync(join(base, "copane", "errors.log"), `${new Date().toISOString()} ${text}\n`)
+  } catch {
+    // no log, then
+  }
 }
 
 export function installSignalHandlers(): void {
   process.on("SIGINT", () => void shutdown(130))
   process.on("SIGTERM", () => void shutdown(143))
   process.on("SIGHUP", () => void shutdown(129))
-  process.on("uncaughtException", (err) => {
-    void shutdown(1).finally(() => console.error(err))
-  })
-  process.on("unhandledRejection", (err) => {
-    void shutdown(1).finally(() => console.error(err))
-  })
+  process.on("uncaughtException", (err) => void onInternalError(err))
+  process.on("unhandledRejection", (err) => void onInternalError(err))
 }

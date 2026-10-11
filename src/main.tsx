@@ -3,7 +3,8 @@ import { createCliRenderer } from "@opentui/core"
 import { createRoot, useTerminalDimensions } from "@opentui/react"
 import { App } from "./app/App"
 import { ErrorBoundary } from "./app/ErrorBoundary"
-import { installSignalHandlers, onShutdown, prepareTerminal, registerRenderer } from "./app/shutdown"
+import { installSignalHandlers, onShutdown, prepareTerminal, registerRenderer, setInternalErrorHandler } from "./app/shutdown"
+import { restoreRecovery, saveRecovery } from "./app/recovery"
 import { createWorkspace, WorkspaceContext } from "./app/workspace"
 import { loadConfig } from "./config/load"
 import { createClipboard } from "./app/clipboard"
@@ -25,7 +26,7 @@ import { keepBlames } from "./git/blame"
 import { LspManager } from "./lsp/LspManager"
 import { applyFileEdits } from "./lsp/lspActions"
 import { aiStatusSource, TerminalPane } from "./ai/TerminalPane"
-import { affectedOpenFiles, FileWatcher } from "./files/watcher"
+import { affectedOpenFiles, FileWatcher, type ChangeBatch as FsBatch } from "./files/watcher"
 import { TurnLog } from "./ai/turns"
 import { AiReview, reviewStatePath } from "./ai/review"
 import { windowFocus, windowFocused } from "./app/windowFocus"
@@ -95,6 +96,15 @@ const ws = createWorkspace(
   createClipboard({ osc52: (text) => renderer.copyToClipboardOSC52(text) }),
 )
 onShutdown(persistLayout(ws.ui))
+// An internal error shows up as a notice instead of killing the editor; unsaved work is backed up.
+setInternalErrorHandler(
+  async (err) => {
+    const n = await saveRecovery(ws)
+    const message = err instanceof Error ? err.message : String(err)
+    ws.notify(`Internal error: ${message}${n ? ` (unsaved changes backed up)` : ""}. Details in ~/.local/state/copane/errors.log`, "error")
+  },
+  () => saveRecovery(ws),
+)
 onShutdown(saveBeforeAi(ws))
 const tree = new TreeModel(ws.root)
 // Build the Ctrl+P index in the background once the first screen is up, so the picker opens instantly.
@@ -136,7 +146,13 @@ review.followGit(git) // committing a file accepts its AI changes
 onShutdown(review.persist(reviewFile, ws.root))
 ws.review = review
 
-const watcher = new FileWatcher(ws.root, async (batch) => {
+// One batch at a time: two reloads of the same file must not interleave. A failure is a notice.
+let batches = Promise.resolve()
+const onFsBatch = (batch: FsBatch) => {
+  batches = batches.then(() => handleFsBatch(batch)).catch((err: Error) => ws.notify(`Reloading changed files failed: ${err.message}`, "error"))
+  return batches
+}
+const handleFsBatch = async (batch: FsBatch) => {
   const open = ws.buffers.watchedPaths()
   const reloaded: string[] = []
   const handled = new Set<string>()
@@ -163,11 +179,17 @@ const watcher = new FileWatcher(ws.root, async (batch) => {
   }
   await tree.onFsChanges(batch.paths)
   git.refresh()
-}, undefined, tree.matcher) // the tree's matcher: each .gitignore is read once
+}
+const watcher = new FileWatcher(ws.root, onFsBatch, undefined, tree.matcher) // the tree's matcher: each .gitignore is read once
 void watcher.start().then(() => {
   if (watcher.limitHit) ws.notify(`Watching the first ${FileWatcher.MAX_DIRS} folders only; changes deeper in may not reload`, "warn")
 })
 onShutdown(() => watcher.stop())
+
+// Unsaved changes a crash backed up last time come back, as an undoable change.
+void restoreRecovery(ws).then((files) => {
+  if (files.length) ws.notify(`Restored unsaved changes from a crash: ${files.join(", ")} (Ctrl+Z drops them)`, "warn")
+})
 
 const restored = await takeRestoreState()
 if (restored) {

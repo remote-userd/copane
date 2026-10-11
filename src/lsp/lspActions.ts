@@ -92,9 +92,31 @@ export async function nextProblem(ws: Workspace): Promise<void> {
   ws.notify(describeDiagnostic(next), next.severity === 1 || next.severity === undefined ? "error" : "warn")
 }
 
-/** Apply LSP edits per file path (see applyToFiles). */
-export function applyFileEdits(ws: Workspace, files: Map<string, TextEdit[]>): Promise<number> {
-  return applyToFiles(ws, new Map([...files].filter(([, e]) => e.length).map(([path, edits]) => [path, (text: string) => applyTextEdits(text, edits)])))
+/** Open buffers' versions, taken before asking the server for edits (see applyFileEdits). */
+export function openVersions(ws: Workspace): Map<string, number> {
+  return new Map(ws.buffers.list().map((b) => [b.path, b.version]))
+}
+
+/**
+ * Apply LSP edits per file path (see applyToFiles). With `since` (versions from before the
+ * request), an open file that changed meanwhile is skipped: the edits' positions are for the
+ * old text and would garble the new one. Skipped files are reported.
+ */
+export async function applyFileEdits(ws: Workspace, files: Map<string, TextEdit[]>, since?: Map<string, number>): Promise<number> {
+  const stale: string[] = []
+  const apply = new Map<string, (text: string) => string>()
+  for (const [path, edits] of files) {
+    if (!edits.length) continue
+    const buf = ws.buffers.byPath(path)
+    const before = since?.get(path)
+    if (buf && before !== undefined && buf.version !== before) {
+      stale.push(buf.relPath)
+      continue
+    }
+    apply.set(path, (text: string) => applyTextEdits(text, edits))
+  }
+  if (stale.length) ws.notify(`Not changed, edited while the language server worked: ${stale.join(", ")} (try again)`, "warn")
+  return applyToFiles(ws, apply)
 }
 
 /** F2 in the editor: rename the symbol under the cursor everywhere it is used. */
@@ -113,10 +135,11 @@ export function renameSymbol(ws: Workspace): void {
       submit: async (newName) => {
         const name = newName.trim()
         if (!name || name === word) return null
+        const since = openVersions(ws)
         const files = await ws.lsp!.rename(h.buf.path, h.pos, name)
         if (typeof files === "string") return files
         ws.ui.set({ modal: null, focus: "editor" })
-        const n = await applyFileEdits(ws, files)
+        const n = await applyFileEdits(ws, files, since)
         ws.notify(`Renamed ${word} → ${name} in ${n} file${n === 1 ? "" : "s"} (open files: Ctrl+Z undoes)`)
         return null
       },
@@ -137,13 +160,21 @@ export async function formatDocument(ws: Workspace, { quiet = false } = {}): Pro
   if (how === "prettier") return notify("Prettier not found for this file", "warn")
   if (!ws.lsp?.hasServer(h.buf.path)) return notify("No language server or Prettier for this file", "warn")
   const lsp = ws.lsp
+  // The server's edits are for the text as sent now: read it before asking, not after.
+  const before = h.ed.plainText
   const edits = await lsp.format(h.buf.path)
   if (edits === null) return notify("This language server cannot format", "warn")
-  return formatWith(ws, notify, h, "", async (text) => applyTextEdits(text, edits))
+  return formatWith(ws, notify, h, "", async (text) => applyTextEdits(text, edits), before)
 }
 
-async function formatWith(ws: Workspace, notify: Workspace["notify"], h: NonNullable<ReturnType<typeof here>>, by: string, format: (text: string) => Promise<string>) {
-  const before = h.ed.plainText
+async function formatWith(
+  ws: Workspace,
+  notify: Workspace["notify"],
+  h: NonNullable<ReturnType<typeof here>>,
+  by: string,
+  format: (text: string) => Promise<string>,
+  before = h.ed.plainText,
+) {
   let after: string
   try {
     after = (await format(before)).replace(/\r\n/g, "\n")
@@ -189,10 +220,10 @@ function selectionRange(h: NonNullable<ReturnType<typeof here>>): Range {
 }
 
 /** Apply a code action: its edit, then its command (whose edits come back through workspace/applyEdit). */
-async function runCodeAction(ws: Workspace, path: string, action: CodeAction): Promise<void> {
+async function runCodeAction(ws: Workspace, path: string, action: CodeAction, since: Map<string, number>): Promise<void> {
   const lsp = ws.lsp!
   const resolved = await lsp.resolveCodeAction(path, action)
-  if (resolved.edit) await applyFileEdits(ws, lsp.editFiles(resolved.edit))
+  if (resolved.edit) await applyFileEdits(ws, lsp.editFiles(resolved.edit), since)
   // A bare Command has its name in `command`; a CodeAction has a Command object there.
   const command = typeof resolved.command === "string" ? { command: resolved.command, arguments: resolved.arguments } : resolved.command
   if (command) {
@@ -209,6 +240,8 @@ export async function quickFix(ws: Workspace): Promise<void> {
   const h = here(ws)
   if (!h) return ws.notify("No file open", "warn")
   if (!ws.lsp?.hasServer(h.buf.path)) return ws.notify("No language server for this file", "warn")
+  // The actions' edits are for the text as it is now: one picked after more typing is skipped.
+  const since = openVersions(ws)
   const actions = (await ws.lsp.codeActions(h.buf.path, selectionRange(h))).sort((a, b) => kindOrder(a) - kindOrder(b))
   const row = h.pos.line
   // A problem on this line can also go to the AI, even when the server has no fix for it.
@@ -227,7 +260,7 @@ export async function quickFix(ws: Workspace): Promise<void> {
           hint: a.isPreferred ? "★" : (a.kind?.split(".")[0] ?? ""),
           run: () => {
             ws.ui.set({ modal: null, focus: "editor" })
-            return runCodeAction(ws, h.buf.path, a)
+            return runCodeAction(ws, h.buf.path, a, since)
           },
         })),
         ...askAi,
@@ -242,7 +275,8 @@ export async function organizeImports(ws: Workspace): Promise<void> {
   if (!h) return ws.notify("No file open", "warn")
   if (!ws.lsp?.hasServer(h.buf.path)) return ws.notify("No language server for this file", "warn")
   const zero = { line: 0, character: 0 }
+  const since = openVersions(ws)
   const [action] = await ws.lsp.codeActions(h.buf.path, { start: zero, end: zero }, ["source.organizeImports"])
   if (!action) return ws.notify("Nothing to organize")
-  await runCodeAction(ws, h.buf.path, action)
+  await runCodeAction(ws, h.buf.path, action, since)
 }

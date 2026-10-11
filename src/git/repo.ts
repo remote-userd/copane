@@ -276,9 +276,12 @@ export class GitRepo {
     return head.ok ? head.out.trim() : null
   }
 
-  /** A file's content in a commit, or null when the commit doesn't have it. */
+  /**
+   * A file's content in a commit as a checkout would write it (line endings and filters applied,
+   * so a CRLF checkout gets CRLF back), or null when the commit doesn't have it.
+   */
   async showAt(sha: string, path: string): Promise<string | null> {
-    const r = await this.run(["show", `${sha}:${this.rel(path).split(sep).join("/")}`])
+    const r = await this.run(["cat-file", "--filters", `${sha}:${this.rel(path).split(sep).join("/")}`])
     return r.ok ? r.out : null
   }
 

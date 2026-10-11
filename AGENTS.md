@@ -36,6 +36,7 @@ Still on `node:`, because Bun has no API for them:
 - `mkdtemp`, `chmod`, `rename`, `rm` for temp folders and replacing the binary (`setup/`).
 - Synchronous reads where the caller is synchronous: the `.gitignore` read in `files/ignore.ts` (inside a sync matcher) and image sizes in `preview/MarkdownView.tsx` (during render).
 - `node:zlib` in `test/support/png.ts` (PNG needs zlib-wrapped data).
+- `appendFileSync` and `mkdirSync` in `app/shutdown.ts` (the error log: synchronous, it may be the last thing the process does).
 
 ## Terminal key gotchas
 
@@ -74,6 +75,7 @@ Main flows:
 - **A command:** add it to `commands.ts` with a `title` (the palette lists it automatically), and a key in `bindings.ts` if it needs one. Prefer VS Code's key; when a terminal can't send it, pick an Alt or Ctrl+Alt stand-in and add a row to the README's "Coming from VS Code" table.
 - **A key:** add a raw-bytes case to `test/keymap/keys.test.ts` proving the terminal sequence reaches the command.
 - **A setting:** add it to `src/config/schema.ts` with a default and a comment, and to the README's config example.
+- **Errors:** a UI action must never take the editor down (other files may be unsaved). Run menu and dialog actions through `safely()` (`app/safely.ts`), open files from lists with `openFile`/`openAt` (`app/navHistory.ts`, they turn failures into notices), and catch in fire-and-forget (`void …`) calls. Anything uncaught still ends as a notice with a backup of unsaved work (`app/recovery.ts`), but it is a bug.
 - **UI:** OpenTUI React elements (`<box>`, `<text>`, `<span>`, `<scrollbox>`, `<image>`, `<code>`). Colours come from `src/config/theme.ts`, never literals in components.
 
 ## Checking your work

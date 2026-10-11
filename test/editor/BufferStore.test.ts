@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { TextareaRenderable } from "@opentui/core"
 import { BufferStore } from "../../src/editor/BufferStore"
+import { DiskChangedError } from "../../src/editor/fileio"
 
 /** Just enough of TextareaRenderable for the store. */
 class FakeTextarea {
@@ -236,5 +237,61 @@ describe("highlighting", () => {
     await Bun.sleep(5)
     expect(seen).toEqual(["A", "B", "A2"])
     expect(store.active?.id).toBe(b.buf.id)
+  })
+
+  test("save refuses to overwrite a change on disk the watcher never reported; force overwrites", async () => {
+    const { buf, ta } = await openWithTextarea("a.ts", "v1\n")
+    ta.type("mine ")
+    store.onContentChange(buf.id)
+    await Bun.sleep(10) // a later mtime
+    await writeFile(join(dir, "a.ts"), "theirs\n") // no handleDiskChange: the watcher missed it
+    await expect(store.save(buf.id)).rejects.toBeInstanceOf(DiskChangedError)
+    expect(await readFile(join(dir, "a.ts"), "utf8")).toBe("theirs\n")
+    expect(buf.conflict).toBe(true) // now a conflict, with the bar
+    await expect(store.save(buf.id)).rejects.toBeInstanceOf(DiskChangedError) // still undecided
+    await store.save(buf.id, { force: true })
+    expect(await readFile(join(dir, "a.ts"), "utf8")).toBe("mine v1\n")
+    expect(buf.conflict).toBe(false)
+    expect(buf.dirty).toBe(false)
+  })
+
+  test("a touched file (same content, new mtime) saves normally", async () => {
+    const { buf, ta } = await openWithTextarea("a.ts", "v1\n")
+    ta.type("x")
+    store.onContentChange(buf.id)
+    await Bun.sleep(10)
+    await writeFile(join(dir, "a.ts"), "v1\n")
+    await store.save(buf.id)
+    expect(await readFile(join(dir, "a.ts"), "utf8")).toBe("xv1\n")
+  })
+
+  test("keys typed while a save is being written keep the buffer dirty", async () => {
+    const { buf, ta } = await openWithTextarea("a.ts", "v1\n")
+    ta.type("a")
+    store.onContentChange(buf.id)
+    // The text is read for the write; a key arrives right after, while the file is written.
+    let text = ta.plainText
+    let reads = 0
+    Object.defineProperty(ta, "plainText", {
+      get: () => {
+        const now = text
+        if (++reads === 1) text = "b" + text
+        return now
+      },
+      set: (v: string) => (text = v),
+    })
+    await store.save(buf.id)
+    expect(await readFile(join(dir, "a.ts"), "utf8")).toBe("av1\n")
+    expect(buf.dirty).toBe(true)
+  })
+
+  test("reload from disk of a deleted file keeps the text and flags it", async () => {
+    const { buf, ta } = await openWithTextarea("a.ts", "v1\n")
+    ta.type("mine ")
+    store.onContentChange(buf.id)
+    await rm(join(dir, "a.ts"))
+    expect(await store.reloadFromDisk(buf.id)).toBe("gone")
+    expect(ta.plainText).toBe("mine v1\n")
+    expect(buf.deleted).toBe(true)
   })
 })

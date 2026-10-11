@@ -15,7 +15,8 @@ import { completeNow } from "../lsp/CompletionPopup"
 import { parseGoto } from "../editor/search"
 import { deleteLine, duplicateLine, indent, moveLine, outdent, toggleLineComment, trimWhitespace } from "../editor/lineCommands"
 import { lineAt, type CodeEditorRenderable } from "../editor/CodeEditorRenderable"
-import { BinaryFileError } from "../editor/fileio"
+import { BinaryFileError, ControlCharsError, DiskChangedError } from "../editor/fileio"
+import type { Buffer } from "../editor/BufferStore"
 import { formatContextForAgent } from "../ai/sendToAgent"
 import { sendChangesForReview, sendProblems } from "../ai/askAi"
 import { acceptAiChangeAt, gotoAiChange, undoAiChangeAt, undoAiFile } from "../ai/review"
@@ -108,19 +109,78 @@ async function saveActive(ws: Workspace): Promise<void> {
     await ws.buffers.save(buf.id)
     ws.notify(`Saved ${buf.relPath}`)
   } catch (err) {
+    if (err instanceof DiskChangedError) return askOverwrite(ws, buf)
+    if (err instanceof ControlCharsError) return askDropControlChars(ws, buf)
     ws.notify(`Save failed: ${(err as Error).message}`, "error")
   }
 }
 
+/** The file changed on disk under unsaved edits: overwrite it, compare first, or leave it. */
+function askOverwrite(ws: Workspace, buf: Buffer): void {
+  ws.ui.set({
+    modal: {
+      kind: "confirm",
+      title: `${buf.relPath} changed on disk`,
+      body: "The file changed since you opened it (the AI, or another program). Saving now would replace that change with your version.",
+      options: [
+        {
+          key: "o",
+          label: "Overwrite it with my version",
+          run: async () => {
+            ws.ui.set({ modal: null })
+            await ws.buffers.save(buf.id, { force: true })
+            ws.notify(`Saved ${buf.relPath}`)
+          },
+        },
+        { key: "c", label: "Compare first", run: () => ws.ui.set({ modal: { kind: "diff", bufId: buf.id } }) },
+        { key: "escape", label: "Cancel", run: () => ws.ui.set({ modal: null }) },
+      ],
+    },
+  })
+}
+
+/** The file has characters the editor dropped (form feeds…): saving writes it without them. */
+function askDropControlChars(ws: Workspace, buf: Buffer): void {
+  ws.ui.set({
+    modal: {
+      kind: "confirm",
+      title: `Save ${buf.relPath}?`,
+      body: "This file has control characters (form feeds, escape codes…) the editor can't hold. Saving writes it without them.",
+      options: [
+        {
+          key: "s",
+          label: "Save without them",
+          run: async () => {
+            ws.ui.set({ modal: null })
+            await ws.buffers.save(buf.id, { force: true })
+            ws.notify(`Saved ${buf.relPath}`)
+          },
+        },
+        { key: "escape", label: "Cancel (keep the file as it is)", run: () => ws.ui.set({ modal: null }) },
+      ],
+    },
+  })
+}
+
+/** Save every dirty buffer. False (and a notice) when any failed or needs a decision first. */
 async function saveAll(ws: Workspace): Promise<boolean> {
+  const changedOnDisk: string[] = []
   for (const b of ws.buffers.list()) {
     if (!b.dirty) continue
     try {
       await ws.buffers.save(b.id)
     } catch (err) {
+      if (err instanceof DiskChangedError || err instanceof ControlCharsError) {
+        changedOnDisk.push(b.relPath)
+        continue
+      }
       ws.notify(`Save failed for ${b.relPath}: ${(err as Error).message}`, "error")
       return false
     }
+  }
+  if (changedOnDisk.length) {
+    ws.notify(`Not saved, needs a decision first (Ctrl+S in each): ${changedOnDisk.join(", ")}`, "warn")
+    return false
   }
   return true
 }
@@ -502,7 +562,7 @@ export const commands = {
     title: "Reload file from disk",
     run: async (ws) => {
       const b = ws.buffers.active
-      if (b) await ws.buffers.reloadFromDisk(b.id)
+      if (b && (await ws.buffers.reloadFromDisk(b.id)) === "gone") ws.notify("The file is no longer on disk; your version is kept", "warn")
     },
   },
   "buffer.keepLocal": {

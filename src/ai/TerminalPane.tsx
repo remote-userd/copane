@@ -441,7 +441,14 @@ export function TerminalPane({ config }: { config: AiConfig }) {
       closeActive: () => closeSession(ws, tabs.get().active),
       session: (id) => tabs.get().sessions.find((s) => s.id === id),
       activeId: () => tabs.get().active,
-      close: (id) => closeTab(id),
+      close: (id) => {
+        // The last tab can't go: start a fresh one in the project first.
+        if (tabs.get().sessions.length < 2) addSession({ name: basename(config.command), command: config.command, args: config.args, cwd: ws.root, branch: null })
+        closeTab(id)
+      },
+      stop: async (id) => {
+        await handles.get(id)?.proc()?.kill(1500)
+      },
       recount: (id) => void recount(ws, id),
     }
     return () => {

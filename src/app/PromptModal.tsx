@@ -31,6 +31,9 @@ export function PromptModal({ modal }: { modal: Prompt }) {
       const err = await modal.submit(input.current?.value ?? "")
       if (err) setError(err)
       else if (ws.ui.get().modal?.kind === "prompt") close()
+    } catch (err) {
+      // Shown in the dialog, which stays open: the action failed (a full disk, no permission…).
+      setError(err instanceof Error ? err.message : String(err))
     } finally {
       busy.current = false
     }

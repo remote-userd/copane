@@ -133,6 +133,16 @@ export class CodeEditorRenderable extends TextareaRenderable {
     return eb ? eb.lib.textBufferGetByteSize(eb.textBufferPtr) : new TextEncoder().encode(super.plainText).length
   }
 
+  /**
+   * The selected text, whole. OpenTUI's stops at 1 MB: Ctrl+A in a bigger file then typing "("
+   * (which wraps the selection) or Ctrl+X would cut the rest of the file.
+   */
+  override getSelectedText(): string {
+    const sel = this.native() ? this.getSelection() : null
+    if (!sel) return super.getSelectedText()
+    return this.textRange(Math.min(sel.start, sel.end), Math.max(sel.start, sel.end))
+  }
+
   /** Text between two buffer offsets (end may run past the end), sized like plainText. */
   private textRange(start: number, end: number): string {
     const eb = this.native()

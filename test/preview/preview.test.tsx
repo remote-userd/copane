@@ -159,6 +159,9 @@ test("localImagePath resolves relative paths and skips URLs", () => {
   expect(localImagePath("https://x.com/a.png", "/p/r.md")).toBeNull()
   expect(localImagePath("data:image/png;base64,AA", "/p/r.md")).toBeNull()
   expect(localImagePath("//cdn/a.png", "/p/r.md")).toBeNull()
+  // A stray % is not an escape: the path is used as written (decodeURI used to throw and crash).
+  expect(localImagePath("50%.png", "/p/r.md")).toBe("/p/50%.png")
+  expect(localImagePath("a%zz.png", "/p/r.md")).toBe("/p/a%zz.png")
 })
 
 test("imageCells keeps the aspect ratio, never enlarges, and fits the space", () => {

@@ -3,8 +3,17 @@ import { dirname, resolve } from "node:path"
 /** A local image's path, or null for remote URLs (never fetched) and data URIs. */
 export function localImagePath(href: string, mdPath: string): string | null {
   if (!href || /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith("//")) return null
-  const clean = decodeURI(href.split(/[?#]/)[0]!)
-  return resolve(dirname(mdPath), clean)
+  const raw = href.split(/[?#]/)[0]!
+  return resolve(dirname(mdPath), safeDecode(raw))
+}
+
+/** `my%20pic.png` → `my pic.png`; a stray `%` (`50%.png`) stays as written instead of throwing. */
+function safeDecode(path: string): string {
+  try {
+    return decodeURI(path)
+  } catch {
+    return path
+  }
 }
 
 /**

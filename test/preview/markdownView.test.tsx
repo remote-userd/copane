@@ -93,3 +93,22 @@ test("HTML tables render like Markdown tables, with alignment", async () => {
   expect(f).toMatch(/│ Keyboard │\s+49 │/)
   expect(f).not.toMatch(/<\/?(table|tr|td|th|b)\b/)
 })
+
+test("an image link with a stray % renders (it used to crash the app)", async () => {
+  const out = await render(`# Report\n\n![chart](50%.png)\n\n<img src="a%zz.png" alt="x">\n\nafter`)
+  expect(out).toContain("Report")
+  expect(out).toContain("after")
+})
+
+test("HTML images that aren't local files show as text (they used to hang the preview)", async () => {
+  const out = await render(
+    [
+      `<img src="missing.png" alt="missing">`,
+      `<p align="center"><img src="https://example.com/logo.png" alt="logo"></p>`,
+      `<div>\n<img src="https://example.com/badge.svg">\n</div>`,
+      `<details><summary>More</summary>\n\nhidden **text**\n\n<br>\n\n</details>`,
+      "end",
+    ].join("\n\n"),
+  )
+  for (const s of ["🖼 missing", "🖼 logo", "🖼 image", "▸ More", "hidden text", "end"]) expect(out).toContain(s)
+})

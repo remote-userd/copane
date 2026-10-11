@@ -95,6 +95,10 @@ export const ui = {
   reloadBg: "#1e3322",
   // Unreviewed AI edits: their gutter marker and the review bar
   aiEdit: claude.purple,
+  // Warning bars above a file (changed on disk, control characters) and their buttons
+  warnBarBg: "#3b3415",
+  warnBarHoverBg: "#4d4520",
+  mergeBarBg: "#2a2716",
   aiReviewBg: "#2a2340",
   findMatchBg: "#4a3a1a",
   findCurrentBg: "#7a5a12",

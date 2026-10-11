@@ -177,12 +177,14 @@ export class TurnLog {
   private async before(path: string, snap: Snapshot | null, hint: string | undefined): Promise<TurnFile> {
     const unknown = { path, before: null, known: false }
     const repo = this.repo()
-    if (repo && snap) {
-      if (snap.untracked.has(path)) {
-        const text = snap.untracked.get(path)!
-        return text === null ? unknown : { path, before: text, known: true }
-      }
-      const atStart = snap.sha ? await repo.showAt(snap.sha, path) : null
+    if (repo && snap?.untracked.has(path)) {
+      const text = snap.untracked.get(path)!
+      return text === null ? unknown : { path, before: text, known: true }
+    }
+    // Without a commit to compare with (a repo before its first commit), git can't say what a
+    // tracked file held: fall back as without git, so a staged file is never taken for a new one.
+    if (repo && snap?.sha) {
+      const atStart = await repo.showAt(snap.sha, path)
       if (atStart !== null) return atStart.includes("\0") ? unknown : { path, before: atStart, known: true }
       // Not tracked, not untracked: new in this turn, unless git ignores it (then we can't tell).
       if (await repo.isIgnored(path)) return hint !== undefined ? { path, before: hint, known: true } : unknown
