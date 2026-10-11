@@ -1,4 +1,4 @@
-import { isAbsolute, join, relative, sep } from "node:path"
+import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { GitRepo, parseEntries, type StatusEntry } from "../git/repo"
 
 /** One-letter git status shown in the tree. */
@@ -99,10 +99,13 @@ export class GitStatus {
 
   /** Find the repo and load the first status. Resolves even when there is no repo. */
   async start(pollMs = 2000): Promise<void> {
-    const info = await run(["git", "rev-parse", "--show-toplevel", "--git-dir"], this.root)
+    // --show-toplevel resolves symlinks (macOS /var is /private/var), so its paths would not match
+    // the ones the editor uses; the relative --show-cdup keeps the folder's own spelling.
+    const info = await run(["git", "rev-parse", "--show-cdup", "--git-dir"], this.root)
     if (info === null || this.stopped) return
-    const [top, gitDir] = info.trim().split("\n")
-    if (!top || !gitDir) return
+    const [cdup, gitDir] = info.split("\n")
+    if (cdup === undefined || !gitDir) return
+    const top = resolve(this.root, cdup)
     this.top = top
     this.repo = new GitRepo(top)
     this.gitDir = isAbsolute(gitDir) ? gitDir : join(this.root, gitDir)

@@ -33,7 +33,8 @@ test("missing command reports an error instead of throwing", () => {
   expect(statuses[0]).toEqual({ kind: "error", message: '"definitely-not-a-real-cli-xyz" not found in PATH' })
 })
 
-test("kill takes down background jobs in the CLI's session", async () => {
+// sessionMembers reads /proc.
+test.if(process.platform === "linux")("kill takes down background jobs in the CLI's session", async () => {
   const p = new AgentProcess({
     command: "/bin/sh",
     args: ["-c", "sleep 333 & sleep 334"],

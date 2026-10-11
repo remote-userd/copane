@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { writeFileSync } from "node:fs"
+import { symlinkSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { GitStatus, parsePorcelain } from "../../src/files/gitStatus"
 import { fixture } from "../helpers"
@@ -99,5 +99,19 @@ test("an unchanged status doesn't wake listeners; a real change or a git operati
   expect(changes).toBe(1)
   await gs.afterChange() // staging or committing from the editor: contents may differ
   expect(changes).toBe(2)
+  gs.stop()
+})
+
+test("GitStatus keeps the opened path's spelling when it goes through a symlink", async () => {
+  const real = await fixture({ "src/a.ts": "a" })
+  git(real, "init", "-q")
+  git(real, "add", ".")
+  git(real, "commit", "-qm", "init")
+  writeFileSync(join(real, "src/a.ts"), "changed")
+  const link = real + "-link"
+  symlinkSync(real, link)
+  const gs = new GitStatus(join(link, "src"))
+  await gs.start(50)
+  expect(gs.mark(join(link, "src/a.ts"))).toBe("M")
   gs.stop()
 })
