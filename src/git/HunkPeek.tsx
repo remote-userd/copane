@@ -1,39 +1,45 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import { HoverBox } from "../app/Modal"
 import { useUi, useWorkspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import type { CodeEditorRenderable } from "../editor/CodeEditorRenderable"
+import { acceptAiChangeAt, aiHunkContext, gotoAiChange, undoAiChangeAt, type AiHunkContext } from "../ai/review"
 import { gotoChange, hunkContext, revertHunkAt, stageHunk, type HunkContext } from "./hunkActions"
 
 const MAX_LINES = 12
+const noSubscribe = () => () => {}
 
 /**
- * Inline view of one change under its lines: what was removed (red) and added (green),
- * with Stage / Revert / Prev / Next. Keys: s, r, ↑, ↓, Esc. Other keys close it.
+ * Inline view of one change under its lines: what was removed (red) and added (green).
+ * A git change has Stage / Revert (s, r); an unreviewed AI edit has Accept / Undo (a, r), and
+ * accepting moves on to the next one. Both: ↑ ↓ step, Esc closes, other keys close it.
  */
 export function HunkPeek() {
   const ws = useWorkspace()
   const ui = useUi()
   const dims = useTerminalDimensions()
   const peek = ui.hunkPeek
-  const [ctx, setCtx] = useState<HunkContext | null>(null)
+  const ai = peek?.kind === "ai"
+  const [ctx, setCtx] = useState<HunkContext | AiHunkContext | null>(null)
   const close = () => ws.ui.set({ hunkPeek: null })
+  const reviewVersion = useSyncExternalStore(ws.review?.store.subscribe ?? noSubscribe, () => ws.review?.store.get().version ?? 0)
 
   useEffect(() => {
     let live = true
     if (!peek) return setCtx(null)
-    void hunkContext(ws, peek.row).then((c) => {
+    const load = ai ? Promise.resolve(aiHunkContext(ws, peek.row)) : hunkContext(ws, peek.row)
+    void load.then((c) => {
       if (!live) return
-      if (!c) {
-        ws.ui.set({ hunkPeek: null })
-        ws.notify("No change on this line")
-      } else setCtx(c)
+      if (c) return setCtx(c)
+      // An AI change can go away under the peek (accepted, edited): just close.
+      if (!ai) ws.notify("No change on this line")
+      if (ws.ui.get().hunkPeek === peek) ws.ui.set({ hunkPeek: null })
     })
     return () => {
       live = false
     }
-  }, [ws, peek?.bufId, peek?.row])
+  }, [ws, peek?.bufId, peek?.row, ai, ai ? reviewVersion : 0])
 
   // Close when the buffer changes, focus moves, or a dialog opens.
   useEffect(() => {
@@ -53,17 +59,41 @@ export function HunkPeek() {
     close()
   }
   const step = async (dir: 1 | -1) => {
+    if (ai) {
+      const at = await gotoAiChange(ws, dir)
+      ws.ui.set({ hunkPeek: at ? { ...at, kind: "ai" } : null })
+      return
+    }
     const row = await gotoChange(ws, dir)
     if (row !== null) ws.ui.set({ hunkPeek: { bufId: ws.buffers.active!.id, row } })
+  }
+  const accept = async () => {
+    if (!peek) return
+    const err = acceptAiChangeAt(ws, peek.row)
+    if (err) return ws.notify(err, "error")
+    // On to the next one, so a review is a run of a's.
+    const at = await gotoAiChange(ws, 1, true)
+    if (at) return ws.ui.set({ hunkPeek: { ...at, kind: "ai" } })
+    close()
+    ws.notify("All AI changes reviewed")
+  }
+  const undo = () => {
+    if (!peek) return
+    const err = undoAiChangeAt(ws, peek.row)
+    ws.notify(err ?? "Undid this AI change (Ctrl+Z brings it back)", err ? "error" : "info")
+    close()
   }
 
   useKeyboard((key) => {
     if (!peek || ui.modal) return
-    const handled = ["s", "r", "up", "down", "escape"].includes(key.name) && !key.ctrl
+    const keys = ai ? ["a", "r", "up", "down", "escape"] : ["s", "r", "up", "down", "escape"]
+    const handled = keys.includes(key.name) && !key.ctrl && !key.meta
     if (!handled) return close() // let the key reach the editor
     key.preventDefault()
     key.stopPropagation()
-    if (key.name === "s") void stage()
+    if (ai && key.name === "a") void accept()
+    else if (ai && key.name === "r") undo()
+    else if (key.name === "s") void stage()
     else if (key.name === "r") void revert()
     else if (key.name === "down") void step(1)
     else if (key.name === "up") void step(-1)
@@ -99,16 +129,16 @@ export function HunkPeek() {
       zIndex={130}
       backgroundColor={colors.panelBg}
       border={["top", "bottom"]}
-      borderColor={colors.accent}
+      borderColor={ai ? colors.aiEdit : colors.accent}
       flexDirection="column"
     >
       <box flexDirection="row" height={1} gap={1} paddingLeft={1}>
         <text selectable={false} fg={colors.headerFg}>
-          Change {idx} of {ctx.all.length}
+          {ai ? "AI change" : "Change"} {idx} of {ctx.all.length}
         </text>
         <box flexGrow={1} />
-        {btn("s Stage", () => void stage())}
-        {btn("r Revert", () => void revert())}
+        {ai ? btn("a Accept", () => void accept()) : btn("s Stage", () => void stage())}
+        {ai ? btn("r Undo", undo) : btn("r Revert", () => void revert())}
         {btn("↑", () => void step(-1))}
         {btn("↓", () => void step(1))}
         {btn("Esc", close)}

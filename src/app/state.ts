@@ -64,8 +64,8 @@ export interface UiState {
   find: { replace: boolean; active: boolean; seed: number; anchor: { row: number; col: number } } | null
   findQuery: string
   replaceWith: string
-  /** Inline diff of the change at a line (Alt+H or a click on a change marker). */
-  hunkPeek: { bufId: number; row: number } | null
+  /** Inline diff of the change at a line: a git change (Alt+H, a click on its marker) or an unreviewed AI edit (Alt+N). */
+  hunkPeek: { bufId: number; row: number; kind?: "git" | "ai" } | null
   /** A path the tree should reveal and select (set by breadcrumbs), consumed by the tree. */
   revealPath: string | null
   /** What the left pane shows: the file tree or project search. */

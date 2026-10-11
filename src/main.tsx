@@ -27,6 +27,7 @@ import { applyFileEdits } from "./lsp/lspActions"
 import { aiStatusSource, TerminalPane } from "./ai/TerminalPane"
 import { affectedOpenFiles, FileWatcher } from "./files/watcher"
 import { TurnLog } from "./ai/turns"
+import { AiReview } from "./ai/review"
 import { windowFocus, windowFocused } from "./app/windowFocus"
 import pkg from "../package.json"
 
@@ -126,6 +127,10 @@ if (warning) setTimeout(() => ws.notify(warning, "warn"), 100)
 // What the AI changes per prompt, for review and undo (Ctrl+Alt+Z).
 const turns = new TurnLog(ws.root, () => git.repo, async () => ((await git.repo?.status()) ?? []).filter((e) => e.untracked).map((e) => e.path))
 ws.turns = turns
+// Files the AI changed stay marked for review until accepted (Alt+N).
+const review = new AiReview(ws.buffers)
+review.watch(turns)
+ws.review = review
 
 const watcher = new FileWatcher(ws.root, async (batch) => {
   const open = ws.buffers.watchedPaths()

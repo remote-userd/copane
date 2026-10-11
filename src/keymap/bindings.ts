@@ -30,6 +30,9 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "ctrl+shift+f": "search.files",
     "ctrl+alt+d": "git.changes",
     "ctrl+alt+z": "ai.turns",
+    // Not in the AI pane: CLIs use Alt+letters there (Claude Code's Alt+P picks the model).
+    "alt+n": "ai.nextChange",
+    "alt+p": "ai.prevChange",
     "ctrl+alt+n": "ai.newAgent",
     "ctrl+alt+pagedown": "ai.nextAgent",
     "ctrl+alt+pageup": "ai.prevAgent",

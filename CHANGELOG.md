@@ -5,6 +5,9 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Review the AI's edits in the editor: lines it changed get a violet ┃ until reviewed, with a bar above the file and a count in the status bar. Alt+N jumps to the next change and shows what it replaced; **a** accepts it and moves on, **r** undoes it (one undo step), and past the last change Alt+N opens the next file. Accept file, Undo file and Accept all are on the bar and in the palette.
+
 ## [0.5.0] - 2026-10-11
 
 ### Added

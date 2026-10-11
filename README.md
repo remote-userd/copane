@@ -89,10 +89,11 @@ The editor is built around a loop: ask Claude, see what it changed, keep or undo
 1. **Give context.** Select lines, or nothing for the whole file, and press **Ctrl+L**. The AI prompt gets `@path#L10-20` plus the snippet. In the tree, right-click a file or folder and choose **Send to AI**.
 2. **Ask.** Ctrl+J moves you to the AI pane and back. Unsaved files are saved when you switch, so Claude reads what you see. Turn this off with `editor.saveBeforeAi: false`.
 3. **See what changed.** Files Claude edits reload automatically, and the changed lines flash. The line numbers mark lines that differ from the last commit: **▎** green added, yellow changed, and a red **▁** for deleted. The tree marks changed files.
-4. **Review everything.** **Ctrl+Alt+D** lists all changed files with a diff. **Enter** opens a file at the change, and **r** reverts it.
+4. **Review it in place.** Lines the AI changed get a violet **┃** until you've reviewed them, a bar above the file counts them, and the status bar shows how many files are left. **Alt+N** jumps to the next AI change and shows what it replaced: **a** accepts it and moves on, **r** undoes it (Ctrl+Z brings it back), **↑ ↓** step. Past the last change in a file, Alt+N opens the next file. The bar also has **Accept file**, **Undo file** and **Accept all**. Alt+P goes back.
+5. **Review everything.** **Ctrl+Alt+D** lists all changed files with a diff. **Enter** opens a file at the change, and **r** reverts it.
    - **Turn by turn (Ctrl+Alt+Z):** each prompt you send becomes a turn that lists the files the AI changed, with +/− counts and each change since before the turn. **u** undoes the whole turn (asking first if you've edited those files since), **x** one file, **r** one change. Files the AI created are removed. It works with any CLI, because it watches files, not the CLI.
-5. **Undo.** Ctrl+Z also undoes a reload, so you can step back through Claude's edit in the editor.
-6. **Edits on both sides.** When Claude changes a file you have unsaved edits in, a bar offers:
+6. **Undo.** Ctrl+Z also undoes a reload, so you can step back through Claude's edit in the editor.
+7. **Edits on both sides.** When Claude changes a file you have unsaved edits in, a bar offers:
    - **Merge both:** keeps your edits and Claude's. Only offered when they don't touch the same lines.
    - **Compare:** shows the two versions side by side as a diff.
    - **Use disk:** takes Claude's version.
@@ -272,6 +273,7 @@ Press **F1** for the command palette: every command, searchable, with its shortc
 | Ctrl+K F | Send errors and warnings to the AI ("fix these") |
 | Ctrl+K D | Send your git changes to the AI ("review these") |
 | Ctrl+Alt+Z | AI turns: review and undo what the AI changed, per prompt |
+| Alt+N / Alt+P | Next / previous unreviewed AI change, with what it replaced: **a** accept, **r** undo (from the editor or tree) |
 | Ctrl+Alt+N | New agent tab (another CLI, or one in its own git worktree) |
 | Ctrl+Alt+PageDown / PageUp | Next / previous agent tab |
 | Ctrl+Alt+W (in the AI pane) | Close the agent tab |

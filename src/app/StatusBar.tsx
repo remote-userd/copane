@@ -65,6 +65,7 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
   const dims = useTerminalDimensions()
   useSyncExternalStore(ws.lsp?.subscribe ?? none.subscribe, ws.lsp?.getSnapshot ?? none.getSnapshot)
   useSyncExternalStore(ws.git?.subscribe ?? none.subscribe, ws.git?.getSnapshot ?? none.getSnapshot)
+  useSyncExternalStore(ws.review?.store.subscribe ?? none.subscribe, () => ws.review?.store.get().version ?? 0)
   const multi = useMultiEditState()
   const blame = describeBlame(useLineBlame(ws))
   const buf = buffers.active
@@ -76,6 +77,9 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
     : ""
   const lspStatus = ws.lsp?.status() ?? ""
   const counts = ws.lsp?.counts() ?? { errors: 0, warnings: 0 }
+  // Files with AI edits not reviewed yet (Alt+N goes through them).
+  const reviewCount = ws.review?.files().length ?? 0
+  const reviewText = reviewCount ? `✦ ${reviewCount} to review` : ""
   const problemsText = lspStatus ? `${g.error} ${counts.errors} ${g.warning} ${counts.warnings}` : ""
   const ta = buf?.textarea
   // From the selection's offsets: copying the selected text just to count it is costly after select-all.
@@ -104,6 +108,7 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
     2 -
     seg(branchText) -
     seg(problemsText, 0) -
+    seg(reviewText, 0) -
     seg(pos, 0) -
     seg(lang, 0) -
     seg(eol, 0) -
@@ -126,6 +131,13 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
           <HoverBox onPress={() => void runCommand(ws, "lsp.problems")}>
             <text selectable={false} fg={counts.errors ? colors.error : counts.warnings ? colors.warn : colors.dim}>
               {problemsText}
+            </text>
+          </HoverBox>
+        ) : null}
+        {reviewText ? (
+          <HoverBox onPress={() => void runCommand(ws, "ai.nextChange")}>
+            <text selectable={false} fg={colors.aiEdit}>
+              {reviewText}
             </text>
           </HoverBox>
         ) : null}

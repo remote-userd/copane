@@ -93,6 +93,9 @@ export const ui = {
   gitMod: claude.amber,
   gitDel: claude.rose,
   reloadBg: "#1e3322",
+  // Unreviewed AI edits: their gutter marker and the review bar
+  aiEdit: claude.purple,
+  aiReviewBg: "#2a2340",
   findMatchBg: "#4a3a1a",
   findCurrentBg: "#7a5a12",
   // File-tree icons: the usual language colours, softened to sit on dark greys

@@ -4,6 +4,7 @@ import { changedLines, lineChanges } from "./changeMarkers"
 import { colToIndex, indexToCol } from "../lsp/positions"
 import { indentGuides, indentUnit, matchBracket, wordOccurrences } from "./decorations"
 import { findConflicts } from "./conflicts"
+import { AiReviewBar } from "./AiReviewBar"
 import { setConflicts } from "../git/conflictActions"
 import { MergeConflictBar } from "./ConflictBar"
 import "./CodeEditorRenderable"
@@ -154,8 +155,10 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
   const lineRef = useRef<LineNumberRenderable | null>(null)
   const gutterAnchor = useRef<number | null>(null)
 
-  // Line signs: git change markers after the number, diagnostics before it.
+  // Line signs: git change markers after the number (unreviewed AI edits take their place),
+  // diagnostics before it.
   const gitSigns = useRef(new Map<number, LineSign>())
+  const aiSigns = useRef(new Map<number, LineSign>())
   const diagSigns = useRef(new Map<number, LineSign>())
   const applySigns = useCallback(() => {
     const ln = lineRef.current
@@ -165,6 +168,7 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
     // Blank signs on line 0 keep the columns' width fixed, so text never shifts.
     const signs = new Map<number, LineSign>([[0, withDiag ? { before: " ", after: " " } : { after: " " }]])
     for (const [l, s] of gitSigns.current) signs.set(l, { ...signs.get(l), ...s })
+    for (const [l, s] of aiSigns.current) signs.set(l, { ...signs.get(l), ...s })
     for (const [l, s] of diagSigns.current) signs.set(l, { ...signs.get(l), ...s })
     ln.setLineSigns(signs)
   }, [ws, id])
@@ -189,6 +193,26 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
       }
       gitSigns.current = signs
       applySigns()
+    }, 150)
+  }, [ws, id, applySigns])
+
+  // Unreviewed AI edits (see ai/review.ts): a violet bar where the git marker would be.
+  const aiTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const refreshAiMarkers = useCallback(() => {
+    if (aiTimer.current) clearTimeout(aiTimer.current)
+    aiTimer.current = setTimeout(() => {
+      const path = ws.buffers.byId(id)?.path
+      const ta = editorRef.current
+      if (!path || !ta || ta.isDestroyed) return
+      const base = ws.review?.base(path)
+      const signs = new Map<number, LineSign>()
+      if (base !== undefined) {
+        for (const [line, change] of lineChanges(base, ta.plainText)) signs.set(line, { after: change === "del" ? "▁" : "┃", afterColor: colors.aiEdit })
+      }
+      if (signs.size || aiSigns.current.size) {
+        aiSigns.current = signs
+        applySigns()
+      }
     }, 150)
   }, [ws, id, applySigns])
 
@@ -332,7 +356,9 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
     // The text may arrive just after mount (pendingText); check again once it is in.
     const widthTimer = setTimeout(syncGutterWidth, 50)
     refreshMarkers()
+    refreshAiMarkers()
     refreshDiagnostics()
+    const offReview = ws.review?.store.subscribe(refreshAiMarkers)
     // Hidden tabs skip git and diagnostics updates (one AI edit can bring many) and catch up when shown.
     const offGit = ws.git?.subscribe(() => (activeRef.current ? refreshMarkers() : (stale.current = true)))
     const offLsp = ws.lsp?.subscribe(() => (activeRef.current ? refreshDiagnostics() : (stale.current = true)))
@@ -364,21 +390,24 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
       if (indentTimer.current) clearTimeout(indentTimer.current)
       offGit?.()
       offLsp?.()
+      offReview?.()
+      if (aiTimer.current) clearTimeout(aiTimer.current)
       offReload()
       timers.forEach(clearTimeout)
       if (markTimer.current) clearTimeout(markTimer.current)
       if (conflictCheck.current) clearTimeout(conflictCheck.current)
     }
-  }, [ws, id, refreshMarkers, refreshDiagnostics, syncGutterWidth, decorateCursor, drawIndentGuides, markConflicts])
+  }, [ws, id, refreshMarkers, refreshAiMarkers, refreshDiagnostics, syncGutterWidth, decorateCursor, drawIndentGuides, markConflicts])
 
   const onContent = useCallback(() => {
     ws.buffers.onContentChange(id)
     syncGutterWidth()
     refreshMarkers()
+    if (aiSigns.current.size || ws.review?.has(ws.buffers.byId(id)?.path ?? "")) refreshAiMarkers()
     drawIndentGuides()
     checkConflicts()
     decorateCursor()
-  }, [ws, id, refreshMarkers, syncGutterWidth, drawIndentGuides, decorateCursor, checkConflicts])
+  }, [ws, id, refreshMarkers, refreshAiMarkers, syncGutterWidth, drawIndentGuides, decorateCursor, checkConflicts])
   onContentRef.current = onContent
 
   useEffect(() => {
@@ -409,8 +438,8 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
         e.preventDefault()
         const line = ed.lineAtScreenY(e.y)
         // A click on a change marker (the column right after the number) opens that change.
-        if (e.x === ed.x - 2 && gitSigns.current.has(line)) {
-          ws.ui.set({ focus: "editor", hunkPeek: { bufId: id, row: line } })
+        if (e.x === ed.x - 2 && (aiSigns.current.has(line) || gitSigns.current.has(line))) {
+          ws.ui.set({ focus: "editor", hunkPeek: { bufId: id, row: line, kind: aiSigns.current.has(line) ? "ai" : "git" } })
           return
         }
         gutterAnchor.current = line
@@ -477,6 +506,7 @@ export function EditorPane() {
       {active ? <Breadcrumbs reveal={(p) => ws.ui.set({ revealPath: p, focus: "tree", treeVisible: true })} /> : null}
       {active?.kind === "text" && (active.conflict || active.deleted) ? <ConflictBar buf={active} /> : null}
       {active?.kind === "text" ? <MergeConflictBar bufId={active.id} /> : null}
+      {active?.kind === "text" ? <AiReviewBar path={active.path} /> : null}
       {ui.find && active?.kind === "text" ? <FindBar /> : null}
       {list.length === 0 ? (
         <box flexGrow={1} justifyContent="center" alignItems="center" flexDirection="column">

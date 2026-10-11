@@ -18,6 +18,7 @@ import { lineAt, type CodeEditorRenderable } from "../editor/CodeEditorRenderabl
 import { BinaryFileError } from "../editor/fileio"
 import { formatContextForAgent } from "../ai/sendToAgent"
 import { sendChangesForReview, sendProblems } from "../ai/askAi"
+import { acceptAiChangeAt, gotoAiChange, undoAiChangeAt, undoAiFile } from "../ai/review"
 import { decodeForBuffer } from "../editor/fileio"
 import { configPath } from "../config/load"
 import { importVSCodeSettings } from "../config/vscode"
@@ -551,8 +552,54 @@ export const commands = {
   "ai.turns": { title: "AI turns: review and undo what the AI changed", run: (ws) => ws.ui.set({ modal: { kind: "turns" } }) },
   "ai.fixProblems": { title: "AI: fix problems (this file's errors, else all open files')", run: (ws) => sendProblems(ws) },
   "ai.reviewChanges": { title: "AI: review my changes (the git diff)", run: sendChangesForReview },
+  "ai.nextChange": { title: "AI edits: next unreviewed change (accept / undo)", run: (ws) => void stepAiChange(ws, 1) },
+  "ai.prevChange": { title: "AI edits: previous unreviewed change", run: (ws) => void stepAiChange(ws, -1) },
+  "ai.acceptChange": {
+    title: "AI edits: accept the change at the cursor",
+    run: (ws) => {
+      const err = acceptAiChangeAt(ws, ws.buffers.active?.textarea?.logicalCursor.row ?? 0)
+      if (err) ws.notify(err, "warn")
+    },
+  },
+  "ai.undoChange": {
+    title: "AI edits: undo the change at the cursor",
+    run: (ws) => {
+      const err = undoAiChangeAt(ws, ws.buffers.active?.textarea?.logicalCursor.row ?? 0)
+      ws.notify(err ?? "Undid this AI change (Ctrl+Z brings it back)", err ? "warn" : "info")
+    },
+  },
+  "ai.acceptFile": {
+    title: "AI edits: accept all changes in this file",
+    run: (ws) => {
+      const buf = ws.buffers.active
+      if (!buf || !ws.review?.has(buf.path)) return ws.notify("No AI changes in this file", "warn")
+      ws.review.acceptFile(buf.path)
+      ws.notify(`Accepted the AI changes in ${buf.relPath}`)
+    },
+  },
+  "ai.undoFile": {
+    title: "AI edits: undo all changes in this file",
+    run: (ws) => {
+      const err = undoAiFile(ws)
+      ws.notify(err ?? "Undid the AI changes in this file (Ctrl+Z brings them back)", err ? "warn" : "info")
+    },
+  },
+  "ai.acceptAll": {
+    title: "AI edits: accept everything (all files)",
+    run: (ws) => {
+      if (!ws.review?.files().length) return ws.notify("No AI changes to review")
+      ws.review.acceptAll()
+      ws.notify("Accepted all AI changes")
+    },
+  },
 
 } satisfies Record<string, Command>
+
+/** Alt+N / Alt+P: go to the next AI change and open its peek. */
+async function stepAiChange(ws: Workspace, dir: 1 | -1): Promise<void> {
+  const at = await gotoAiChange(ws, dir)
+  if (at) ws.ui.set({ hunkPeek: { ...at, kind: "ai" } })
+}
 
 export type CommandId = keyof typeof commands
 

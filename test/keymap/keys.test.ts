@@ -39,10 +39,16 @@ const GLOBAL: [string, string, CommandId][] = [
   ["Ctrl+Alt+N (ESC Ctrl+N)", "\x1b\x0e", "ai.newAgent"],
   ["Ctrl+Alt+PageDown", "\x1b[6;7~", "ai.nextAgent"],
   ["Ctrl+Alt+PageUp", "\x1b[5;7~", "ai.prevAgent"],
+  ["Alt+N (ESC n)", "\x1bn", "ai.nextChange"],
+  ["Alt+P (ESC p)", "\x1bp", "ai.prevChange"],
 ]
 
 test.each(GLOBAL)("%s reaches its global command", (_name, bytes, command) => {
   expect(buildBindings().global.get(keyToString(parseKeypress(bytes)!))).toBe(command)
+})
+
+test("Alt+N / Alt+P stay with the CLI in the AI pane", () => {
+  for (const bytes of ["\x1bn", "\x1bp"]) expect(buildBindings().ai.get(keyToString(parseKeypress(bytes)!))).toBeUndefined()
 })
 
 test("Ctrl+Alt+W closes the agent tab, only from the AI pane", () => {

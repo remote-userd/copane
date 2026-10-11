@@ -85,6 +85,6 @@ Main flows:
 
 ## Direction: AI-first
 
-Most code in a copane session is written by the AI in the side pane. The editor's job is to give the AI context, show what it changed, and make reviewing, accepting and undoing that easy. Prefer features that serve that loop (reviewing changes, sending context, watching agents) over aids for typing code by hand (multi-cursor variants, folding, inlay hints and the like), which are not planned. Reading aids for reviewing AI output (syntax highlighting, Markdown preview) are in.
+Most code in a copane session is written by the AI in the side pane. The editor's job is to give the AI context, show what it changed, and make reviewing, accepting and undoing that easy. Prefer features that serve that loop (reviewing changes, sending context, watching agents) over aids for typing code by hand (multi-cursor variants, folding, inlay hints and the like), which are not planned. Reading aids for reviewing AI output (syntax highlighting, Markdown preview) are in. The pieces of that loop: `ai/turns.ts` records what each prompt changed, `ai/review.ts` keeps what is still unreviewed (gutter markers, Alt+N, accept / undo), `ai/askAi.ts` sends problems or diffs to the AI.
 
 Also not planned: a terminal panel under the editor (the AI pane runs shell commands with `!`), and a debugger.

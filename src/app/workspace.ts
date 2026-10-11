@@ -7,6 +7,7 @@ import { createClipboard, type Clipboard } from "./clipboard"
 import type { GitStatus } from "../files/gitStatus"
 import type { LspManager } from "../lsp/LspManager"
 import type { TurnLog } from "../ai/turns"
+import type { AiReview } from "../ai/review"
 
 export interface Workspace {
   root: string
@@ -23,6 +24,8 @@ export interface Workspace {
   lsp: LspManager | null
   /** What the AI changed per turn (prompt), for review and undo; null in tests. */
   turns: TurnLog | null
+  /** Unreviewed AI edits per file (gutter markers, Alt+N); null in tests. */
+  review: AiReview | null
   /** The AI pane's tabs (several agents), set by the pane once mounted. */
   agents: AgentTabs | null
 }
@@ -67,6 +70,7 @@ export function createWorkspace(
     git: null,
     lsp: null,
     turns: null,
+    review: null,
     agents: null,
     notify(text, kind = "info") {
       uiStore.set({ notice: { text, kind } })
