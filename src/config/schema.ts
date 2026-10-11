@@ -15,6 +15,10 @@ export const configSchema = z
          * (a notice and the terminal bell), "desktop" (also a system notification), or "off".
          */
         notify: z.enum(["bell", "desktop", "off"]).default("bell"),
+        /** More CLIs to open in AI pane tabs (Ctrl+Alt+N), besides `command`: e.g. [{ "name": "codex", "command": "codex" }]. */
+        agents: z
+          .array(z.object({ name: z.string().min(1), command: z.string().min(1), args: z.array(z.string()).default([]) }))
+          .default([]),
       })
       .prefault({}),
     editor: z

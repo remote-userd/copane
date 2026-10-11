@@ -197,6 +197,7 @@ const aiConfig = {
   args: config.ai.args,
   maxScrollbackBytes: config.ai.maxScrollbackBytes,
   notify: config.ai.notify,
+  agents: config.ai.agents,
 }
 
 createRoot(renderer).render(

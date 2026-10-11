@@ -30,6 +30,9 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "ctrl+shift+f": "search.files",
     "ctrl+alt+d": "git.changes",
     "ctrl+alt+z": "ai.turns",
+    "ctrl+alt+n": "ai.newAgent",
+    "ctrl+alt+pagedown": "ai.nextAgent",
+    "ctrl+alt+pageup": "ai.prevAgent",
     "ctrl+alt+g": "git.fileHistory",
     "ctrl+alt+b": "git.branches",
     "ctrl+alt+t": "buffer.reopenClosed",
@@ -125,6 +128,9 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "ctrl+alt+j": "view.toggleAi",
     "ctrl+alt+d": "git.changes",
     "ctrl+alt+z": "ai.turns",
+    "ctrl+alt+n": "ai.newAgent",
+    "ctrl+alt+pagedown": "ai.nextAgent",
+    "ctrl+alt+pageup": "ai.prevAgent",
   },
 }
 

@@ -23,6 +23,18 @@ export interface Workspace {
   lsp: LspManager | null
   /** What the AI changed per turn (prompt), for review and undo; null in tests. */
   turns: TurnLog | null
+  /** The AI pane's tabs (several agents), set by the pane once mounted. */
+  agents: AgentTabs | null
+}
+
+/** Controls the AI pane's agent tabs. */
+export interface AgentTabs {
+  /** Show the menu of agents to start (each also offered in its own git worktree). */
+  openMenu(x?: number, y?: number): void
+  /** Switch to the next (1) or previous (-1) tab. */
+  cycle(dir: 1 | -1): void
+  /** Close the visible tab (not the last one). */
+  closeActive(): void
 }
 
 export interface AiHandle {
@@ -55,6 +67,7 @@ export function createWorkspace(
     git: null,
     lsp: null,
     turns: null,
+    agents: null,
     notify(text, kind = "info") {
       uiStore.set({ notice: { text, kind } })
       if (noticeTimer) clearTimeout(noticeTimer)

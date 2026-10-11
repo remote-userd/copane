@@ -1,25 +1,54 @@
+import { basename, dirname, join } from "node:path"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useKeyboard, useRenderer } from "@opentui/react"
 import { EmbeddedTerminalRenderable, type BoxRenderable } from "@opentui/core"
-import { useUi, useWorkspace } from "../app/workspace"
+import { useUi, useWorkspace, type AiHandle, type Workspace } from "../app/workspace"
 import { onShutdown } from "../app/shutdown"
 import { Store } from "../app/store"
 import { ui as colors } from "../config/theme"
-import { PaneHeader } from "../app/PaneHeader"
+import { HoverBox } from "../app/Modal"
 import { AgentProcess, type AgentStatus } from "./AgentProcess"
 import { AgentWatch, desktopNotify, ringBell, type Attention } from "./alerts"
+
+export interface AgentChoice {
+  name: string
+  command: string
+  args: string[]
+}
 
 export interface AiConfig {
   command: string
   args: string[]
   maxScrollbackBytes: number
   notify?: "bell" | "desktop" | "off"
+  /** More CLIs offered for new tabs, besides `command`. */
+  agents?: AgentChoice[]
+}
+
+/** One AI pane tab: a CLI running in a folder (the project, or a git worktree of it). */
+export interface Session {
+  id: number
+  name: string
+  command: string
+  args: string[]
+  cwd: string
+  /** The worktree's branch, when the agent runs in its own git worktree. */
+  branch: string | null
+}
+
+interface SessionState {
+  status: string
+  /** When the CLI last printed something; "working" while that was recent. */
+  last: number
+  attention: Attention | null
 }
 
 const RIGHT = 2
 const DIM = "\x1b[2m"
 const YELLOW = "\x1b[33m"
 const RESET = "\x1b[0m"
+const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+const BUSY_MS = 800
 
 function describeStatus(cmd: string, s: AgentStatus): string {
   switch (s.kind) {
@@ -34,70 +63,96 @@ function describeStatus(cmd: string, s: AgentStatus): string {
   }
 }
 
-/** Store the status bar reads. */
-const aiStatusStore = new Store<{ text: string }>({ text: "" })
-/** When the CLI last printed something; "working" while that was recent. */
-const activity = { last: 0, wake: null as (() => void) | null }
-const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+/** The tabs, which is visible, and each one's state (the header and status bar read it). */
+const tabs = new Store<{ sessions: Session[]; active: number; state: Record<number, SessionState> }>({ sessions: [], active: 0, state: {} })
+const setState = (id: number, patch: Partial<SessionState>) => {
+  const t = tabs.get()
+  const prev = t.state[id] ?? { status: "", last: 0, attention: null }
+  tabs.set({ state: { ...t.state, [id]: { ...prev, ...patch } } })
+}
+/** Each tab's terminal, for copying its selection. */
+const terminals = new Map<number, EmbeddedTerminalRenderable>()
+/** Each tab's handle (send text to its CLI); ws.ai forwards to the visible one. */
+const handles = new Map<number, AiHandle & { proc: () => AgentProcess | null }>()
 
-function AiHeader({ command, focused, attention }: { command: string; focused: boolean; attention: Attention | null }) {
-  const status = useSyncExternalStore(aiStatusStore.subscribe, () => aiStatusStore.get().text)
+/** The status bar's AI segment: the visible tab's status. */
+export const aiStatusSource = {
+  subscribe: tabs.subscribe,
+  get: () => {
+    const t = tabs.get()
+    return t.state[t.active]?.status ?? ""
+  },
+}
+
+function tabLabel(s: Session): string {
+  return s.branch ? `${s.name} ⎇ ${s.branch}` : s.name
+}
+
+/** The header: a tab per agent (with its state), and + to start another. */
+function AiHeader({ focused, onNew }: { focused: boolean; onNew: (x: number, y: number) => void }) {
+  const t = useSyncExternalStore(tabs.subscribe, tabs.get)
   const [frame, setFrame] = useState(0)
+  const busy = (id: number) => Date.now() - (t.state[id]?.last ?? 0) < BUSY_MS
+  const anyBusy = t.sessions.some((s) => busy(s.id))
   // Tick only while output is flowing; idle panes cost nothing.
   useEffect(() => {
-    let t: ReturnType<typeof setInterval> | null = null
-    const start = () => {
-      if (t) return
-      t = setInterval(() => {
-        setFrame((f) => f + 1)
-        if (Date.now() - activity.last >= 800 && t) {
-          clearInterval(t)
-          t = null
-        }
-      }, 120)
-    }
-    activity.wake = start
-    return () => {
-      activity.wake = null
-      if (t) clearInterval(t)
-    }
-  }, [])
-  const busy = Date.now() - activity.last < 800
+    if (!anyBusy) return
+    const timer = setInterval(() => setFrame((f) => f + 1), 120)
+    return () => clearInterval(timer)
+  }, [anyBusy])
+  const one = t.sessions.length === 1
   return (
-    <PaneHeader title={command.split("/").pop()!.toUpperCase()} focused={focused}>
-      <text selectable={false} fg={busy || attention === "waiting" ? colors.warn : attention ? colors.ok : colors.headerFg}>
-        {busy
-          ? `${SPINNER[frame % SPINNER.length]} working`
-          : attention === "waiting"
-            ? "⚠ needs you"
-            : attention === "finished"
-              ? "✓ done"
-              : status.endsWith("●")
-                ? "● ready"
-                : status.replace(/^[^:]+:\s*/, "")}
-      </text>
-    </PaneHeader>
+    <box height={1} flexShrink={0} flexDirection="row" backgroundColor={colors.headerBg} paddingLeft={1} paddingRight={1} gap={1} overflow="hidden">
+      {t.sessions.map((s) => {
+        const st = t.state[s.id]
+        const active = s.id === t.active
+        const mark = busy(s.id)
+          ? SPINNER[frame % SPINNER.length]
+          : st?.attention === "waiting"
+            ? "⚠"
+            : st?.attention === "finished"
+              ? "✓"
+              : st?.status.endsWith("●")
+                ? "●"
+                : "○"
+        const markColor = busy(s.id) || st?.attention === "waiting" ? colors.warn : st?.attention ? colors.ok : colors.headerFg
+        const label = tabLabel(s).toUpperCase()
+        return (
+          <HoverBox key={s.id} onPress={() => tabs.set({ active: s.id })} bg={active && !one ? colors.segmentBg : undefined} paddingX={one ? 0 : 1}>
+            <text selectable={false} fg={active && focused ? colors.accent : colors.headerFg}>
+              {active && focused ? <strong>{label}</strong> : label}
+            </text>
+            <text selectable={false} fg={markColor}>
+              {" " + mark}
+            </text>
+          </HoverBox>
+        )
+      })}
+      <box flexGrow={1} />
+      <HoverBox onPress={() => onNew(-1, -1)}>
+        <text selectable={false} fg={colors.headerFg}>
+          {one ? "+ agent" : "+"}
+        </text>
+      </HoverBox>
+    </box>
   )
 }
-export const aiStatusSource = {
-  subscribe: aiStatusStore.subscribe,
-  get: () => aiStatusStore.get().text,
-}
 
-export function TerminalPane({ config }: { config: AiConfig }) {
+/** One tab: its terminal and CLI process. Hidden tabs keep running. */
+function AgentSession({ session, active, focused, config }: { session: Session; active: boolean; focused: boolean; config: AiConfig }) {
   const ws = useWorkspace()
-  const ui = useUi()
   const renderer = useRenderer()
   const boxRef = useRef<BoxRenderable | null>(null)
   const termRef = useRef<EmbeddedTerminalRenderable | null>(null)
   const procRef = useRef<AgentProcess | null>(null)
-  const focused = ui.focus === "ai" && !ui.modal
 
   useEffect(() => {
     const box = boxRef.current
     if (!box) return
+    const id = session.id
+    const name = session.name
     const term = new EmbeddedTerminalRenderable(renderer, {
-      id: "ai-terminal",
+      id: `ai-terminal-${id}`,
       // Width/height must be relative, otherwise they default to a fixed 80x24 grid.
       width: "100%",
       height: "100%",
@@ -126,24 +181,26 @@ export function TerminalPane({ config }: { config: AiConfig }) {
       if (!/trust\s+this\s+folder|do\s+you\s+trust/i.test(seen.replace(/\s+/g, " "))) return
       asked = true
       if (ws.ui.get().focus !== "ai" && !ws.ui.get().modal) {
+        tabs.set({ active: id })
         ws.ui.set({ focus: "ai", aiVisible: true })
         term.focus()
-        ws.notify(`${config.command} is asking a question in the AI pane`)
+        ws.notify(`${name} is asking a question in the AI pane`)
       }
     }
-    // Tell the user when the AI finishes or waits, unless they're watching its pane.
+    // Tell the user when the AI finishes or waits, unless they're watching this tab.
     let windowFocused = true
     const onFocus = () => (windowFocused = true)
     const onBlur = () => (windowFocused = false)
     renderer.on("focus", onFocus)
     renderer.on("blur", onBlur)
-    const name = config.command.split("/").pop()!
-    // Turns (what the AI changed per prompt): Enter starts one, the AI going quiet ends it.
+    // Turns (what the AI changed per prompt) follow agents working in the project itself; one
+    // in a worktree edits another folder.
+    const turns = session.cwd === ws.root ? ws.turns : null
     let prompt = ""
     let turnStart = 0
     const submitted = () => {
       turnStart = Date.now()
-      void ws.turns?.begin(prompt)
+      void turns?.begin(prompt)
       prompt = ""
     }
     /** Follow what goes into the prompt: typed text, pastes, Backspace; Enter submits. */
@@ -161,12 +218,14 @@ export function TerminalPane({ config }: { config: AiConfig }) {
     const watch = new AgentWatch((what) => {
       // A turn ends when the AI goes quiet (not while it waits on a question). The first moments
       // after Enter don't count: the CLI may not have started answering yet.
-      if (what !== "waiting" && Date.now() - turnStart > 3000) void ws.turns?.end()
+      if (what !== "waiting" && Date.now() - turnStart > 3000) void turns?.end()
       if (what === "idle") return
       const ui = ws.ui.get()
       const how = config.notify ?? "bell"
-      if (how === "off" || (ui.focus === "ai" && ui.aiVisible && !ui.modal && windowFocused)) return
+      const watching = tabs.get().active === id && ui.focus === "ai" && ui.aiVisible && !ui.modal && windowFocused
+      if (how === "off" || watching) return
       const text = what === "waiting" ? `${name} is waiting for your answer` : `${name} finished`
+      setState(id, { attention: what })
       ws.ui.set({ aiAttention: what })
       ws.notify(`${text} (Ctrl+J to look)`, what === "waiting" ? "warn" : "info")
       ringBell()
@@ -175,27 +234,22 @@ export function TerminalPane({ config }: { config: AiConfig }) {
     const ticker = setInterval(() => watch.tick(), 500)
     ticker.unref?.()
     const proc = new AgentProcess({
-      command: config.command,
-      args: config.args,
-      cwd: ws.root,
+      command: session.command,
+      args: session.args,
+      cwd: session.cwd,
       onOutput: (data) => {
         term.write(data)
-        activity.last = Date.now()
-        activity.wake?.()
+        setState(id, { last: Date.now() })
         watchForQuestion(data)
         watch.output(data)
       },
       onStatus: (s) => {
         // The command's name, not its path: the status bar has little room.
-        aiStatusStore.set({ text: describeStatus(name, s) })
+        setState(id, { status: describeStatus(name, s) })
         if (s.kind === "exited") {
-          term.write(
-            `\r\n${YELLOW}[${config.command} exited${s.code !== null ? ` with code ${s.code}` : ""}. Press Enter to restart.]${RESET}\r\n`,
-          )
+          term.write(`\r\n${YELLOW}[${name} exited${s.code !== null ? ` with code ${s.code}` : ""}. Press Enter to restart.]${RESET}\r\n`)
         } else if (s.kind === "error") {
-          term.write(
-            `\r\n${YELLOW}${s.message}.${RESET}\r\n${DIM}Install it, or set ai.command (F1 › Open settings).\r\nPress Enter to retry.${RESET}\r\n`,
-          )
+          term.write(`\r\n${YELLOW}${s.message}.${RESET}\r\n${DIM}Install it, or set ai.command (F1 › Open settings).\r\nPress Enter to retry.${RESET}\r\n`)
         }
       },
     })
@@ -209,6 +263,7 @@ export function TerminalPane({ config }: { config: AiConfig }) {
     box.add(term)
     termRef.current = term
     procRef.current = proc
+    terminals.set(id, term)
 
     // The emulator may resize before the child exists (that resize is dropped),
     // so always push the current layout size right after starting.
@@ -221,13 +276,7 @@ export function TerminalPane({ config }: { config: AiConfig }) {
     // Start after the first layout so the PTY gets the real size.
     const startTimer = setTimeout(startProc, 50)
 
-    const restart = () => {
-      if (proc.status.kind === "running") return
-      term.write("\x1bc") // reset the emulator screen
-      startProc()
-    }
-
-    ws.ai = {
+    handles.set(id, {
       paste(text) {
         const bytes = term.encodePaste(new TextEncoder().encode(text))
         if (bytes.length) proc.write(bytes)
@@ -245,11 +294,16 @@ export function TerminalPane({ config }: { config: AiConfig }) {
       focus() {
         term.focus()
       },
-      restart,
+      restart() {
+        if (proc.status.kind === "running") return
+        term.write("\x1bc") // reset the emulator screen
+        startProc()
+      },
       kill() {
         void proc.kill()
       },
-    }
+      proc: () => procRef.current,
+    })
     const offShutdown = onShutdown(() => proc.kill(500))
 
     return () => {
@@ -258,27 +312,91 @@ export function TerminalPane({ config }: { config: AiConfig }) {
       renderer.off("focus", onFocus)
       renderer.off("blur", onBlur)
       offShutdown()
-      ws.ai = null
+      handles.delete(id)
+      terminals.delete(id)
       void proc.kill(500)
       term.destroy()
       termRef.current = null
       procRef.current = null
     }
-  }, [renderer, ws, config.command, config.args, config.maxScrollbackBytes, config.notify])
+  }, [renderer, ws, session, config.maxScrollbackBytes, config.notify])
 
-  // Mirror app focus onto the emulator so keys flow to the CLI only when the pane is focused.
+  // Mirror app focus onto the emulator so keys flow to the CLI only when its tab is shown and focused.
   useEffect(() => {
     const term = termRef.current
     if (!term) return
-    if (focused) term.focus()
+    if (active && focused) term.focus()
     else term.blur()
-    // Looking at the pane is seeing the news.
-    if (focused && ws.ui.get().aiAttention) ws.ui.set({ aiAttention: null })
-  }, [focused, ws])
+    // Looking at the tab is seeing the news.
+    if (active && focused) {
+      if (tabs.get().state[session.id]?.attention) setState(session.id, { attention: null })
+      if (ws.ui.get().aiAttention) ws.ui.set({ aiAttention: null })
+    }
+  }, [active, focused, ws, session.id])
 
-  const openAiMenu = (x: number, y: number) => {
-    const term = termRef.current
-    const selected = term?.hasSelection() ? term.getSelectedText() : ""
+  return <box ref={boxRef} flexGrow={1} flexDirection="column" visible={active} />
+}
+
+/** Where a new worktree for `name` goes: beside the project, e.g. ../app-codex-2. */
+export function worktreeFor(root: string, name: string, n: number): { path: string; branch: string } {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "agent"
+  return { path: join(dirname(root), `${basename(root)}-${slug}-${n}`), branch: `copane/${slug}-${n}` }
+}
+
+/** The AI pane: one tab per agent CLI. ws.ai always points at the visible tab. */
+export function TerminalPane({ config }: { config: AiConfig }) {
+  const ws = useWorkspace()
+  const ui = useUi()
+  const t = useSyncExternalStore(tabs.subscribe, tabs.get)
+  const focused = ui.focus === "ai" && !ui.modal
+  const nextId = useRef(2)
+
+  // The first tab: ai.command in the project.
+  useEffect(() => {
+    const name = basename(config.command)
+    tabs.set({ sessions: [{ id: 1, name, command: config.command, args: config.args, cwd: ws.root, branch: null }], active: 1, state: {} })
+  }, [ws, config.command, config.args])
+
+  useEffect(() => {
+    const active = () => handles.get(tabs.get().active)
+    ws.ai = {
+      paste: (text) => active()?.paste(text),
+      type: (text) => active()?.type(text),
+      submit: () => active()?.submit(),
+      focus: () => active()?.focus(),
+      restart: () => active()?.restart(),
+      kill: () => {
+        for (const h of handles.values()) h.kill()
+      },
+    }
+    ws.agents = {
+      openMenu: (x, y) => openAgentMenu(ws, config, x, y, (s) => addSession(s)),
+      cycle(dir) {
+        const { sessions, active } = tabs.get()
+        if (sessions.length < 2) return
+        const i = sessions.findIndex((s) => s.id === active)
+        tabs.set({ active: sessions[(i + dir + sessions.length) % sessions.length]!.id })
+        ws.ui.set({ focus: "ai", aiVisible: true })
+      },
+      closeActive: () => closeSession(ws, tabs.get().active),
+    }
+    return () => {
+      ws.ai = null
+      ws.agents = null
+    }
+  }, [ws, config])
+
+  const addSession = (s: Omit<Session, "id">) => {
+    const id = nextId.current++
+    // A second tab of the same CLI gets a number: "claude 2".
+    const same = tabs.get().sessions.filter((o) => o.name === s.name || o.name.startsWith(`${s.name} `)).length
+    const name = same ? `${s.name} ${same + 1}` : s.name
+    tabs.set({ sessions: [...tabs.get().sessions, { ...s, name, id }], active: id })
+    ws.ui.set({ focus: "ai", aiVisible: true })
+  }
+
+  const openAiMenu = (x: number, y: number, selectedText: string) => {
+    const h = handles.get(tabs.get().active)
     ws.ui.set({
       modal: {
         kind: "menu",
@@ -287,10 +405,10 @@ export function TerminalPane({ config }: { config: AiConfig }) {
         items: [
           {
             label: "Copy",
-            disabled: !selected,
+            disabled: !selectedText,
             run: async () => {
-              await ws.clipboard.copy(selected)
-              ws.notify(`Copied ${selected.length} chars`)
+              await ws.clipboard.copy(selectedText)
+              ws.notify(`Copied ${selectedText.length} chars`)
             },
           },
           {
@@ -302,16 +420,17 @@ export function TerminalPane({ config }: { config: AiConfig }) {
               ws.ai?.focus()
             },
           },
-          { label: "Restart " + config.command, disabled: procRef.current?.status.kind === "running", run: () => ws.ai?.restart() },
+          { label: "Restart", disabled: h?.proc()?.status.kind === "running", run: () => ws.ai?.restart() },
+          { label: "New agent tab…", hint: "Ctrl+Alt+N", run: () => ws.agents?.openMenu(x, y) },
+          { label: "Close this agent", disabled: tabs.get().sessions.length < 2, run: () => ws.agents?.closeActive() },
         ],
       },
     })
   }
-
   // Enter restarts a dead process.
   useKeyboard((key) => {
     if (!focused || key.name !== "return") return
-    const proc = procRef.current
+    const proc = handles.get(tabs.get().active)?.proc()
     if (proc && proc.status.kind !== "running") {
       key.preventDefault()
       key.stopPropagation()
@@ -326,21 +445,101 @@ export function TerminalPane({ config }: { config: AiConfig }) {
       onMouseDown={(e) => {
         if (e.button === RIGHT) {
           e.stopPropagation()
-          openAiMenu(e.x, e.y)
+          openAiMenu(e.x, e.y, terminalSelection(t.active))
           return
         }
         if (ws.ui.get().focus !== "ai") ws.ui.set({ focus: "ai" })
       }}
       // Ctrl+C belongs to the CLI, so mouse selections are copied on release instead.
       onMouseUp={() => {
-        const term = termRef.current
-        if (!term?.hasSelection()) return
-        const text = term.getSelectedText()
-        if (text) void ws.clipboard.copy(text).then(() => ws.notify(`Copied ${text.length} chars from ${config.command}`))
+        const text = terminalSelection(t.active)
+        if (text) void ws.clipboard.copy(text).then(() => ws.notify(`Copied ${text.length} chars`))
       }}
     >
-      <AiHeader command={config.command} focused={focused} attention={ui.aiAttention} />
-      <box ref={boxRef} flexGrow={1} flexDirection="column" />
+      <AiHeader focused={focused} onNew={() => ws.agents?.openMenu()} />
+      {t.sessions.map((s) => (
+        <AgentSession key={s.id} session={s} active={s.id === t.active} focused={focused} config={config} />
+      ))}
     </box>
   )
+}
+
+/** The selected text in a tab's terminal. */
+function terminalSelection(id: number): string {
+  const term = terminals.get(id)
+  return term?.hasSelection() ? term.getSelectedText() : ""
+}
+
+/** The menu of agents to start: each configured CLI, in the project or in a new git worktree. */
+function openAgentMenu(ws: Workspace, config: AiConfig, x: number | undefined, y: number | undefined, add: (s: Omit<Session, "id">) => void): void {
+  const choices: AgentChoice[] = [{ name: basename(config.command), command: config.command, args: config.args }, ...(config.agents ?? [])]
+  const repo = ws.git?.repo ?? null
+  const count = (name: string) => tabs.get().sessions.filter((s) => s.name === name || s.name.startsWith(`${name} `)).length
+  const inWorktree = async (c: AgentChoice) => {
+    if (!repo) return
+    let n = count(c.name) + 1
+    let wt = worktreeFor(ws.root, c.name, n)
+    while (await Bun.file(join(wt.path, ".git")).exists()) wt = worktreeFor(ws.root, c.name, ++n)
+    ws.notify(`Creating worktree ${wt.path}…`)
+    const err = await repo.addWorktree(wt.path, wt.branch)
+    if (err) return ws.notify(`Could not create the worktree: ${err}`, "error")
+    add({ name: c.name, command: c.command, args: c.args, cwd: wt.path, branch: wt.branch })
+    ws.notify(`${c.name} works in ${wt.path} on branch ${wt.branch}`)
+  }
+  ws.ui.set({
+    modal: {
+      kind: "menu",
+      // From a key: under the AI pane's header, at the right of the screen.
+      x: x !== undefined && x >= 0 ? x : Math.max(2, (process.stdout.columns || 80) - 46),
+      y: y !== undefined && y >= 0 ? y : 1,
+      items: choices.flatMap((c) => [
+        { label: `New ${c.name}`, run: () => add({ name: c.name, command: c.command, args: c.args, cwd: ws.root, branch: null }) },
+        { label: `New ${c.name} in a git worktree`, disabled: !repo, run: () => void inWorktree(c) },
+      ]),
+    },
+  })
+}
+
+/** Close a tab (not the last). A worktree tab offers to remove its worktree; the branch stays. */
+function closeSession(ws: Workspace, id: number): void {
+  const { sessions, active } = tabs.get()
+  if (sessions.length < 2) return ws.notify("This is the only agent; restart it instead (right-click › Restart)")
+  const session = sessions.find((s) => s.id === id)
+  if (!session) return
+  const close = () => {
+    handles.get(id)?.kill()
+    const rest = tabs.get().sessions.filter((s) => s.id !== id)
+    const i = sessions.findIndex((s) => s.id === id)
+    tabs.set({ sessions: rest, active: active === id ? rest[Math.max(0, i - 1)]!.id : active })
+  }
+  if (!session.branch) return close()
+  const repo = ws.git?.repo
+  ws.ui.set({
+    modal: {
+      kind: "confirm",
+      title: `Close ${tabLabel(session)}`,
+      body: `It works in ${session.cwd}. Remove that worktree? Its branch ${session.branch} stays, with any commits.`,
+      options: [
+        {
+          key: "r",
+          label: "Remove worktree",
+          run: async () => {
+            ws.ui.set({ modal: null })
+            close()
+            const err = await repo?.removeWorktree(session.cwd)
+            ws.notify(err ? `Worktree kept: ${err}` : `Removed ${session.cwd} (branch ${session.branch} kept)`, err ? "warn" : "info")
+          },
+        },
+        {
+          key: "k",
+          label: "Keep worktree",
+          run: () => {
+            ws.ui.set({ modal: null })
+            close()
+          },
+        },
+        { key: "escape", label: "Cancel", run: () => ws.ui.set({ modal: null }) },
+      ],
+    },
+  })
 }

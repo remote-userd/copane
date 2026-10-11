@@ -71,3 +71,5 @@ Run in a real terminal, in plain mode and inside tmux.
 61. Change a tracked file and add a new one, then press Ctrl+K D (or `v` in Source control): the prompt gets "Review these changes…", the diff, and "New files: @…", not submitted.
 62. Ask Claude to change two files (one new). When it's done, Ctrl+Alt+Z shows the turn with your prompt, both files (A for the new one) and the changes. `r` on a change reverts just it; `u` restores both files and deletes the new one; open tabs reload and Ctrl+Z brings the AI's version back.
 63. Edit one of the turn's files yourself, then `u` in Ctrl+Alt+Z: it warns that the file changed since and asks before undoing.
+64. Ctrl+Alt+N, "New claude": a second tab starts. Ask each tab something different; switch with Ctrl+Alt+PageDown: both keep their sessions, the hidden one's tab shows a spinner while it works and ✓ when done. Ctrl+L sends to the visible tab.
+65. Ctrl+Alt+N, "New claude in a git worktree": a worktree appears beside the project (`git worktree list`) on branch copane/claude-1, and the tab shows the branch. Right-click › Close this agent › Remove worktree: the folder goes, the branch stays.

@@ -36,6 +36,9 @@ const GLOBAL: [string, string, CommandId][] = [
   ["Ctrl+Shift+O (sent as Ctrl+O)", "\x0f", "file.symbolInFile"],
   ["Alt+Shift+V (ESC V)", "\x1bV", "markdown.openPreview"],
   ["Ctrl+Alt+Z (ESC Ctrl+Z)", "\x1b\x1a", "ai.turns"],
+  ["Ctrl+Alt+N (ESC Ctrl+N)", "\x1b\x0e", "ai.newAgent"],
+  ["Ctrl+Alt+PageDown", "\x1b[6;7~", "ai.nextAgent"],
+  ["Ctrl+Alt+PageUp", "\x1b[5;7~", "ai.prevAgent"],
 ]
 
 test.each(GLOBAL)("%s reaches its global command", (_name, bytes, command) => {

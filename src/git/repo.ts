@@ -272,6 +272,18 @@ export class GitRepo {
     return (await this.run(["check-ignore", "-q", "--", this.rel(path)])).ok
   }
 
+  /** A new worktree at `path` on a new branch from HEAD, for an agent to work in on its own. */
+  async addWorktree(path: string, branch: string): Promise<string | null> {
+    const r = await this.run(["worktree", "add", "-b", branch, path, "HEAD"])
+    return r.ok ? null : firstError(r.err)
+  }
+
+  /** Remove a worktree (its branch stays). Refuses when it has uncommitted changes unless `force`. */
+  async removeWorktree(path: string, force = false): Promise<string | null> {
+    const r = await this.run(["worktree", "remove", ...(force ? ["--force"] : []), path])
+    return r.ok ? null : firstError(r.err)
+  }
+
   /** The staged changes, for the AI commit message. */
   async stagedDiff(maxBytes = 60_000): Promise<string> {
     const r = await this.run(["diff", "--cached", "--no-color", "--no-ext-diff"])
