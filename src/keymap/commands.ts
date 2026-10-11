@@ -17,6 +17,7 @@ import { deleteLine, duplicateLine, indent, moveLine, outdent, toggleLineComment
 import { lineAt, type CodeEditorRenderable } from "../editor/CodeEditorRenderable"
 import { BinaryFileError } from "../editor/fileio"
 import { formatContextForAgent } from "../ai/sendToAgent"
+import { sendChangesForReview, sendProblems } from "../ai/askAi"
 import { decodeForBuffer } from "../editor/fileio"
 import { configPath } from "../config/load"
 import { importVSCodeSettings } from "../config/vscode"
@@ -539,6 +540,8 @@ export const commands = {
   "ai.explain": { title: "AI: explain this code", run: (ws) => sendContext(ws, AI_ASK.explain) },
   "ai.fix": { title: "AI: find and fix bugs here", run: (ws) => sendContext(ws, AI_ASK.fix) },
   "ai.tests": { title: "AI: write tests for this", run: (ws) => sendContext(ws, AI_ASK.tests) },
+  "ai.fixProblems": { title: "AI: fix problems (this file's errors, else all open files')", run: (ws) => sendProblems(ws) },
+  "ai.reviewChanges": { title: "AI: review my changes (the git diff)", run: sendChangesForReview },
 
 } satisfies Record<string, Command>
 

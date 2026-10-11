@@ -51,6 +51,8 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "ctrl+k z": "view.maximizeEditor",
     "ctrl+k s": "file.saveAll",
     "ctrl+k v": "markdown.togglePreviewSide",
+    "ctrl+k f": "ai.fixProblems",
+    "ctrl+k d": "ai.reviewChanges",
     "alt+shift+v": "markdown.openPreview",
     "alt+left": "nav.back",
     "alt+right": "nav.forward",

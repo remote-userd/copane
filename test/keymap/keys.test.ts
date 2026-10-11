@@ -49,6 +49,8 @@ test("chords: Ctrl+K then a second key", () => {
   expect(b.editor.get("ctrl+k ctrl+w")).toBe("buffer.close")
   expect(b.global.get("ctrl+k z")).toBe("view.maximizeEditor")
   expect(b.global.get(`${k} ${keyToString(parseKeypress("v")!)}`)).toBe("markdown.togglePreviewSide")
+  expect(b.global.get(`${k} ${keyToString(parseKeypress("f")!)}`)).toBe("ai.fixProblems")
+  expect(b.global.get(`${k} ${keyToString(parseKeypress("d")!)}`)).toBe("ai.reviewChanges")
 })
 
 test.each(LEGACY)("%s reaches its editor command", (_name, bytes, command) => {

@@ -98,6 +98,10 @@ The editor is built around a loop: ask Claude, see what it changed, keep or undo
 
 **One-click requests:** right-click in the editor, or use F1, for **AI: explain this**, **AI: find and fix bugs**, or **AI: write tests**. Each sends the selection, or the whole file, together with the request, and submits it.
 
+**Hand over problems and changes.** These type a ready prompt into the AI pane and leave submitting to you:
+- **Ctrl+K F, fix problems:** the language server's errors and warnings, as `@file#L12 error: …`, for the current file (or every open file when it has none). Also `f` in the Problems list (Ctrl+Alt+E), and **Ask AI to fix** in the quick-fix menu (Alt+.) for the line you're on.
+- **Ctrl+K D, review changes:** your git diff (the staged changes if any, otherwise everything uncommitted, plus new files) with "review these for bugs". Also `v` in Source control. A diff too big to paste is sent as the list of changed files.
+
 Run commands from the AI pane with `!`, for example `! bun test`.
 
 **Look away while it works.** When the AI finishes, or stops to ask you something (an approval prompt), while you're in the editor or another window, copane tells you:
@@ -259,6 +263,8 @@ Press **F1** for the command palette: every command, searchable, with its shortc
 | Ctrl+Alt+J | Show or hide the AI pane |
 | Ctrl+Alt+M | Maximize the editor, and press again to restore |
 | Ctrl+L | Send the current file, or the selected lines, to the AI prompt |
+| Ctrl+K F | Send errors and warnings to the AI ("fix these") |
+| Ctrl+K D | Send your git changes to the AI ("review these") |
 | Ctrl+W / Ctrl+Alt+T | Close tab / reopen the last closed tab (also Ctrl+Shift+T where the terminal sends it) |
 | Ctrl+PageUp / Ctrl+PageDown | Previous or next tab |
 | Alt+1 … Alt+9 | Go to tab 1–8, Alt+9 the last |

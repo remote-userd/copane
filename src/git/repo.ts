@@ -233,6 +233,23 @@ export class GitRepo {
     return r.out.split("\n").filter((l) => !/^(diff --git|index |--- |\+\+\+ )/.test(l)).join("\n")
   }
 
+  /**
+   * What to hand the AI for review: the staged changes when there are any, otherwise everything
+   * uncommitted (against HEAD), with a --stat summary and the new, untracked files.
+   */
+  async changesForReview(): Promise<{ diff: string; stat: string; staged: boolean; untracked: string[] }> {
+    const entries = await this.status()
+    const staged = entries.some((e) => e.staged)
+    const hasHead = (await this.run(["rev-parse", "--verify", "-q", "HEAD"])).ok
+    const range = staged ? ["--cached"] : hasHead ? ["HEAD"] : []
+    const [diff, stat] = await Promise.all([
+      this.run(["diff", "--no-color", "--no-ext-diff", ...range]),
+      this.run(["diff", "--stat", "--no-color", ...range]),
+    ])
+    const untracked = staged ? [] : entries.filter((e) => e.untracked).map((e) => e.rel)
+    return { diff: diff.out, stat: stat.out, staged, untracked }
+  }
+
   /** The staged changes, for the AI commit message. */
   async stagedDiff(maxBytes = 60_000): Promise<string> {
     const r = await this.run(["diff", "--cached", "--no-color", "--no-ext-diff"])

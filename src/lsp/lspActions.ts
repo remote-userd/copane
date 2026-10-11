@@ -1,4 +1,5 @@
 import type { Workspace } from "../app/workspace"
+import { sendProblems } from "../ai/askAi"
 import { lineAt, type CodeEditorRenderable } from "../editor/CodeEditorRenderable"
 import { openAt, recordJump } from "../app/navHistory"
 import { findPrettier, prettierHandles, runPrettier } from "../editor/prettier"
@@ -209,21 +210,28 @@ export async function quickFix(ws: Workspace): Promise<void> {
   if (!h) return ws.notify("No file open", "warn")
   if (!ws.lsp?.hasServer(h.buf.path)) return ws.notify("No language server for this file", "warn")
   const actions = (await ws.lsp.codeActions(h.buf.path, selectionRange(h))).sort((a, b) => kindOrder(a) - kindOrder(b))
-  if (!actions.length) return ws.notify("No quick fixes here")
+  const row = h.pos.line
+  // A problem on this line can also go to the AI, even when the server has no fix for it.
+  const problemHere = ws.lsp.diagnostics(h.buf.path).some((d) => (d.severity ?? 1) <= 2 && d.range.start.line <= row && d.range.end.line >= row)
+  const askAi = problemHere && ws.ai ? [{ label: "Ask AI to fix", hint: "AI", run: () => sendProblems(ws, { at: { path: h.buf.path, line: row } }) }] : []
+  if (!actions.length && !askAi.length) return ws.notify("No quick fixes here")
   const at = h.ed.cursorScreenPos() ?? { x: h.ed.x, y: h.ed.y }
   ws.ui.set({
     modal: {
       kind: "menu",
       x: at.x,
       y: at.y + 1,
-      items: actions.map((a) => ({
-        label: a.title,
-        hint: a.isPreferred ? "★" : (a.kind?.split(".")[0] ?? ""),
-        run: () => {
-          ws.ui.set({ modal: null, focus: "editor" })
-          return runCodeAction(ws, h.buf.path, a)
-        },
-      })),
+      items: [
+        ...actions.map((a) => ({
+          label: a.title,
+          hint: a.isPreferred ? "★" : (a.kind?.split(".")[0] ?? ""),
+          run: () => {
+            ws.ui.set({ modal: null, focus: "editor" })
+            return runCodeAction(ws, h.buf.path, a)
+          },
+        })),
+        ...askAi,
+      ],
     },
   })
 }

@@ -6,6 +6,7 @@ import { useWorkspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import { openAt } from "../app/navHistory"
 import { indexToCol } from "./positions"
+import { sendProblems } from "../ai/askAi"
 
 const noLsp = { subscribe: () => () => {}, getSnapshot: () => 0 }
 
@@ -37,11 +38,12 @@ export function ProblemsModal() {
     else if (key.name === "down") setSel((s) => Math.min(all.length - 1, s + 1))
     else if (key.name === "up") setSel((s) => Math.max(0, s - 1))
     else if (key.name === "return") void jump(sel)
+    else if (key.name === "f" && all.length) sendProblems(ws, { all: true })
   })
 
   const counts = ws.lsp?.counts() ?? { errors: 0, warnings: 0 }
   return (
-    <Modal title={`Problems: ${counts.errors} errors, ${counts.warnings} warnings (open files)`} width={Math.min(120, dims.width - 4)} height={listH + 4} onClose={close}>
+    <Modal title={`Problems: ${counts.errors} errors, ${counts.warnings} warnings (open files)${all.length && ws.ai ? " · f: AI fix" : ""}`} width={Math.min(120, dims.width - 4)} height={listH + 4} onClose={close}>
       {all.length === 0 ? (
         <text selectable={false} fg={colors.dim}>
           {ws.lsp?.status() ? "No problems in open files." : "No language server running (open a TypeScript, Rust, Go or Python file)."}

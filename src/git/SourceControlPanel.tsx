@@ -6,6 +6,7 @@ import { useWorkspace, type Workspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import { openAt } from "../app/navHistory"
 import type { StatusEntry } from "./repo"
+import { sendChangesForReview } from "../ai/askAi"
 
 /**
  * Source control (Ctrl+Alt+D): conflicts, staged and unstaged files with a diff of the
@@ -274,6 +275,9 @@ export function SourceControlPanel() {
       case "m":
         void aiMessage()
         break
+      case "v":
+        void sendChangesForReview(ws)
+        break
       case "p":
         if (key.shift) void push()
         break
@@ -391,6 +395,7 @@ export function SourceControlPanel() {
             {btn("Commit ⏎", () => void commit(), true)}
             {btn("Amend", () => void commit(true))}
             {btn("AI message (m)", () => void aiMessage())}
+            {btn("AI review (v)", () => void sendChangesForReview(ws))}
             {btn(`Push${b?.ahead ? ` ↑${b.ahead}` : ""} (P)`, () => void push())}
             {btn(`Pull${b?.behind ? ` ↓${b.behind}` : ""} (U)`, () => void pull())}
             {btn("Branch (b)", () => ws.ui.set({ modal: { kind: "branches" } }))}
@@ -421,7 +426,7 @@ export function SourceControlPanel() {
         <text selectable={false} fg={confirm ? colors.warn : status?.kind === "error" ? colors.error : status?.kind === "busy" ? colors.warn : colors.dim}>
           {confirm?.text ??
             status?.text ??
-            "Space stage/unstage · a stage all · r revert · Enter open · Alt+Enter commit · P push · U pull · m AI message · Esc close"}
+            "Space stage/unstage · a stage all · r revert · Enter open · Alt+Enter commit · P push · U pull · m AI message · v AI review · Esc close"}
         </text>
       </box>
     </Modal>
