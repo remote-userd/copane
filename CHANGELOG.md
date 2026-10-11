@@ -5,10 +5,11 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-11
+
 ### Added
 - Markdown preview: live beside the file (Ctrl+K V) or as a tab (Alt+Shift+V). It renders GitHub-flavoured Markdown like GitHub does: headings, strikethrough, task lists, alerts, aligned tables, footnotes, highlighted code, local images, and README HTML (centred blocks, `<b>`, `<br>`, `<img>`, `<details>`).
 - Images (PNG, JPEG, WebP, GIF) open as a tab showing the picture, drawn with kitty graphics or sixel when the terminal supports them and coloured blocks otherwise. `preview.imageProtocol` overrides the choice. Animated GIFs play, in image tabs (Space pauses) and in the Markdown preview.
-
 - Reveal in File Explorer (WSL), Reveal in Finder (macOS) or Open Containing Folder (Linux): in the file tree's right-click menu, and on Shift+Alt+R as in VS Code.
 
 ### Fixed
@@ -35,6 +36,7 @@ First public release.
 - VS Code keys and settings import.
 - Release binaries for Linux and macOS (x64 and arm64), and a one-line installer.
 
-[Unreleased]: https://github.com/sevheng/copane/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/sevheng/copane/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/sevheng/copane/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/sevheng/copane/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/sevheng/copane/releases/tag/v0.1.0
