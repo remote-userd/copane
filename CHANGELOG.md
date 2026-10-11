@@ -5,6 +5,8 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-11
+
 ### Added
 - Alerts when the AI finishes or waits for your answer while you're not looking: a notice, the terminal bell, and ✓ done / ⚠ needs you in the AI header and status bar. `ai.notify: "desktop"` adds a system notification (Windows toast on WSL, macOS Notification Center, notify-send); `"off"` disables them.
 - Double-click a pane divider to reset that pane to its default width.
@@ -44,7 +46,8 @@ First public release.
 - VS Code keys and settings import.
 - Release binaries for Linux and macOS (x64 and arm64), and a one-line installer.
 
-[Unreleased]: https://github.com/sevheng/copane/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/sevheng/copane/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/sevheng/copane/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/sevheng/copane/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/sevheng/copane/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/sevheng/copane/releases/tag/v0.1.0
