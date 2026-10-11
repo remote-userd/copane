@@ -1,0 +1,57 @@
+name: Release
+
+# Push a tag like v0.2.0 (matching package.json's version) to build and publish binaries.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Each target builds on its own platform: OpenTUI's native library is a per-platform package.
+          - { target: linux-x64, os: ubuntu-latest }
+          - { target: linux-arm64, os: ubuntu-24.04-arm }
+          - { target: darwin-x64, os: macos-15-intel }
+          - { target: darwin-arm64, os: macos-latest }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - name: Tag matches package.json
+        run: |
+          v=$(bun -e 'console.log(require("./package.json").version)')
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != package.json v$v"; exit 1; }
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: Smoke test
+        run: ./dist/copane --version
+      - name: Package
+        run: |
+          mkdir -p out/copane
+          cp dist/copane LICENSE out/copane/
+          tar -C out -czf copane-${{ matrix.target }}.tar.gz copane
+      - uses: actions/upload-artifact@v4
+        with:
+          name: copane-${{ matrix.target }}
+          path: copane-${{ matrix.target }}.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - run: sha256sum copane-*.tar.gz > SHA256SUMS
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes copane-*.tar.gz SHA256SUMS

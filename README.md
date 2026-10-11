@@ -1,9 +1,18 @@
+<div align="center">
+
 # copane
 
+**Your editor and your AI coding agent, side by side in one terminal.**
+
+A fast, keyboard-first code editor with Claude Code (or any AI CLI) living in the next pane:
+ask for a change, watch it land in your buffer, review the diff, keep it or undo it.
+
+[![Release](https://img.shields.io/github/v/release/sevheng/copane)](https://github.com/sevheng/copane/releases/latest)
 [![CI](https://github.com/sevheng/copane/actions/workflows/ci.yml/badge.svg)](https://github.com/sevheng/copane/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Platforms](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20WSL-lightgrey)
 
-A terminal code editor with an AI coding CLI (Claude Code by default) running in a side pane.
+</div>
 
 ```
 ┌ tree ─────┐┌ editor ──────────────────────┐┌ claude ───────────────┐
@@ -14,31 +23,37 @@ A terminal code editor with an AI coding CLI (Claude Code by default) running in
  ^S save  ^P files  ^B tree  ^J ai  ^L send to ai  F1 commands  ^Q quit
 ```
 
-The AI pane is a real terminal running the CLI, so it keeps all of the CLI's own features: tools, approvals, slash commands, and sessions.
+## Why copane?
 
-Built with [Bun](https://bun.sh) and [OpenTUI](https://opentui.com). Linux and macOS only, because it uses Bun's POSIX pseudo-terminal.
+AI agents edit your files from a terminal, but you still need an editor to see, steer and check
+their work. Usually that means juggling two apps. copane puts both in one window and wires them together:
 
-## Run
+- **🤖 The real CLI, not a wrapper.** The AI pane is a true terminal running Claude Code, so you keep
+  every feature: tools, approvals, slash commands, sessions. Swap in `codex`, `opencode`, `gemini` or your shell.
+- **⚡ Context in one key.** Select code and press **Ctrl+L**: the agent gets `@file#L10-20` and the snippet.
+- **👀 See every change.** Files the agent edits reload live, changed lines flash, the gutter marks
+  what differs from git, and **Ctrl+Alt+D** reviews every change with a diff. **Ctrl+Z** undoes the agent's edit.
+- **🔀 No lost work.** Typing while the agent edits the same file? Merge both, compare, or pick a side.
+- **🧠 A real editor.** Language servers (TypeScript, Rust, Go, Python, Zig, C/C++), autocomplete,
+  go to definition, rename, multi-cursor, Tree-sitter highlighting, project search and replace, Prettier.
+- **🌿 Git built in.** Stage hunks, commit (with AI-written messages), push, blame, file history,
+  branches and merge-conflict resolution.
+- **⌨️ VS Code keys.** Ctrl+P, F1, Ctrl+D, F12, F2… and **Import VS Code settings** in one step.
+- **🚀 Fast and light.** One self-contained binary, instant start in big repos, ~30 ms per keystroke in an 11,000-line file.
+
+## Install
+
+Linux, macOS, or Windows through WSL:
 
 ```sh
-git clone https://github.com/sevheng/copane.git
-cd copane
-bun install
-bun run dev                 # open the current directory
-bun run dev path/to/file.ts # open a file
-bun run dev path/to/project # open a directory
-bun run build               # standalone binary at dist/copane
+curl -fsSL https://raw.githubusercontent.com/sevheng/copane/main/install.sh | sh
 ```
 
-## Install as a command
+This installs `copane` and a short `ce` alias in `~/.local/bin`. No Bun or Node needed. Run it again to update.
+`VERSION=v0.1.0` pins a release, `PREFIX=/usr/local` installs elsewhere, and `ALIAS=cx` (or `ALIAS=`) changes the alias.
+You can also download a binary from [Releases](https://github.com/sevheng/copane/releases/latest).
 
-Needs [Bun](https://bun.sh) 1.4.3 or later (`curl -fsSL https://bun.sh/install | bash`). The script installs the dependencies itself.
-
-```sh
-bun run install:cli                     # builds, installs ~/.local/bin/copane + `ce` link
-PREFIX=/usr/local bun run install:cli   # or somewhere else ($PREFIX/bin)
-ALIAS=cx bun run install:cli            # pick another short name (ALIAS= for none)
-```
+You'll want [Claude Code](https://docs.claude.com/en/docs/claude-code) (`claude`) on your PATH, or set another CLI in the [config](#config).
 
 Then open things the way VS Code's `code` does:
 
@@ -48,17 +63,29 @@ ce src/main.ts       # a file (its project folder is the workspace)
 ce ~/projects/app    # another folder
 ```
 
-The binary is self-contained (about 110 MB): it does not need Bun or `node_modules` at run time.
-It lives in `~/.local/lib/copane/`; `~/.local/bin/copane` is a small launcher script.
-
-**Updating while it runs:** after `bun run install:cli`, every open editor shows
+**Updating while it runs:** after installing a new version, every open editor shows
 "⟳ Update installed: restart" in the status bar. Click it or press Ctrl+Alt+R: unsaved files
 prompt first, then the editor restarts on the new version with the same folder and tabs.
-Ctrl+Alt+R also restarts `bun run dev`, which picks up source changes.
 
 `ce --version` prints the installed version.
 
 Uninstall: `rm -r ~/.local/bin/copane ~/.local/bin/ce ~/.local/lib/copane`.
+
+### From source
+
+Needs [Bun](https://bun.sh) 1.4.3 or later (`curl -fsSL https://bun.sh/install | bash`).
+
+```sh
+git clone https://github.com/sevheng/copane.git
+cd copane
+bun install
+bun run dev                 # open the current directory (or pass a file or folder)
+bun run install:cli         # build and install ~/.local/bin/copane + `ce`, plus the bundled Nerd Font
+```
+
+`install:cli` takes the same `PREFIX` and `ALIAS` variables. Ctrl+Alt+R restarts `bun run dev`, which picks up source changes.
+
+Built with [Bun](https://bun.sh) and [OpenTUI](https://opentui.com). Linux and macOS only, because it uses Bun's POSIX pseudo-terminal.
 
 ## Working with the AI
 
@@ -265,7 +292,9 @@ The tree shows file-type icons. Set the style in the config: `{ "tree": { "icons
 | `simple` (default) | coloured symbols: ◆ TS, { JSON, ¶ Markdown, ± git | any font |
 | `none` | no icons | |
 
-`bun run install:cli` sets this up. It installs the bundled **CaskaydiaMono Nerd Font**, which is Cascadia Mono plus icons, from `assets/fonts/`. It works offline. It is the non-Mono variant, so icons are drawn full size instead of squeezed into one letter's width.
+With a release install, get any [Nerd Font](https://www.nerdfonts.com/font-downloads), choose it in your terminal, and set `tree.icons` to `"nerd"`.
+
+From source, `bun run install:cli` sets this up. It installs the bundled **CaskaydiaMono Nerd Font**, which is Cascadia Mono plus icons, from `assets/fonts/`. It works offline. It is the non-Mono variant, so icons are drawn full size instead of squeezed into one letter's width.
 
 - **WSL with Windows Terminal:**
   - **Font:** installed for your Windows user, with no admin needed.
@@ -324,7 +353,12 @@ bun run typecheck
 
 `scripts/smoke.md` is the manual checklist for things the tests cannot cover.
 
+To release, bump `version` in `package.json`, commit, and push a matching tag (`git tag v0.2.0 && git push --tags`).
+The Release workflow builds Linux and macOS binaries (x64 and arm64) and publishes them with checksums.
+
 ## Contributing
+
+If copane saves you a context switch, a ⭐ on GitHub helps other people find it.
 
 Issues and pull requests are welcome. Before opening a PR, run `bun run typecheck` and `bun test`,
 and walk through the parts of `scripts/smoke.md` your change touches. `CLAUDE.md` lists the
