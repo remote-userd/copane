@@ -23,9 +23,18 @@ bun run dev [path]   # run from source; Ctrl+Alt+R restarts it with your changes
 
 Keep pull requests focused: one fix or feature each.
 
+## Contributing with an AI agent
+
+Agent-written pull requests are welcome. copane is built that way itself.
+
+1. Pick an issue labelled [`agent-friendly`](https://github.com/sevheng/copane/labels/agent-friendly) or [`good first issue`](https://github.com/sevheng/copane/labels/good%20first%20issue). Each one names the files to start from and what "done" means.
+2. Point your agent (Claude Code, Codex, Copilot, Cursor, Gemini CLI, Aider…) at the issue. It reads [`AGENTS.md`](AGENTS.md) for the project's rules and architecture; Claude Code reads it through `CLAUDE.md`.
+3. You own the result. Read the diff, run `bun run typecheck`, `bun test` and the smoke items yourself, and try the change in a real terminal.
+4. Say in the pull request that an AI helped, and keep to one issue per pull request.
+
 ## Conventions
 
-[`CLAUDE.md`](CLAUDE.md) has the full list. The two that matter most:
+[`AGENTS.md`](AGENTS.md) has the full list. The two that matter most:
 
 - **Bun first.** Use Bun's APIs (`Bun.file`, `Bun.write`, `Bun.spawn`, `Bun.env`) and fall back to `node:` modules only where Bun has none.
 - **Terminal keys.** Legacy terminals can't send many combinations: Ctrl+H is Backspace, Ctrl+Shift+letter arrives as Ctrl+letter, and Shift+Enter is Enter. New bindings use Alt or Ctrl+Alt, and come with a key-parse test.

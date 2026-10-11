@@ -368,8 +368,11 @@ bun run typecheck
 
 If copane saves you a context switch, a ⭐ on GitHub helps other people find it.
 
-Issues and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests and conventions,
-and [CHANGELOG.md](CHANGELOG.md) for what's new.
+Issues and pull requests are welcome, including ones written with an AI coding agent. Look for
+[`good first issue`](https://github.com/sevheng/copane/labels/good%20first%20issue) and
+[`agent-friendly`](https://github.com/sevheng/copane/labels/agent-friendly) issues; each says where to start and what "done" means.
+[CONTRIBUTING.md](CONTRIBUTING.md) covers setup and tests, [AGENTS.md](AGENTS.md) the architecture and rules (your agent reads it
+automatically), and [CHANGELOG.md](CHANGELOG.md) what's new.
 
 ## License
 
