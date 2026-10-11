@@ -89,7 +89,7 @@ The editor is built around a loop: ask Claude, see what it changed, keep or undo
 1. **Give context.** Select lines, or nothing for the whole file, and press **Ctrl+L**. The AI prompt gets `@path#L10-20` plus the snippet. In the tree, right-click a file or folder and choose **Send to AI**.
 2. **Ask.** Ctrl+J moves you to the AI pane and back. Unsaved files are saved when you switch, so Claude reads what you see. Turn this off with `editor.saveBeforeAi: false`.
 3. **See what changed.** Files Claude edits reload automatically, and the changed lines flash. The line numbers mark lines that differ from the last commit: **▎** green added, yellow changed, and a red **▁** for deleted. The tree marks changed files.
-4. **Review it in place.** Lines the AI changed get a violet **┃** until you've reviewed them, a bar above the file counts them, and the status bar shows how many files are left. **Alt+N** jumps to the next AI change and shows what it replaced: **a** accepts it and moves on, **r** undoes it (Ctrl+Z brings it back), **↑ ↓** step. Past the last change in a file, Alt+N opens the next file. The bar also has **Accept file**, **Undo file** and **Accept all**. Alt+P goes back.
+4. **Review it in place.** Lines the AI changed get a violet **┃** until you've reviewed them, a bar above the file counts them, and the status bar shows how many files are left. **Alt+N** jumps to the next AI change and shows what it replaced: **a** accepts it and moves on, **r** undoes it (Ctrl+Z brings it back), **↑ ↓** step. Past the last change in a file, Alt+N opens the next file. The file tree marks what's left with **✦**, and what the AI is editing right now with **✎**. The bar also has **Accept file**, **Undo file** and **Accept all**. Alt+P goes back.
 5. **Review everything.** **Ctrl+Alt+D** lists all changed files with a diff. **Enter** opens a file at the change, and **r** reverts it.
    - **Turn by turn (Ctrl+Alt+Z):** each prompt you send becomes a turn that lists the files the AI changed, with +/− counts and each change since before the turn. **u** undoes the whole turn (asking first if you've edited those files since), **x** one file, **r** one change. Files the AI created are removed. It works with any CLI, because it watches files, not the CLI.
 6. **Undo.** Ctrl+Z also undoes a reload, so you can step back through Claude's edit in the editor.
@@ -318,6 +318,8 @@ With the tree focused (Ctrl+B), or from the right-click menu on a row:
 The menu also has the reveal item, Copy Path, Copy Relative Path, Send to AI (types `@path` into the AI prompt), and Open Preview for Markdown files. Right-click empty space to create at the project root, or to reveal the project folder. In the editor, Shift+Alt+R reveals the open file. Open tabs follow renames; deleting closes their tabs unless they have unsaved changes.
 
 In a git repository the tree shows status: **M** modified (yellow), **U** untracked, **A** added, **R** renamed (green), **!** conflict (red). A folder shows • in the colour of the most important change inside it. Marks update when files change and when you stage or commit.
+
+The AI's work shows there too, in violet: **✎** on files the AI is editing in the current turn, **✦** on files with changes you haven't reviewed, and a violet • on the folders above them. Clicking a ✦ file opens it at its first AI change. The right-click menu adds **Review AI Changes** and **Accept AI Changes**, or **Accept AI Changes in Folder** on a folder.
 
 ## Icons
 

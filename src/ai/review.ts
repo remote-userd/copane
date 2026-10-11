@@ -5,6 +5,7 @@
  * the change) or undone (the buffer takes the base lines, one undo step). Once a file matches its
  * base it drops out. Session only; your own edits inside an AI change count as part of it.
  */
+import { dirname } from "node:path"
 import { Store } from "../app/store"
 import type { Workspace } from "../app/workspace"
 import type { BufferStore } from "../editor/BufferStore"
@@ -90,6 +91,15 @@ export class AiReview {
 
   acceptFile(path: string): void {
     if (this.bases.delete(path)) this.bump()
+  }
+
+  /** Accept every file under a folder. Returns how many. */
+  acceptUnder(dir: string): number {
+    const prefix = dir.endsWith("/") ? dir : dir + "/"
+    let n = 0
+    for (const path of [...this.bases.keys()]) if (path.startsWith(prefix) && this.bases.delete(path)) n++
+    if (n) this.bump()
+    return n
   }
 
   acceptAll(): void {
@@ -200,16 +210,53 @@ export async function gotoAiChange(ws: Workspace, dir: 1 | -1, quiet = false): P
     const all = text === null ? [] : review.changes(path, text)
     if (!all.length) continue
     const h = dir === 1 ? all[0]! : all.at(-1)!
-    if (path !== buf?.path) {
-      const opened = await ws.buffers.open(path)
-      ws.ui.set({ focus: "editor" })
-      // The editor mounts and gets its size over the next frames; the peek is placed by both.
-      for (let i = 0; i < 50 && !((opened.textarea?.width ?? 0) > 1 && ws.buffers.active === opened); i++) await Bun.sleep(10)
-    }
+    if (path !== buf?.path) await openReady(ws, path)
     return moveTo(ws, h)
   }
   if (!quiet) ws.notify("No AI changes to review")
   return null
+}
+
+/** Open a file in the editor and wait until its editor is mounted and sized (the peek is placed by both). */
+async function openReady(ws: Workspace, path: string): Promise<void> {
+  const opened = await ws.buffers.open(path)
+  ws.ui.set({ focus: "editor" })
+  for (let i = 0; i < 50 && !((opened.textarea?.width ?? 0) > 1 && ws.buffers.active === opened); i++) await Bun.sleep(10)
+}
+
+/** Open a file at its first unreviewed AI change (from the tree). Returns where the cursor went. */
+export async function openAtFirstAiChange(ws: Workspace, path: string): Promise<{ bufId: number; row: number } | null> {
+  await openReady(ws, path)
+  const ed = editorOf(ws)
+  const first = ed && ws.review ? ws.review.changes(path, ed.plainText)[0] : undefined
+  return first ? moveTo(ws, first) : null
+}
+
+/**
+ * What the file tree marks: files the running turn is editing (✎), files with unreviewed AI
+ * changes (✦), and the folders above either. Rebuilt only when the review or the turns change.
+ */
+export interface AiMarks {
+  file(path: string): "✎" | "✦" | null
+  dir(path: string): boolean
+}
+let marksCache: { review: unknown; turns: unknown; marks: AiMarks } | null = null
+export function aiMarks(ws: Workspace): AiMarks {
+  const review = ws.review?.store.get()
+  const turns = ws.turns?.store.get()
+  if (marksCache && marksCache.review === review && marksCache.turns === turns) return marksCache.marks
+  const editing = new Set(ws.turns?.turns.find((t) => t.endedAt === null)?.files.map((f) => f.path) ?? [])
+  const unreviewed = new Set(ws.review?.files() ?? [])
+  const dirs = new Set<string>()
+  for (const path of [...editing, ...unreviewed]) {
+    for (let d = dirname(path); d !== ws.root && d.length > ws.root.length && !dirs.has(d); d = dirname(d)) dirs.add(d)
+  }
+  const marks: AiMarks = {
+    file: (path) => (editing.has(path) ? "✎" : unreviewed.has(path) ? "✦" : null),
+    dir: (path) => dirs.has(path),
+  }
+  marksCache = { review, turns, marks }
+  return marks
 }
 
 function moveTo(ws: Workspace, h: Hunk): { bufId: number; row: number } | null {

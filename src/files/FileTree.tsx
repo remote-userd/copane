@@ -8,6 +8,7 @@ import type { GitMark, GitStatus } from "./gitStatus"
 import { deleteItem, newItem, openTreeMenu, renameItem, revealItem } from "./treeActions"
 import { iconFor, type IconStyle } from "./icons"
 import { PaneHeader } from "../app/PaneHeader"
+import { aiMarks, openAtFirstAiChange } from "../ai/review"
 
 const RIGHT = 2
 const shorten = (s: string, max: number) => (s.length > max ? s.slice(0, max - 1) + "…" : s)
@@ -38,6 +39,10 @@ export function FileTree({
   const ui = useUi()
   useSyncExternalStore(tree.subscribe, tree.getSnapshot)
   useSyncExternalStore(git?.subscribe ?? noGit.subscribe, git?.getSnapshot ?? noGit.getSnapshot)
+  // What the AI is editing now, and what it changed that you haven't reviewed.
+  useSyncExternalStore(ws.review?.store.subscribe ?? noGit.subscribe, () => ws.review?.store.get() ?? 0)
+  useSyncExternalStore(ws.turns?.store.subscribe ?? noGit.subscribe, () => ws.turns?.store.get() ?? 0)
+  const ai = aiMarks(ws)
   const focused = ui.focus === "tree" && ui.sidebar === "files" && !ui.modal
 
   useEffect(() => {
@@ -89,6 +94,8 @@ export function FileTree({
       return tree.toggle(row.entry.path)
     }
     try {
+      // A file with unreviewed AI changes, not open yet: straight to its first change.
+      if (ws.review?.has(row.entry.path) && !ws.buffers.byPath(row.entry.path)) return void (await openAtFirstAiChange(ws, row.entry.path))
       await ws.buffers.open(row.entry.path)
       ws.ui.set({ focus: "editor" })
     } catch (err) {
@@ -199,6 +206,7 @@ export function FileTree({
         const mark = git ? (r.entry.isDir ? git.dirMark(r.entry.path) : git.mark(r.entry.path)) : null
         // The active file keeps its accent; git colours everything else.
         const gitColor = isActive ? null : markColor(mark)
+        const aiMark = r.entry.isDir ? (ai.dir(r.entry.path) ? "•" : null) : ai.file(r.entry.path)
         return (
           <box
             key={r.entry.path}
@@ -227,7 +235,13 @@ export function FileTree({
                 {r.entry.name}
               </text>
             </box>
-            {mark ? (
+            {aiMark ? (
+              <box width={2} flexShrink={0}>
+                <text selectable={false} fg={colors.aiEdit}>
+                  {` ${aiMark}`}
+                </text>
+              </box>
+            ) : mark ? (
               <box width={2} flexShrink={0}>
                 <text selectable={false} fg={gitColor ?? colors.dim}>
                   {r.entry.isDir ? " •" : ` ${mark}`}

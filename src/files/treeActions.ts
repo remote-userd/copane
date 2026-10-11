@@ -1,4 +1,5 @@
 import { basename, dirname, join, relative, sep } from "node:path"
+import { openAtFirstAiChange } from "../ai/review"
 import { revealInFileManager, revealLabel } from "./reveal"
 import type { MenuItem } from "../app/state"
 import type { Workspace } from "../app/workspace"
@@ -153,6 +154,29 @@ export function openTreeMenu(ws: Workspace, tree: TreeModel, row: TreeRow | null
       { label: "Copy Relative Path", run: () => copyPath(ws, rel(ws, row.entry.path)) },
       { label: `Send to AI (@${basename(row.entry.path)})`, disabled: !ws.ai, run: () => sendToAi(ws, row) },
     )
+    const review = ws.review
+    if (review && !row.entry.isDir && review.has(row.entry.path)) {
+      items.push(
+        {
+          label: "Review AI Changes",
+          hint: "Alt+N",
+          run: async () => {
+            const at = await openAtFirstAiChange(ws, row.entry.path)
+            if (at) ws.ui.set({ hunkPeek: { ...at, kind: "ai" } })
+          },
+        },
+        { label: "Accept AI Changes", run: () => (review.acceptFile(row.entry.path), ws.notify(`Accepted the AI changes in ${rel(ws, row.entry.path)}`)) },
+      )
+    }
+    if (review && row.entry.isDir && review.files().some((p) => p.startsWith(row.entry.path + "/"))) {
+      items.push({
+        label: "Accept AI Changes in Folder",
+        run: () => {
+          const n = review.acceptUnder(row.entry.path)
+          ws.notify(`Accepted the AI changes in ${n} file${n === 1 ? "" : "s"}`)
+        },
+      })
+    }
     if (!row.entry.isDir && /\.(md|markdown)$/i.test(row.entry.path)) {
       items.push({
         label: "Open Preview",
