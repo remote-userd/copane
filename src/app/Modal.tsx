@@ -15,9 +15,13 @@ export function Modal({ title, width = 60, height, onClose, children }: ModalPro
   const dims = useTerminalDimensions()
   const w = Math.min(width, dims.width - 4)
   const h = height ? Math.min(height, dims.height - 2) : undefined
+  // Large dialogs (source control, history, help) fade the screen behind them, as VS Code does:
+  // otherwise the thin margins around them show stray bits of the panes (a letter, an icon).
+  // Small pop-ups (menus, pickers) leave the screen as it is.
+  const dim = w >= dims.width * 0.7
   return (
     <>
-      {/* Invisible full-screen backdrop: swallows clicks behind the dialog and closes it. */}
+      {/* Full-screen backdrop: swallows clicks behind the dialog and closes it; shades the screen for large dialogs. */}
       <box
         position="absolute"
         left={0}
@@ -25,6 +29,7 @@ export function Modal({ title, width = 60, height, onClose, children }: ModalPro
         width={dims.width}
         height={dims.height}
         zIndex={99}
+        {...(dim ? { backgroundColor: colors.modalBackdrop } : {})}
         onMouseDown={(e) => {
           e.preventDefault()
           e.stopPropagation()

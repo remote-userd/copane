@@ -10,6 +10,7 @@ All notable changes to copane are listed here. The format follows
 - Double-click a pane divider to reset that pane to its default width.
 
 ### Fixed
+- Large dialogs (source control, history, help) fade the screen behind them, so their margins no longer show stray letters and icons from the panes (#13).
 - Staging and committing no longer fail at random with "index.lock: File exists": the background git status no longer takes git's index lock.
 
 ## [0.3.0] - 2026-10-11

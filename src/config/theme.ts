@@ -104,6 +104,8 @@ export const ui = {
   iconGreen: "#8cc79a",
   iconPurple: claude.purple,
   iconFolder: "#d4a27f",
+  // Shade over the screen behind large dialogs (alpha-blended, so the text behind stays faintly visible)
+  modalBackdrop: "#000000a0",
   // Markdown preview
   mdHeading: claude.clay,
   mdSubheading: claude.periwinkle,
