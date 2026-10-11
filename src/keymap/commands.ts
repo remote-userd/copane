@@ -584,6 +584,14 @@ export const commands = {
       ws.notify(err ?? "Undid the AI changes in this file (Ctrl+Z brings them back)", err ? "warn" : "info")
     },
   },
+  "ai.mergeAgent": {
+    title: "AI: review & merge this agent's worktree",
+    run: (ws) => {
+      const id = ws.agents?.activeId()
+      if (id === undefined || !ws.agents?.session(id)?.branch) return ws.notify("The visible agent doesn't work in its own worktree (Ctrl+Alt+N › … in a git worktree)", "warn")
+      ws.ui.set({ modal: { kind: "mergeAgent", sessionId: id } })
+    },
+  },
   "ai.acceptAll": {
     title: "AI edits: accept everything (all files)",
     run: (ws) => {

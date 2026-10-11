@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test"
-import { existsSync } from "node:fs"
+import { existsSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { TerminalPane, worktreeFor, type AiConfig } from "../../src/ai/TerminalPane"
 import type { MenuItem } from "../../src/app/state"
@@ -116,4 +116,88 @@ test("× on a tab closes it, and so does a middle-click; a single tab has neithe
   await h!.step(() => h!.mouse.click(tab.x, tab.y, 1))
   await until(() => !h!.frame().includes("SECOND 2"))
   expect(h!.frame()).not.toContain("SECOND 2")
+})
+
+async function worktreeAgent() {
+  const root = await fixture({ "a.txt": "a\n", "b.txt": "b\n" })
+  for (const args of [["init", "-q", "-b", "main"], ["add", "."], ["commit", "-qm", "init"]]) Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
+  const ws = await pane(root)
+  git = new GitStatus(root)
+  await git.start(60_000)
+  ws.git = git
+  await h!.step(() => ws.agents!.openMenu())
+  await h!.step(() => menuItem(ws, "New second in a git worktree").run())
+  const wt = worktreeFor(root, "second", 1)
+  await until(() => h!.frame().includes("second-agent-ready"))
+  // The agent's work: one commit, one uncommitted edit, one new file.
+  writeFileSync(join(wt.path, "a.txt"), "a by agent\n")
+  Bun.spawnSync(["git", "commit", "-qam", "agent: a"], { cwd: wt.path, env: ENV })
+  writeFileSync(join(wt.path, "b.txt"), "b by agent\n")
+  writeFileSync(join(wt.path, "new.txt"), "new\n")
+  return { root, ws, wt }
+}
+const gitOut = (cwd: string, ...args: string[]) => Bun.spawnSync(["git", ...args], { cwd, env: ENV }).stdout.toString()
+
+test("review & merge a worktree agent: its files and diffs, merge, then clean up", async () => {
+  const { root, ws, wt } = await worktreeAgent()
+  ws.agents!.recount(ws.agents!.activeId())
+  await until(() => h!.frame().includes("COPANE/SECOND-1 · 3"))
+  expect(h!.frame()).toContain("COPANE/SECOND-1 · 3") // the tab counts its changed files
+
+  const { runCommand } = await import("../../src/keymap/commands")
+  await h!.step(() => runCommand(ws, "ai.mergeAgent"))
+  await until(() => h!.frame().includes("new.txt") && h!.frame().includes("+a by agent"))
+  const f = h!.frame()
+  expect(f).toContain("Review & merge second (copane/second-1) into main")
+  for (const row of ["M a.txt", "M b.txt", "A new.txt"]) expect(f).toContain(row)
+  expect(f).toContain("+a by agent") // the first file's diff
+  await h!.step(() => h!.keys.pressArrow("down"))
+  await until(() => h!.frame().includes("+b by agent"))
+
+  await h!.step(() => h!.keys.pressKey("m"))
+  await until(() => ws.ui.get().modal?.kind === "confirm")
+  expect(await Bun.file(join(root, "b.txt")).text()).toBe("b by agent\n")
+  expect(await Bun.file(join(root, "new.txt")).text()).toBe("new\n")
+  expect(gitOut(root, "log", "--oneline", "-1")).toContain("Merge branch 'copane/second-1'")
+  const modal = ws.ui.get().modal
+  if (modal?.kind !== "confirm") throw new Error("no confirm")
+  await h!.step(() => modal.options.find((o) => o.key === "r")!.run())
+  await until(() => !existsSync(wt.path))
+  expect(existsSync(wt.path)).toBe(false)
+  expect(gitOut(root, "branch", "--list", "copane/second-1")).toBe("")
+  await until(() => !h!.frame().includes("SECOND"))
+  expect(h!.frame()).not.toContain("SECOND ⎇")
+})
+
+test("discarding a worktree agent's work removes its worktree, branch and tab", async () => {
+  const { root, ws, wt } = await worktreeAgent()
+  await h!.step(() => ws.agents!.closeActive())
+  const modal = ws.ui.get().modal
+  if (modal?.kind !== "confirm") throw new Error("no confirm")
+  expect(modal.options.map((o) => o.label)).toContain("Review & merge first")
+  await h!.step(() => modal.options.find((o) => o.key === "m")!.run())
+  await until(() => h!.frame().includes("A new.txt"))
+  await h!.step(() => h!.keys.pressKey("d"))
+  expect(h!.frame()).toContain("Throw away 3 changed files")
+  await h!.step(() => h!.keys.pressKey("y"))
+  await until(() => !existsSync(wt.path))
+  expect(existsSync(wt.path)).toBe(false)
+  expect(gitOut(root, "branch", "--list", "copane/second-1")).toBe("")
+  expect(await Bun.file(join(root, "b.txt")).text()).toBe("b\n") // nothing came back
+  await until(() => !h!.frame().includes("SECOND ⎇"))
+  expect(h!.frame()).not.toContain("SECOND ⎇")
+})
+
+test("a new worktree agent skips a number whose branch was kept after its worktree was removed", async () => {
+  const root = await fixture({ "a.txt": "a" })
+  for (const args of [["init", "-q", "-b", "main"], ["add", "."], ["commit", "-qm", "init"], ["branch", "copane/second-1"]]) Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
+  const ws = await pane(root)
+  git = new GitStatus(root)
+  await git.start(60_000)
+  ws.git = git
+  await h!.step(() => ws.agents!.openMenu())
+  await h!.step(() => menuItem(ws, "New second in a git worktree").run())
+  await until(() => h!.frame().includes("second-agent-ready"))
+  expect(h!.frame()).toContain("COPANE/SECOND-2")
+  expect(existsSync(worktreeFor(root, "second", 2).path)).toBe(true)
 })

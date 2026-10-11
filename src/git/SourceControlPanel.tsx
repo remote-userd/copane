@@ -31,13 +31,13 @@ const LETTER = (e: StatusEntry, section: Section) => {
 }
 const letterColor = (l: string) => (l === "M" ? colors.warn : l === "D" || l === "!" ? colors.error : colors.ok)
 
-interface DiffLine {
+export interface DiffLine {
   text: string
   color: string
   line: number | null
 }
 
-function colorDiff(raw: string): DiffLine[] {
+export function colorDiff(raw: string): DiffLine[] {
   const out: DiffLine[] = []
   let n = 0
   for (const l of raw.split("\n")) {

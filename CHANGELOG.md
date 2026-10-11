@@ -5,6 +5,12 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Review & merge a worktree agent's work: right-click › Review & merge this agent (also in the palette, and offered when closing its tab) lists every file it changed since its branch split off, committed or not, with diffs. **m** commits its leftover edits and merges the branch into yours (conflicts get the usual conflict bar), then offers to remove the worktree, branch and tab; **d** discards it all. A worktree agent's tab shows how many files it changed.
+
+### Fixed
+- A new agent "in a git worktree" failed with "branch already exists" after an earlier one's worktree was removed (its branch is kept): it now skips to the next free number.
+
 ### Changed
 - Committing accepts: once a file's content is what HEAD has (you committed it, the AI did, or it was checked out), its AI review marks clear on their own, so they never pile up. Untracked files stay marked until committed.
 

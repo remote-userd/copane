@@ -9,6 +9,7 @@ import { ui as colors } from "../config/theme"
 import { HoverBox } from "../app/Modal"
 import { runCommand } from "../keymap/commands"
 import { AgentProcess, type AgentStatus } from "./AgentProcess"
+import { GitRepo } from "../git/repo"
 import { AgentWatch, desktopNotify, ringBell, type Attention } from "./alerts"
 
 export interface AgentChoice {
@@ -42,6 +43,8 @@ interface SessionState {
   /** When the current stretch of output began (the header starts its spinner then). */
   busySince: number
   attention: Attention | null
+  /** Files a worktree agent changed since its branch split off (shown on its tab). */
+  changes?: number
 }
 
 /**
@@ -132,7 +135,8 @@ function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: (x: nu
                 ? "●"
                 : "○"
         const markColor = busy(s.id) || st?.attention === "waiting" ? colors.warn : st?.attention ? colors.ok : colors.headerFg
-        const label = tabLabel(s).toUpperCase()
+        // A worktree agent's tab also says how many files it changed.
+        const label = tabLabel(s).toUpperCase() + (s.branch && st?.changes ? ` · ${st.changes}` : "")
         return (
           <box key={s.id} flexDirection="row" flexShrink={0} backgroundColor={active && !one ? colors.segmentBg : undefined}>
             {/* Click switches to the tab; a middle-click closes it, as editor tabs do. */}
@@ -252,6 +256,8 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
       // A turn ends when the AI goes quiet (not while it waits on a question). The first moments
       // after Enter don't count: the CLI may not have started answering yet.
       if (what !== "waiting" && Date.now() - turnStart > 3000) void turns?.end()
+      // A worktree agent went quiet: recount its changes for the tab.
+      if (session.branch) void recount(ws, id)
       if (what === "idle") return
       const ui = ws.ui.get()
       const how = config.notify ?? "bell"
@@ -433,6 +439,10 @@ export function TerminalPane({ config }: { config: AiConfig }) {
         ws.ui.set({ focus: "ai", aiVisible: true })
       },
       closeActive: () => closeSession(ws, tabs.get().active),
+      session: (id) => tabs.get().sessions.find((s) => s.id === id),
+      activeId: () => tabs.get().active,
+      close: (id) => closeTab(id),
+      recount: (id) => void recount(ws, id),
     }
     return () => {
       ws.ai = null
@@ -476,6 +486,9 @@ export function TerminalPane({ config }: { config: AiConfig }) {
           },
           { label: "Restart", disabled: h?.proc()?.status.kind === "running", run: () => ws.ai?.restart() },
           { label: "New agent tab…", hint: "Ctrl+Alt+N", run: () => ws.agents?.openMenu(x, y) },
+          ...(tabs.get().sessions.find((s) => s.id === tabs.get().active)?.branch
+            ? [{ label: "Review & merge this agent…", run: () => ws.ui.set({ modal: { kind: "mergeAgent", sessionId: tabs.get().active } }) }]
+            : []),
           { label: "Close this agent", hint: "Ctrl+Alt+W", disabled: tabs.get().sessions.length < 2, run: () => ws.agents?.closeActive() },
         ],
       },
@@ -533,7 +546,8 @@ function openAgentMenu(ws: Workspace, config: AiConfig, x: number | undefined, y
     if (!repo) return
     let n = count(c.name) + 1
     let wt = worktreeFor(ws.root, c.name, n)
-    while (await Bun.file(join(wt.path, ".git")).exists()) wt = worktreeFor(ws.root, c.name, ++n)
+    // Skip numbers still taken: a worktree folder, or a branch kept after its worktree was removed.
+    while ((await Bun.file(join(wt.path, ".git")).exists()) || (await repo.branchExists(wt.branch))) wt = worktreeFor(ws.root, c.name, ++n)
     ws.notify(`Creating worktree ${wt.path}…`)
     const err = await repo.addWorktree(wt.path, wt.branch)
     if (err) return ws.notify(`Could not create the worktree: ${err}`, "error")
@@ -554,26 +568,43 @@ function openAgentMenu(ws: Workspace, config: AiConfig, x: number | undefined, y
   })
 }
 
-/** Close a tab (not the last). A worktree tab offers to remove its worktree; the branch stays. */
-function closeSession(ws: Workspace, id: number): void {
+/** Stop a tab's CLI and drop the tab (not the last one). */
+function closeTab(id: number): void {
   const { sessions, active } = tabs.get()
+  if (sessions.length < 2 || !sessions.some((s) => s.id === id)) return
+  handles.get(id)?.kill()
+  const rest = sessions.filter((s) => s.id !== id)
+  const i = sessions.findIndex((s) => s.id === id)
+  tabs.set({ sessions: rest, active: active === id ? rest[Math.max(0, i - 1)]!.id : active })
+}
+
+/** How many files a worktree agent changed since its branch split off; stored for its tab. */
+async function recount(ws: Workspace, id: number): Promise<void> {
+  const session = tabs.get().sessions.find((s) => s.id === id)
+  const repo = ws.git?.repo
+  if (!session?.branch || !repo) return
+  const base = await repo.mergeBase(session.branch)
+  if (!base) return
+  const changes = (await new GitRepo(session.cwd).changesSince(base)).length
+  if (tabs.get().state[id]?.changes !== changes) setState(id, { changes })
+}
+
+/** Close a tab (not the last). A worktree tab offers to merge its work first, or to remove its worktree. */
+function closeSession(ws: Workspace, id: number): void {
+  const { sessions } = tabs.get()
   if (sessions.length < 2) return ws.notify("This is the only agent; restart it instead (right-click › Restart)")
   const session = sessions.find((s) => s.id === id)
   if (!session) return
-  const close = () => {
-    handles.get(id)?.kill()
-    const rest = tabs.get().sessions.filter((s) => s.id !== id)
-    const i = sessions.findIndex((s) => s.id === id)
-    tabs.set({ sessions: rest, active: active === id ? rest[Math.max(0, i - 1)]!.id : active })
-  }
+  const close = () => closeTab(id)
   if (!session.branch) return close()
   const repo = ws.git?.repo
   ws.ui.set({
     modal: {
       kind: "confirm",
       title: `Close ${tabLabel(session)}`,
-      body: `It works in ${session.cwd}. Remove that worktree? Its branch ${session.branch} stays, with any commits.`,
+      body: `It works in ${session.cwd}. Review and merge its work into your branch first, or remove that worktree (its branch ${session.branch} stays, with any commits)?`,
       options: [
+        { key: "m", label: "Review & merge first", run: () => ws.ui.set({ modal: { kind: "mergeAgent", sessionId: id } }) },
         {
           key: "r",
           label: "Remove worktree",

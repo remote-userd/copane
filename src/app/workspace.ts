@@ -38,6 +38,14 @@ export interface AgentTabs {
   cycle(dir: 1 | -1): void
   /** Close the visible tab (not the last one). */
   closeActive(): void
+  /** A tab's folder and, for a worktree agent, its branch. */
+  session(id: number): { id: number; name: string; cwd: string; branch: string | null } | undefined
+  /** The visible tab's id. */
+  activeId(): number
+  /** Close a tab right away (no questions; its worktree is the caller's business). */
+  close(id: number): void
+  /** Recount what a worktree agent changed (shown on its tab). */
+  recount(id: number): void
 }
 
 export interface AiHandle {

@@ -41,6 +41,7 @@ export type Modal =
   | { kind: "locations"; title: string; locations: { path: string; range: { start: { line: number; character: number }; end: { line: number; character: number } } }[] }
   | { kind: "help" }
   | { kind: "turns" }
+  | { kind: "mergeAgent"; sessionId: number }
 
 export interface Notice {
   text: string

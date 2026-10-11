@@ -63,6 +63,18 @@ export function firstError(err: string): string {
   return (lines.find((l) => /^(fatal|error):/i.test(l)) ?? lines.find((l) => !/^hint:/i.test(l)) ?? "git failed").replace(/^(fatal|error):\s*/i, "")
 }
 
+/** A file an agent changed in its worktree since it split off. */
+export interface WorktreeChange {
+  rel: string
+  status: "A" | "M" | "D"
+}
+
+/** A unified diff without its `diff --git` / index / ---/+++ header lines. */
+function stripHeader(raw: string): string {
+  const i = raw.indexOf("\n@@")
+  return i < 0 ? (raw.startsWith("@@") ? raw : "") : raw.slice(i + 1)
+}
+
 export interface StatusEntry {
   path: string
   rel: string
@@ -284,6 +296,63 @@ export class GitRepo {
   async removeWorktree(path: string, force = false): Promise<string | null> {
     const r = await this.run(["worktree", "remove", ...(force ? ["--force"] : []), path])
     return r.ok ? null : firstError(r.err)
+  }
+
+  // ---- an agent's worktree: what it changed, and bringing it back ----
+
+  async branchExists(name: string): Promise<boolean> {
+    return (await this.run(["rev-parse", "--verify", "-q", `refs/heads/${name}`])).ok
+  }
+
+  /** Where `branch` split from HEAD (`git merge-base`), or null. */
+  async mergeBase(branch: string): Promise<string | null> {
+    const r = await this.run(["merge-base", "HEAD", branch])
+    return r.ok ? r.out.trim() : null
+  }
+
+  /**
+   * Run in a worktree: every file changed since `base`, committed or not, untracked files
+   * included. Paths are relative to the worktree, sorted.
+   */
+  async changesSince(base: string): Promise<WorktreeChange[]> {
+    const r = await this.run(["diff", "--name-status", "--no-renames", "-z", base])
+    const out = new Map<string, WorktreeChange>()
+    const parts = r.ok ? r.out.split("\0") : []
+    for (let i = 0; i + 1 < parts.length; i += 2) {
+      const status = parts[i]!.charAt(0)
+      const rel = parts[i + 1]!
+      if (rel) out.set(rel, { rel, status: status === "A" || status === "D" ? status : "M" })
+    }
+    for (const e of await this.status()) if (e.untracked) out.set(e.rel, { rel: e.rel, status: "A" })
+    return [...out.values()].sort((a, b) => a.rel.localeCompare(b.rel))
+  }
+
+  /** Run in a worktree: the unified diff of one file since `base` (a new file shows whole). */
+  async diffSince(base: string, change: WorktreeChange): Promise<string> {
+    // Untracked: git diff can't see it against a commit; compare with nothing instead.
+    if (change.status === "A" && !(await this.run(["ls-files", "--error-unmatch", "--", change.rel])).ok) {
+      const r = await this.run(["diff", "--no-color", "--no-index", "--", "/dev/null", change.rel])
+      return stripHeader(r.out)
+    }
+    const r = await this.run(["diff", "--no-color", "--no-ext-diff", base, "--", change.rel])
+    return stripHeader(r.out)
+  }
+
+  /** Commit everything in this (work)tree, untracked files too. Nothing to commit is not an error. */
+  async commitAll(message: string): Promise<string | null> {
+    if (!(await this.status()).length) return null
+    const add = await this.run(["add", "-A"])
+    if (!add.ok) return firstError(add.err)
+    const r = await this.run(["commit", "-q", "-F", "-"], { stdin: message })
+    return r.ok ? null : firstError(r.err || r.out)
+  }
+
+  /** Merge a branch into the current one (always a merge commit). Conflicts are left in the files. */
+  async merge(branch: string): Promise<{ ok: true } | { conflicts: number } | { error: string }> {
+    const r = await this.run(["merge", "--no-ff", "--no-edit", branch])
+    if (r.ok) return { ok: true }
+    const conflicts = (await this.status()).filter((e) => e.conflict).length
+    return conflicts ? { conflicts } : { error: firstError(r.err || r.out) }
   }
 
   /** The staged changes, for the AI commit message. */
