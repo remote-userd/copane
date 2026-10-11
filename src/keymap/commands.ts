@@ -540,6 +540,7 @@ export const commands = {
   "ai.explain": { title: "AI: explain this code", run: (ws) => sendContext(ws, AI_ASK.explain) },
   "ai.fix": { title: "AI: find and fix bugs here", run: (ws) => sendContext(ws, AI_ASK.fix) },
   "ai.tests": { title: "AI: write tests for this", run: (ws) => sendContext(ws, AI_ASK.tests) },
+  "ai.turns": { title: "AI turns: review and undo what the AI changed", run: (ws) => ws.ui.set({ modal: { kind: "turns" } }) },
   "ai.fixProblems": { title: "AI: fix problems (this file's errors, else all open files')", run: (ws) => sendProblems(ws) },
   "ai.reviewChanges": { title: "AI: review my changes (the git diff)", run: sendChangesForReview },
 

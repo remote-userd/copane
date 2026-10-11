@@ -40,6 +40,7 @@ export type Modal =
   | { kind: "problems" }
   | { kind: "locations"; title: string; locations: { path: string; range: { start: { line: number; character: number }; end: { line: number; character: number } } }[] }
   | { kind: "help" }
+  | { kind: "turns" }
 
 export interface Notice {
   text: string

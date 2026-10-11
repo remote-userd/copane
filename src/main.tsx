@@ -23,6 +23,7 @@ import { LspManager } from "./lsp/LspManager"
 import { applyFileEdits } from "./lsp/lspActions"
 import { aiStatusSource, TerminalPane } from "./ai/TerminalPane"
 import { affectedOpenFiles, FileWatcher } from "./files/watcher"
+import { TurnLog } from "./ai/turns"
 import pkg from "../package.json"
 
 const USAGE = `Usage: copane [file|directory]
@@ -113,11 +114,20 @@ onShutdown(() => ws.buffers.dispose())
 if (warning) setTimeout(() => ws.notify(warning, "warn"), 100)
 
 // Files changed by the AI CLI (or anything else) flow back into open buffers and the tree.
+// What the AI changes per prompt, for review and undo (Ctrl+Alt+Z).
+const turns = new TurnLog(ws.root, () => git.repo, async () => ((await git.repo?.status()) ?? []).filter((e) => e.untracked).map((e) => e.path))
+ws.turns = turns
+
 const watcher = new FileWatcher(ws.root, async (batch) => {
   const open = ws.buffers.watchedPaths()
   const reloaded: string[] = []
+  const handled = new Set<string>()
   for (const path of affectedOpenFiles(batch, open)) {
+    const before = ws.buffers.byPath(path)?.diskText
     const result = await ws.buffers.handleDiskChange(path)
+    handled.add(path)
+    // "ignored": the content is what copane last saved (our own save), so not an AI edit.
+    if (result !== "ignored") void turns.fileChanged(path, before)
     const buf = ws.buffers.byPath(path)
     if (!buf) continue
     if (result === "reloaded") reloaded.push(buf.relPath)
@@ -125,6 +135,14 @@ const watcher = new FileWatcher(ws.root, async (batch) => {
     else if (result === "deleted") ws.notify(`${buf.relPath} was deleted on disk`, "warn")
   }
   if (reloaded.length) ws.notify(`Reloaded ${reloaded.join(", ")}`)
+  // Files not open in a tab: only a running turn cares about them.
+  if (turns.open) {
+    for (const path of batch.paths) {
+      if (handled.has(path)) continue
+      const info = await Bun.file(path).stat().catch(() => null)
+      if (!info?.isDirectory()) void turns.fileChanged(path)
+    }
+  }
   await tree.onFsChanges(batch.paths)
   git.refresh()
 }, undefined, tree.matcher) // the tree's matcher: each .gitignore is read once

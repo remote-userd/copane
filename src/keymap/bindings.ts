@@ -29,6 +29,7 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "ctrl+alt+f": "search.files",
     "ctrl+shift+f": "search.files",
     "ctrl+alt+d": "git.changes",
+    "ctrl+alt+z": "ai.turns",
     "ctrl+alt+g": "git.fileHistory",
     "ctrl+alt+b": "git.branches",
     "ctrl+alt+t": "buffer.reopenClosed",
@@ -123,6 +124,7 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "ctrl+alt+r": "app.restart",
     "ctrl+alt+j": "view.toggleAi",
     "ctrl+alt+d": "git.changes",
+    "ctrl+alt+z": "ai.turns",
   },
 }
 

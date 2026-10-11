@@ -138,7 +138,31 @@ export function TerminalPane({ config }: { config: AiConfig }) {
     renderer.on("focus", onFocus)
     renderer.on("blur", onBlur)
     const name = config.command.split("/").pop()!
+    // Turns (what the AI changed per prompt): Enter starts one, the AI going quiet ends it.
+    let prompt = ""
+    let turnStart = 0
+    const submitted = () => {
+      turnStart = Date.now()
+      void ws.turns?.begin(prompt)
+      prompt = ""
+    }
+    /** Follow what goes into the prompt: typed text, pastes, Backspace; Enter submits. */
+    const track = (text: string) => {
+      for (const part of text.replace(/\x1b\[20[01]~/g, "").split(/(\x1b\[[0-9;?]*[ -\/]*[@-~]|\x1b.)/)) {
+        if (part.startsWith("\x1b")) continue
+        for (const ch of part) {
+          if (ch === "\r") submitted()
+          else if (ch === "\x7f" || ch === "\b") prompt = prompt.slice(0, -1)
+          else if (ch === "\x15") prompt = "" // Ctrl+U clears the line
+          else if (ch >= " " || ch === "\n") prompt = (prompt + ch).slice(-500)
+        }
+      }
+    }
     const watch = new AgentWatch((what) => {
+      // A turn ends when the AI goes quiet (not while it waits on a question). The first moments
+      // after Enter don't count: the CLI may not have started answering yet.
+      if (what !== "waiting" && Date.now() - turnStart > 3000) void ws.turns?.end()
+      if (what === "idle") return
       const ui = ws.ui.get()
       const how = config.notify ?? "bell"
       if (how === "off" || (ui.focus === "ai" && ui.aiVisible && !ui.modal && windowFocused)) return
@@ -178,6 +202,7 @@ export function TerminalPane({ config }: { config: AiConfig }) {
     term.onData = (data) => {
       // You're answering or typing: what's on screen isn't news any more.
       watch.reset()
+      track(new TextDecoder().decode(data))
       proc.write(data)
     }
     term.onTerminalResize = (cols, rows) => proc.resize(cols, rows)
@@ -206,11 +231,15 @@ export function TerminalPane({ config }: { config: AiConfig }) {
       paste(text) {
         const bytes = term.encodePaste(new TextEncoder().encode(text))
         if (bytes.length) proc.write(bytes)
+        track(text.replace(/\r/g, "\n"))
       },
       type(text) {
-        proc.write(text.replace(/[\r\n]+/g, " "))
+        const line = text.replace(/[\r\n]+/g, " ")
+        track(line)
+        proc.write(line)
       },
       submit() {
+        submitted()
         proc.write("\r")
       },
       focus() {

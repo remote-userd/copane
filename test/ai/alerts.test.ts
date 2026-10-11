@@ -3,7 +3,8 @@ import { AgentWatch, MIN_WORK_MS, QUIET_MS, looksLikeQuestion, notifyCommand, pl
 
 function watch() {
   const events: Attention[] = []
-  return { w: new AgentWatch((e) => events.push(e)), events }
+  const idle: number[] = []
+  return { w: new AgentWatch((e) => (e === "idle" ? idle.push(1) : events.push(e))), events, idle }
 }
 /** Output every 100 ms from `from` to `to`. */
 function stream(w: AgentWatch, from: number, to: number, text = "thinking… ") {
@@ -20,11 +21,12 @@ test("a stretch of work followed by quiet is reported once as finished", () => {
   expect(events).toEqual(["finished"])
 })
 
-test("short bursts (a keystroke echo, a redraw) are not work", () => {
-  const { w, events } = watch()
+test("short bursts (a keystroke echo, a redraw) are not work, just idle (which ends a turn)", () => {
+  const { w, events, idle } = watch()
   stream(w, 0, 300)
   w.tick(300 + QUIET_MS)
   expect(events).toEqual([])
+  expect(idle).toHaveLength(1)
 })
 
 test("output that stops on an approval prompt is reported as waiting, even when short", () => {

@@ -8,6 +8,8 @@
 import { isWsl } from "../app/clipboard"
 
 export type Attention = "finished" | "waiting"
+/** What a stretch of output ended as: work done, a question, or just a short burst (an answer, an echo). */
+export type StretchEnd = Attention | "idle"
 
 /** Quiet this long after output means the CLI stopped. */
 export const QUIET_MS = 1500
@@ -46,7 +48,7 @@ export class AgentWatch {
   /** Set once a stretch of output has been reported, so one stretch gives one alert. */
   private reported = true
 
-  constructor(private emit: (what: Attention) => void) {}
+  constructor(private emit: (what: StretchEnd) => void) {}
 
   /** The CLI printed something. */
   output(data: Uint8Array | string, now = Date.now()): void {
@@ -66,6 +68,7 @@ export class AgentWatch {
     const question = looksLikeQuestion(this.recent.slice(-600))
     if (question) this.emit("waiting")
     else if (this.last - this.start >= MIN_WORK_MS) this.emit("finished")
+    else this.emit("idle")
   }
 
   /** You answered or typed in the pane: whatever was on screen is no longer news. */

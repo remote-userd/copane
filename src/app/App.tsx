@@ -10,6 +10,7 @@ import { ContextMenu } from "./ContextMenu"
 import { PromptModal } from "./PromptModal"
 import { CommandPalette } from "./CommandPalette"
 import { InfoPopup } from "./InfoPopup"
+import { TurnsModal } from "../ai/TurnsModal"
 import { ProblemsModal } from "../lsp/ProblemsModal"
 import { LocationsModal } from "../lsp/LocationsModal"
 import { CompletionPopup } from "../lsp/CompletionPopup"
@@ -159,6 +160,7 @@ export function App({ slots = {} }: { slots?: AppSlots }) {
       {ui.modal?.kind === "palette" ? <CommandPalette bindings={bindings} /> : null}
       {ui.modal?.kind === "info" ? <InfoPopup x={ui.modal.x} y={ui.modal.y} text={ui.modal.text} /> : null}
       {ui.modal?.kind === "problems" ? <ProblemsModal /> : null}
+      {ui.modal?.kind === "turns" ? <TurnsModal /> : null}
       {ui.modal?.kind === "locations" ? <LocationsModal title={ui.modal.title} locations={ui.modal.locations} /> : null}
       <CompletionPopup />
       <SignaturePopup />

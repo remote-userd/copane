@@ -6,6 +6,7 @@ import { configSchema, type Config } from "../config/schema"
 import { createClipboard, type Clipboard } from "./clipboard"
 import type { GitStatus } from "../files/gitStatus"
 import type { LspManager } from "../lsp/LspManager"
+import type { TurnLog } from "../ai/turns"
 
 export interface Workspace {
   root: string
@@ -20,6 +21,8 @@ export interface Workspace {
   git: GitStatus | null
   /** Language servers (diagnostics, completion, hover, definition); null in tests. */
   lsp: LspManager | null
+  /** What the AI changed per turn (prompt), for review and undo; null in tests. */
+  turns: TurnLog | null
 }
 
 export interface AiHandle {
@@ -51,6 +54,7 @@ export function createWorkspace(
     ai: null,
     git: null,
     lsp: null,
+    turns: null,
     notify(text, kind = "info") {
       uiStore.set({ notice: { text, kind } })
       if (noticeTimer) clearTimeout(noticeTimer)

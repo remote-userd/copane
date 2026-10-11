@@ -89,6 +89,7 @@ The editor is built around a loop: ask Claude, see what it changed, keep or undo
 2. **Ask.** Ctrl+J moves you to the AI pane and back. Unsaved files are saved when you switch, so Claude reads what you see. Turn this off with `editor.saveBeforeAi: false`.
 3. **See what changed.** Files Claude edits reload automatically, and the changed lines flash. The line numbers mark lines that differ from the last commit: **▎** green added, yellow changed, and a red **▁** for deleted. The tree marks changed files.
 4. **Review everything.** **Ctrl+Alt+D** lists all changed files with a diff. **Enter** opens a file at the change, and **r** reverts it.
+   - **Turn by turn (Ctrl+Alt+Z):** each prompt you send becomes a turn that lists the files the AI changed, with +/− counts and each change since before the turn. **u** undoes the whole turn (asking first if you've edited those files since), **x** one file, **r** one change. Files the AI created are removed. It works with any CLI, because it watches files, not the CLI.
 5. **Undo.** Ctrl+Z also undoes a reload, so you can step back through Claude's edit in the editor.
 6. **Edits on both sides.** When Claude changes a file you have unsaved edits in, a bar offers:
    - **Merge both:** keeps your edits and Claude's. Only offered when they don't touch the same lines.
@@ -266,6 +267,7 @@ Press **F1** for the command palette: every command, searchable, with its shortc
 | Ctrl+L | Send the current file, or the selected lines, to the AI prompt |
 | Ctrl+K F | Send errors and warnings to the AI ("fix these") |
 | Ctrl+K D | Send your git changes to the AI ("review these") |
+| Ctrl+Alt+Z | AI turns: review and undo what the AI changed, per prompt |
 | Ctrl+W / Ctrl+Alt+T | Close tab / reopen the last closed tab (also Ctrl+Shift+T where the terminal sends it) |
 | Ctrl+PageUp / Ctrl+PageDown | Previous or next tab |
 | Alt+1 … Alt+9 | Go to tab 1–8, Alt+9 the last |

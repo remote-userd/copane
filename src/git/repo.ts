@@ -250,6 +250,28 @@ export class GitRepo {
     return { diff: diff.out, stat: stat.out, staged, untracked }
   }
 
+  /**
+   * A commit object holding the working tree's tracked files as they are now, without touching
+   * the working tree, the index or the stash list (`git stash create`); HEAD when nothing is
+   * modified; null before the first commit. Used to undo an AI turn.
+   */
+  async snapshot(): Promise<string | null> {
+    const created = (await this.run([...READ_ONLY, "stash", "create"])).out.trim()
+    if (created) return created
+    const head = await this.run(["rev-parse", "--verify", "-q", "HEAD"])
+    return head.ok ? head.out.trim() : null
+  }
+
+  /** A file's content in a commit, or null when the commit doesn't have it. */
+  async showAt(sha: string, path: string): Promise<string | null> {
+    const r = await this.run(["show", `${sha}:${this.rel(path).split(sep).join("/")}`])
+    return r.ok ? r.out : null
+  }
+
+  async isIgnored(path: string): Promise<boolean> {
+    return (await this.run(["check-ignore", "-q", "--", this.rel(path)])).ok
+  }
+
   /** The staged changes, for the AI commit message. */
   async stagedDiff(maxBytes = 60_000): Promise<string> {
     const r = await this.run(["diff", "--cached", "--no-color", "--no-ext-diff"])
