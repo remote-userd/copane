@@ -96,7 +96,8 @@ test("delete asks first, then removes the file and closes its clean tab", async 
   await h.step(() => h.keys.pressKey("DELETE"))
   expect(h.frame()).toContain("Permanently delete b.txt?")
   await h.step(() => h.keys.pressKey("d"))
-  await settle(80)
+  // Deleting is async; a loaded CI machine can take longer than a fixed pause.
+  for (let i = 0; i < 80 && (existsSync(join(root, "b.txt")) || ws.buffers.list().length); i++) await settle(25)
   expect(existsSync(join(root, "b.txt"))).toBe(false)
   expect(ws.buffers.list()).toHaveLength(0)
   expect(tree.selected).toBe(join(root, "a.txt"))

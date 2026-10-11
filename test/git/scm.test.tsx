@@ -17,7 +17,8 @@ function sh(cwd: string, ...args: string[]) {
   return Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, ...ENV } }).stdout.toString()
 }
 
-async function until(cond: () => boolean, ms = 3000) {
+// Generous: each step runs real git, which is slow on loaded CI machines (macOS especially).
+async function until(cond: () => boolean, ms = 8000) {
   for (const end = Date.now() + ms; Date.now() < end && !cond(); ) {
     await Bun.sleep(25)
     await h?.setup.renderOnce()
