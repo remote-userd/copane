@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { LineNumberRenderable, LineSign, TextareaRenderable } from "@opentui/core"
 import { changedLines, lineChanges } from "./changeMarkers"
 import { colToIndex, indexToCol } from "../lsp/positions"
@@ -20,6 +20,11 @@ import { exitMultiEdit } from "./MultiEdit"
 import { copySelection, runCommand, type CommandId } from "../keymap/commands"
 import type { Workspace } from "../app/workspace"
 import { goToDefinition } from "../lsp/lspActions"
+import { ImageView } from "../preview/ImageView"
+import { MarkdownPreview } from "../preview/MarkdownPreview"
+
+/** The side preview needs this many columns for itself and for the editor beside it. */
+export const MIN_SIDE_PREVIEW = 30
 
 function openEditorMenu(ws: Workspace, x: number, y: number): void {
   const hasSel = !!ws.buffers.active?.textarea?.hasSelection()
@@ -47,6 +52,9 @@ function openEditorMenu(ws: Workspace, x: number, y: number): void {
         item("AI: explain this", "", "ai.explain", !ws.ai),
         item("AI: find and fix bugs", "", "ai.fix", !ws.ai),
         item("AI: write tests", "", "ai.tests", !ws.ai),
+        ...(ws.buffers.active?.filetype === "markdown"
+          ? [item("Open preview", "Alt+Shift+V", "markdown.openPreview"), item("Open preview to the side", "^K V", "markdown.togglePreviewSide")]
+          : []),
       ],
     },
   })
@@ -437,6 +445,7 @@ export function EditorPane() {
   const buffers = useBuffers()
   const list = buffers.list()
   const active = buffers.active
+  const [paneWidth, setPaneWidth] = useState(0)
   const paneFocused = ui.focus === "editor" && !ui.modal
   // The text area gives up the keyboard while the find bar has it.
   const focused = paneFocused && !ui.find?.active
@@ -454,9 +463,9 @@ export function EditorPane() {
     >
       <Tabs focused={paneFocused} />
       {active ? <Breadcrumbs reveal={(p) => ws.ui.set({ revealPath: p, focus: "tree", treeVisible: true })} /> : null}
-      {active?.conflict || active?.deleted ? <ConflictBar buf={active} /> : null}
-      {active ? <MergeConflictBar bufId={active.id} /> : null}
-      {ui.find && active ? <FindBar /> : null}
+      {active?.kind === "text" && (active.conflict || active.deleted) ? <ConflictBar buf={active} /> : null}
+      {active?.kind === "text" ? <MergeConflictBar bufId={active.id} /> : null}
+      {ui.find && active?.kind === "text" ? <FindBar /> : null}
       {list.length === 0 ? (
         <box flexGrow={1} justifyContent="center" alignItems="center" flexDirection="column">
           <box flexDirection="column">
@@ -480,7 +489,28 @@ export function EditorPane() {
           </box>
         </box>
       ) : (
-        list.map((b) => <BufferView key={b.id} buf={b} active={b.id === active?.id} focused={focused && b.id === active?.id} wrap={ui.wordWrap} />)
+        <box
+          flexGrow={1}
+          flexDirection="row"
+          onSizeChange={function (this: { width: number }) {
+            setPaneWidth(this.width)
+          }}
+        >
+          <box flexGrow={1} flexBasis={0} flexDirection="column">
+            {list.map((b) => {
+              const on = b.id === active?.id
+              if (b.kind === "image") return <ImageView key={b.id} buf={b} active={on} />
+              if (b.kind === "preview") return <MarkdownPreview key={b.id} path={b.source!} active={on} focused={focused && on} version={b.version} />
+              return <BufferView key={b.id} buf={b} active={on} focused={focused && on} wrap={ui.wordWrap} />
+            })}
+          </box>
+          {ui.mdSide && active?.kind === "text" && active.filetype === "markdown" && paneWidth >= 2 * MIN_SIDE_PREVIEW + 1 ? (
+            <>
+              <box width={1} flexShrink={0} backgroundColor={colors.divider} />
+              <MarkdownPreview key={`side:${active.path}`} path={active.path} active focused={false} />
+            </>
+          ) : null}
+        </box>
       )}
     </box>
   )

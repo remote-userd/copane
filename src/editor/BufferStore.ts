@@ -1,12 +1,38 @@
-import { relative, resolve, basename, sep } from "node:path"
-import { pathToFiletype, type TextareaRenderable } from "@opentui/core"
+import { relative, resolve, basename, extname, sep } from "node:path"
+import { imageInfo, pathToFiletype, type TextareaRenderable } from "@opentui/core"
 import { hashText, loadFile, saveFile, type Eol } from "./fileio"
 import { mergeTexts } from "./merge"
 import { applyHighlights, computeHighlights, mapHighlights } from "./highlighter"
 import { getSyntaxStyle } from "./syntaxStyle"
 
+/** Images opened as a picture instead of text (formats OpenTUI decodes). */
+export const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"])
+export const isImagePath = (path: string) => IMAGE_EXTS.has(extname(path).toLowerCase())
+
+/**
+ * A preview tab's path: the Markdown file's path plus a suffix no real path can contain, so the
+ * watcher, language servers and git caches never mistake it for a file, and restoring tabs by
+ * path brings it back.
+ */
+const PREVIEW_SUFFIX = "\0preview"
+export const previewPath = (source: string) => source + PREVIEW_SUFFIX
+export const previewSource = (path: string): string | null => (path.endsWith(PREVIEW_SUFFIX) ? path.slice(0, -PREVIEW_SUFFIX.length) : null)
+
+export interface ImageMeta {
+  format: string
+  width: number
+  height: number
+  bytes: number
+}
+
 export interface Buffer {
   id: number
+  /** "text" is an editable file; "image" shows a picture; "preview" renders `source` as Markdown. */
+  kind: "text" | "image" | "preview"
+  /** Preview tabs: the Markdown file shown. */
+  source: string | null
+  /** Image tabs: what the file holds, or null when it could not be read. */
+  image: ImageMeta | null
   path: string
   relPath: string
   name: string
@@ -102,11 +128,17 @@ export class BufferStore {
 
   // ---- open / close / switch ----
   async open(path: string): Promise<Buffer> {
+    const source = previewSource(path)
+    if (source !== null) return this.openPreview(source)
     const abs = resolve(this.root, path)
     const existing = this.byPath(abs)
     if (existing) {
       this.activate(existing.id)
       return existing
+    }
+    if (isImagePath(abs)) {
+      if (!(await Bun.file(abs).exists())) throw new Error(`${relative(this.root, abs) || abs} not found`)
+      return this.add(this.blank(abs, "image", { image: await readImageMeta(abs) }))
     }
     let loaded: Awaited<ReturnType<typeof loadFile>>
     let isNew = false
@@ -120,6 +152,9 @@ export class BufferStore {
     }
     const buf: Buffer = {
       id: this.nextId++,
+      kind: "text",
+      source: null,
+      image: null,
       path: abs,
       relPath: relative(this.root, abs) || basename(abs),
       name: basename(abs),
@@ -139,9 +174,58 @@ export class BufferStore {
       textarea: null,
       pendingText: loaded.text,
     }
+    return this.add(buf)
+  }
+
+  /** Open (or switch to) the rendered view of a Markdown file. */
+  openPreview(source: string): Buffer {
+    const abs = resolve(this.root, source)
+    const path = previewPath(abs)
+    const existing = this.byPath(path)
+    if (existing) {
+      this.activate(existing.id)
+      return existing
+    }
+    const buf = this.blank(path, "preview", { source: abs })
+    buf.name = `Preview ${basename(abs)}`
+    // Breadcrumbs show its folders (clickable) with the tab name last.
+    buf.relPath = relative(this.root, abs) || basename(abs)
+    return this.add(buf)
+  }
+
+  /** A buffer without text: an image or a preview. */
+  private blank(path: string, kind: "image" | "preview", extra: Partial<Buffer>): Buffer {
+    return {
+      id: this.nextId++,
+      kind,
+      source: null,
+      image: null,
+      path,
+      relPath: relative(this.root, path) || basename(path),
+      name: basename(path),
+      filetype: undefined,
+      eol: "\n",
+      dirty: false,
+      conflict: false,
+      deleted: false,
+      sanitized: false,
+      diskText: "",
+      conflictBase: null,
+      diskHash: "",
+      diskMtimeMs: 0,
+      version: 0,
+      lastTextHash: "",
+      cursor: { row: 0, col: 0 },
+      textarea: null,
+      pendingText: null,
+      ...extra,
+    }
+  }
+
+  private add(buf: Buffer): Buffer {
     this.buffers.push(buf)
     this.activeId = buf.id
-    this.touchRecent(buf.path)
+    if (buf.kind !== "preview") this.touchRecent(buf.path)
     this.emit()
     return buf
   }
@@ -189,7 +273,7 @@ export class BufferStore {
 
   activate(id: number): void {
     const target = this.byId(id)
-    if (target) this.touchRecent(target.path)
+    if (target && target.kind !== "preview") this.touchRecent(target.path)
     if (this.activeId === id || !target) return
     this.activeId = id
     if (this.highlightLater.delete(id)) this.scheduleHighlight(target, 0)
@@ -285,7 +369,7 @@ export class BufferStore {
   // ---- save / reload ----
   async save(id = this.activeId ?? -1): Promise<Buffer | null> {
     const buf = this.byId(id)
-    if (!buf) return null
+    if (!buf || buf.kind !== "text") return null
     const text = this.textOf(buf)
     const result = await saveFile(buf.path, text, buf.eol)
     buf.diskHash = result.hash
@@ -304,8 +388,10 @@ export class BufferStore {
    * dirty buffers are flagged as conflicted instead of being overwritten.
    */
   async handleDiskChange(path: string): Promise<"ignored" | "reloaded" | "conflict" | "deleted"> {
+    this.refreshPreviews(path)
     const buf = this.byPath(path)
-    if (!buf) return "ignored"
+    if (!buf || buf.kind === "preview") return "ignored"
+    if (buf.kind === "image") return this.reloadImage(buf)
     let loaded
     try {
       loaded = await loadFile(buf.path)
@@ -340,6 +426,32 @@ export class BufferStore {
     buf.diskMtimeMs = loaded.mtimeMs
     buf.diskText = loaded.text
     buf.dirty = false
+    this.emit()
+    return "reloaded"
+  }
+
+  /** Preview tabs of `path` re-read it (those following an open tab update as it reloads). */
+  private refreshPreviews(path: string): void {
+    const hit = this.buffers.filter((b) => b.kind === "preview" && b.source === path)
+    for (const b of hit) b.version++
+    if (hit.length) this.emit()
+  }
+
+  /** Files whose changes on disk matter: open files, and the sources of preview tabs. */
+  watchedPaths(): string[] {
+    return this.buffers.map((b) => (b.kind === "preview" ? b.source! : b.path))
+  }
+
+  private async reloadImage(buf: Buffer): Promise<"ignored" | "reloaded" | "deleted"> {
+    if (!(await Bun.file(buf.path).exists())) {
+      if (buf.deleted) return "ignored"
+      buf.deleted = true
+      this.emit()
+      return "deleted"
+    }
+    buf.deleted = false
+    buf.image = await readImageMeta(buf.path)
+    buf.version++
     this.emit()
     return "reloaded"
   }
@@ -463,5 +575,16 @@ export class BufferStore {
   dispose(): void {
     for (const t of this.highlightTimers.values()) clearTimeout(t)
     this.highlightTimers.clear()
+  }
+}
+
+/** Format and size of an image file, or null when it can't be read or decoded. */
+async function readImageMeta(path: string): Promise<ImageMeta | null> {
+  try {
+    const bytes = await Bun.file(path).bytes()
+    const info = imageInfo(bytes)
+    return { format: String(info.format), width: info.width, height: info.height, bytes: bytes.length }
+  } catch {
+    return null
   }
 }

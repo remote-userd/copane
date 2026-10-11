@@ -75,6 +75,8 @@ installSignalHandlers()
 
 const renderer = await createCliRenderer({ exitOnCtrlC: false })
 registerRenderer(renderer)
+// Every pane, popup and preview listens for keys; Node's leak warning at 10 would print over the UI.
+renderer.keyInput.setMaxListeners(100)
 installPerfLog(renderer)
 
 const ws = createWorkspace(
@@ -112,7 +114,7 @@ if (warning) setTimeout(() => ws.notify(warning, "warn"), 100)
 
 // Files changed by the AI CLI (or anything else) flow back into open buffers and the tree.
 const watcher = new FileWatcher(ws.root, async (batch) => {
-  const open = ws.buffers.list().map((b) => b.path)
+  const open = ws.buffers.watchedPaths()
   const reloaded: string[] = []
   for (const path of affectedOpenFiles(batch, open)) {
     const result = await ws.buffers.handleDiskChange(path)
@@ -139,7 +141,7 @@ if (restored) {
     const active = restored.active ? ws.buffers.byPath(restored.active) : null
     if (active) {
       ws.buffers.activate(active.id)
-      void tree.reveal(active.path)
+      void tree.reveal(active.source ?? active.path)
       ws.ui.set({ focus: "editor" })
     }
     ws.notify("Restarted")

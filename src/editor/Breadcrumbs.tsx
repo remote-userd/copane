@@ -42,7 +42,7 @@ export function Breadcrumbs({ reveal }: { reveal?: (path: string) => void }) {
 
   if (!buf) return null
   const parts = buf.relPath.split(sep)
-  const file = parts.at(-1)!
+  const file = buf.kind === "preview" ? buf.name : parts.at(-1)!
   let dirs = parts.slice(0, -1)
   // Drop leading folders (shown as "…") until the row fits; the file and symbols matter most.
   const ARROW = 3

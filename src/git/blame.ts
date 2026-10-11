@@ -57,7 +57,7 @@ export function useLineBlame(ws: Workspace): BlameLine | undefined {
   const row = buf?.cursor.row ?? -1
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const blamed = useRef<{ id: number; row: number; text: string } | null>(null)
-  const enabled = ws.config.git.blame && !!ws.git?.repo && !!buf
+  const enabled = ws.config.git.blame && !!ws.git?.repo && buf?.kind === "text"
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current)
     if (!enabled || !buf) return setLine(undefined)

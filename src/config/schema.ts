@@ -61,6 +61,15 @@ export const configSchema = z
         icons: z.enum(["nerd", "simple", "none"]).default("simple"),
       })
       .prefault({}),
+    preview: z
+      .object({
+        /**
+         * How images are drawn: "auto" uses kitty graphics or sixel when the terminal supports them
+         * and coloured blocks otherwise (always inside tmux). Force one if detection gets it wrong.
+         */
+        imageProtocol: z.enum(["auto", "kitty", "sixel", "blocks"]).default("auto"),
+      })
+      .prefault({}),
     /** Extra key bindings per layer, e.g. { "global": { "ctrl+o": "file.picker" } }. null removes one. */
     keys: z
       .partialRecord(z.enum(["global", "editor", "tree", "ai"]), z.record(z.string(), z.string().nullable()))

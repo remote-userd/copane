@@ -33,6 +33,7 @@ const GLOBAL: [string, string, CommandId][] = [
   ["Ctrl+Alt+T", "\x1b\x14", "buffer.reopenClosed"],
   ["Ctrl+T", "\x14", "file.symbolInProject"],
   ["Ctrl+Shift+O (sent as Ctrl+O)", "\x0f", "file.symbolInFile"],
+  ["Alt+Shift+V (ESC V)", "\x1bV", "markdown.openPreview"],
 ]
 
 test.each(GLOBAL)("%s reaches its global command", (_name, bytes, command) => {
@@ -46,6 +47,7 @@ test("chords: Ctrl+K then a second key", () => {
   expect(b.editor.get(`${k} ${c}`)).toBe("edit.addComment")
   expect(b.editor.get("ctrl+k ctrl+w")).toBe("buffer.close")
   expect(b.global.get("ctrl+k z")).toBe("view.maximizeEditor")
+  expect(b.global.get(`${k} ${keyToString(parseKeypress("v")!)}`)).toBe("markdown.togglePreviewSide")
 })
 
 test.each(LEGACY)("%s reaches its editor command", (_name, bytes, command) => {

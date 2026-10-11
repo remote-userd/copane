@@ -54,3 +54,11 @@ Run in a real terminal, in plain mode and inside tmux.
 47. In a big repo: the first Ctrl+P opens instantly. Empty, it shows recent files. `@` lists this file's symbols (test files list describe/it blocks), and `:500` jumps.
 48. F12 or a search result, then Ctrl+Alt+← returns to where you were, and Ctrl+Alt+→ goes forward again.
 49. Typing in a 10,000-line file feels immediate (CE_PERF log under ~50 ms per key).
+
+## Markdown and images
+
+50. Open README.md and press Ctrl+K V: the rendered view appears beside it. Type a heading: the preview follows within a moment. Ctrl+K V again closes it.
+51. Alt+Shift+V on README.md opens "Preview README.md" as a tab. Arrows and PgDn scroll it, and the wheel scrolls it. Alt+Shift+V again returns to the file.
+52. In Windows Terminal (1.22+), open a PNG from the tree: a sharp picture with "PNG · w×h · size" above it. Inside tmux the same file shows as coloured blocks.
+53. With an image tab showing, open F1 and a right-click menu over it, then close them: no picture fragments are left on top of the UI. Switch tabs and back: the picture redraws.
+54. A Markdown file with `![x](pic.png)` next to it shows the picture in the preview, while a badge URL shows its alt text.

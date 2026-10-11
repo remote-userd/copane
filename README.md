@@ -28,7 +28,8 @@ their work. Usually that means juggling two apps. copane puts both in one window
   what differs from git, and **Ctrl+Alt+D** reviews every change with a diff. **Ctrl+Z** undoes the agent's edit.
 - **🔀 No lost work.** Typing while the agent edits the same file? Merge both, compare, or pick a side.
 - **🧠 A real editor.** Language servers (TypeScript, Rust, Go, Python, Zig, C/C++), autocomplete,
-  go to definition, rename, multi-cursor, Tree-sitter highlighting, project search and replace, Prettier.
+  go to definition, rename, multi-cursor, Tree-sitter highlighting, project search and replace, Prettier,
+  a live Markdown preview, and images right in the terminal.
 - **🌿 Git built in.** Stage hunks, commit (with AI-written messages), push, blame, file history,
   branches and merge-conflict resolution.
 - **⌨️ VS Code keys.** Ctrl+P, F1, Ctrl+D, F12, F2… and **Import VS Code settings** in one step.
@@ -144,6 +145,17 @@ Run commands from the AI pane with `!`, for example `! bun test`.
 - **Ctrl+Alt+B, branches:** switch with fuzzy search, or type a new name to create a branch. It offers to save unsaved files first, and shows git's own error if the switch fails.
 - **Merge conflicts:** your side is tinted green and the incoming side blue. A bar shows the count and **Accept current / incoming / both** (Alt+1 / Alt+2 / Alt+3 while the cursor is in a conflict), and Alt+F5 goes to the next conflict. When you're done, save and stage the file.
 
+## Markdown and images
+
+- **Markdown preview:**
+  - **Ctrl+K V:** a live preview beside the file that follows your typing and the AI's edits.
+  - **Alt+Shift+V:** the preview as its own tab; on the preview tab, it goes back to the file.
+  - Both are in the editor's right-click menu, and "Open Preview" is in the tree's.
+  - It renders headings, emphasis, lists, quotes, tables and highlighted code blocks. Arrow keys, PgUp/PgDn and Home/End scroll a preview tab, and the mouse wheel scrolls both.
+  - Images in the file show in the preview when they are local. Remote images (badges, for example) aren't downloaded, so they show their alt text.
+- **Images:** PNG, JPEG, WebP and GIF (first frame) open as a tab instead of an error, with the format, size and file size above the picture. Small images keep their own size, and big ones shrink to fit. They reload when the file changes. Ctrl+L sends the image to the AI as `@path`, and Claude Code can look at it. SVG files open as text.
+- **How images are drawn:** sharp pictures in terminals with kitty graphics or sixel (kitty, WezTerm, Ghostty, foot, iTerm2, and Windows Terminal 1.22+), and coloured blocks elsewhere and inside tmux. If the picture is blank or garbled, set `"preview": { "imageProtocol": "blocks" }` (or `"sixel"`, `"kitty"`).
+
 ## Code intelligence
 
 The editor talks to language servers for errors, autocomplete, type info and go-to-definition.
@@ -190,6 +202,7 @@ Terminals can't send some Ctrl+Shift keys (they arrive as the plain Ctrl key), s
 | Ctrl+` (terminal) | Ctrl+J, then `!command` | The side pane is the AI CLI. Claude Code runs shell commands that start with `!` |
 | Ctrl+Alt+↑/↓ (add cursor) | Ctrl+D | Multi-cursor here is by occurrence. Ctrl+Alt+↑/↓ copy lines |
 | Alt+F5 (next change) | Alt+F5 | Same key. Alt+H shows the change |
+| Ctrl+Shift+V (Markdown preview) | Alt+Shift+V | Ctrl+Shift+V arrives as Ctrl+V (paste). Ctrl+K V opens it to the side, as in VS Code |
 
 Settings that match VS Code's: `editor.wordWrap` (Alt+Z toggles it), `editor.formatOnSave`, `editor.autoClosingBrackets`. **Import VS Code settings** in the palette (F1) copies yours into the config (it finds VS Code's settings on Linux, macOS, Windows, and Windows from WSL). Ctrl+F starts with the selection or the word under the cursor, and typing replaces it.
 
@@ -325,6 +338,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
   "editor": { "highlightMaxBytes": 1000000, "copyOnSelect": false, "saveBeforeAi": true, "autocomplete": true, "wordWrap": false, "highlightCursor": true, "indentGuides": true, "autoIndent": true, "autoClosingBrackets": true, "formatter": "auto", "formatOnSave": false },
   "lsp": { "python": { "command": ["pylsp"] } },
   "tree": { "icons": "simple" },
+  "preview": { "imageProtocol": "auto" },
   "keys": { "global": { "ctrl+o": "file.picker", "ctrl+l": null } }
 }
 ```

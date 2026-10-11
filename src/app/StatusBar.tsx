@@ -78,9 +78,14 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
   const problemsText = lspStatus ? `${g.error} ${counts.errors} ${g.warning} ${counts.warnings}` : ""
   const ta = buf?.textarea
   const selected = ta?.hasSelection() ? ta.getSelectedText().length : 0
-  const pos = buf ? `${buf.dirty ? "● " : ""}Ln ${buf.cursor.row + 1}, Col ${buf.cursor.col + 1}${selected ? ` (${selected} selected)` : ""}` : ""
-  const lang = buf ? langName(buf.filetype) : ""
-  const eol = buf ? (buf.eol === "\r\n" ? "CRLF" : "LF") : ""
+  const text = buf?.kind === "text" ? buf : null
+  const pos = text
+    ? `${text.dirty ? "● " : ""}Ln ${text.cursor.row + 1}, Col ${text.cursor.col + 1}${selected ? ` (${selected} selected)` : ""}`
+    : buf?.kind === "image" && buf.image
+      ? `${buf.image.width}×${buf.image.height}`
+      : ""
+  const lang = text ? langName(text.filetype) : buf?.kind === "image" ? (buf.image?.format.toUpperCase() ?? "Image") : buf ? "Markdown preview" : ""
+  const eol = text ? (text.eol === "\r\n" ? "CRLF" : "LF") : ""
   const aiText = aiStatus ? `${g.ai} ${aiStatus.replace(/ ●$/, "")}` : ""
 
   const noticeColor = ui.notice?.kind === "error" ? colors.error : ui.notice?.kind === "warn" ? colors.warn : colors.ok

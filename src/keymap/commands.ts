@@ -39,6 +39,19 @@ function altNumber(ws: Workspace, n: number): void {
   }
 }
 
+/** On a Markdown file, open its preview tab; on a preview tab, go back to the file. */
+async function openPreview(ws: Workspace): Promise<void> {
+  const buf = ws.buffers.active
+  if (buf?.kind === "preview") {
+    await ws.buffers.open(buf.source!)
+  } else if (buf?.filetype === "markdown") {
+    ws.buffers.openPreview(buf.path)
+  } else {
+    return ws.notify("Not a Markdown file")
+  }
+  ws.ui.set({ focus: "editor" })
+}
+
 async function reopenClosed(ws: Workspace): Promise<void> {
   const open = new Set(ws.buffers.list().map((b) => b.path))
   let path: string | undefined
@@ -296,7 +309,8 @@ function sendContext(ws: Workspace, instruction?: string): void {
     const startRow = ta.editBuffer.offsetToPosition(selection.start)?.row ?? 0
     range = { start: startRow + 1, ...selectionLineSpan(startRow, text) }
   }
-  const { reference, snippet } = formatContextForAgent(relative(ws.root, buf.path), range)
+  // A preview sends the Markdown file it shows.
+  const { reference, snippet } = formatContextForAgent(relative(ws.root, buf.source ?? buf.path), range)
   ai.type(reference)
   if (snippet) ai.paste(snippet)
   setFocus(ws, "ai")
@@ -394,7 +408,8 @@ export const commands = {
     title: "File history (git log)",
     run(ws) {
       if (!ws.git?.repo) return ws.notify("Not a git repository", "warn")
-      ws.ui.set({ modal: { kind: "history", path: ws.buffers.active?.path ?? null } })
+      const buf = ws.buffers.active
+      ws.ui.set({ modal: { kind: "history", path: buf ? (buf.source ?? buf.path) : null } })
     },
   },
   "git.blameLine": {
@@ -437,6 +452,15 @@ export const commands = {
       } else {
         ws.ui.set({ maximized: { tree: ui.treeVisible, ai: ui.aiVisible }, treeVisible: false, aiVisible: false, focus: "editor" })
       }
+    },
+  },
+  "markdown.openPreview": { title: "Markdown: open preview / back to the source", run: openPreview },
+  "markdown.togglePreviewSide": {
+    title: "Markdown: open preview to the side",
+    run(ws) {
+      const on = !ws.ui.get().mdSide
+      if (on && ws.buffers.active?.filetype !== "markdown") return ws.notify("Not a Markdown file")
+      ws.ui.set({ mdSide: on })
     },
   },
   "buffer.next": { title: "Next tab", run: (ws) => ws.buffers.cycle(1) },

@@ -145,6 +145,15 @@ export function openTreeMenu(ws: Workspace, tree: TreeModel, row: TreeRow | null
       { label: "Copy Relative Path", run: () => copyPath(ws, rel(ws, row.entry.path)) },
       { label: `Send to AI (@${basename(row.entry.path)})`, disabled: !ws.ai, run: () => sendToAi(ws, row) },
     )
+    if (!row.entry.isDir && /\.(md|markdown)$/i.test(row.entry.path)) {
+      items.push({
+        label: "Open Preview",
+        run: () => {
+          ws.buffers.openPreview(row.entry.path)
+          ws.ui.set({ focus: "editor" })
+        },
+      })
+    }
   }
   ws.ui.set({ modal: { kind: "menu", x, y, items } })
 }

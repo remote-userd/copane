@@ -75,6 +75,8 @@ export interface UiState {
   wordWrap: boolean
   /** Pane visibility before "maximize editor", restored by toggling it again. */
   maximized: { tree: boolean; ai: boolean } | null
+  /** Show a live preview beside Markdown files (Ctrl+K V). */
+  mdSide: boolean
 }
 
 export function createUiStore(initial?: Partial<UiState>): Store<UiState> {
@@ -89,6 +91,7 @@ export function createUiStore(initial?: Partial<UiState>): Store<UiState> {
     resizing: null,
     updateReady: false,
     maximized: null,
+    mdSide: false,
     wordWrap: false,
     sidebar: "files",
     searchSeed: null,
