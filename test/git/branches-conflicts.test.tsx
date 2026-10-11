@@ -46,6 +46,8 @@ test("branch picker: create a branch from the query, then switch back", async ()
   await h!.step(() => h!.keys.pressKey("b", { ctrl: true, meta: true }))
   await until(() => h!.frame().includes("● feature/x"))
   await h!.step(() => h!.keys.typeText("main"))
+  // Enter before the list filters would pick the current branch.
+  await until(() => !h!.frame().includes("● feature/x"))
   await h!.step(() => h!.keys.pressEnter())
   await until(() => sh(root, "branch", "--show-current").trim() === "main")
   expect(sh(root, "branch", "--show-current").trim()).toBe("main")
