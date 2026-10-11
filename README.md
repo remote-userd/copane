@@ -14,14 +14,7 @@ ask for a change, watch it land in your buffer, review the diff, keep it or undo
 
 </div>
 
-```
-┌ tree ─────┐┌ editor ──────────────────────┐┌ claude ───────────────┐
-│ ▾ src     ││ a.ts ●  b.ts                 ││ > fix the bug in f    │
-│   a.ts    ││ 1 export function f() {      ││ ● Edit a.ts           │
-│   b.ts    ││ 2   ...                      ││                       │
-└───────────┘└──────────────────────────────┘└───────────────────────┘
- ^S save  ^P files  ^B tree  ^J ai  ^L send to ai  F1 commands  ^Q quit
-```
+![copane demo: Claude fixes a bug in the side pane, the editor reloads it, and the change is reviewed as a diff](docs/demo.gif)
 
 ## Why copane?
 

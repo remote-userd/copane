@@ -19,11 +19,28 @@ Set TypingSpeed 60ms
 
 # Copy the sample project to a scratch git repo, so the recording never edits the repo itself.
 Hide
+# Recorded from inside a Claude Code session, its variables would reach the demo's Claude.
+Type `unset CLAUDECODE CLAUDE_PID CLAUDE_EFFORT $(env | sed -n 's/^\(CLAUDE_CODE_[A-Z_]*\)=.*/\1/p')`
+Enter
 Type "export XDG_CONFIG_HOME=$PWD/scripts/demo/home/config XDG_STATE_HOME=$PWD/scripts/demo/home/state"
 Enter
 Type "rm -rf /tmp/copane-demo && cp -r scripts/demo/project /tmp/copane-demo && cd /tmp/copane-demo"
 Enter
-Type "git init -q -b main && git add . && git -c user.name=demo -c user.email=demo@example.com commit -qm init && clear"
+Type "git init -q -b main && git add . && git -c user.name=demo -c user.email=demo@example.com commit -qm init"
+Enter
+# Claude asks whether to trust a new folder, defaulting to "No, exit": answer it once here.
+# Once trusted, these keys only send an empty prompt and /exit.
+Type "claude"
+Enter
+Sleep 8s
+Down
+Enter
+Sleep 3s
+Type "/exit"
+Sleep 500ms
+Enter
+Sleep 2s
+Type "clear"
 Enter
 Show
 
