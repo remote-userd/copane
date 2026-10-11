@@ -172,6 +172,32 @@ test("dragging the tree and AI borders resizes the panes", async () => {
   expect(h.find("AI-PANE").x).toBe(aiBorder + 16)
 })
 
+test("double-clicking a border puts that pane back to its default width; a single click leaves it", async () => {
+  const { h, ws } = await app({ "a.txt": "a" })
+  const auto = paneWidths(140, ws.ui.get(), true, true)
+  ws.ui.set({ treeWidth: auto.treeWidth + 8, aiWidth: auto.aiWidth - 12 })
+  await h.step(() => {})
+  const treeBorder = auto.treeWidth + 8
+  const aiBorder = 140 - (auto.aiWidth - 12) - 1
+  const click = async (x: number) => {
+    await h.step(() => h.mouse.pressDown(x, 10))
+    await h.step(() => h.mouse.release(x, 10))
+  }
+  await click(treeBorder)
+  await Bun.sleep(450) // too slow for a double-click
+  await click(treeBorder)
+  expect(ws.ui.get().treeWidth).toBe(auto.treeWidth + 8)
+  await Bun.sleep(450)
+  await click(treeBorder)
+  await click(treeBorder)
+  expect(ws.ui.get().treeWidth).toBeNull()
+  expect(ws.ui.get().resizing).toBeNull()
+  await click(aiBorder)
+  await click(aiBorder)
+  expect(ws.ui.get().aiWidth).toBeNull()
+  expect(paneWidths(140, ws.ui.get(), true, true)).toEqual(auto)
+})
+
 test("pane widths are clamped so the editor keeps room", () => {
   expect(paneWidths(140, { treeWidth: 5, aiWidth: null }, true, true).treeWidth).toBe(14)
   const w = paneWidths(140, { treeWidth: 100, aiWidth: 100 }, true, true)

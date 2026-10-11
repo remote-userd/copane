@@ -100,6 +100,13 @@ The editor is built around a loop: ask Claude, see what it changed, keep or undo
 
 Run commands from the AI pane with `!`, for example `! bun test`.
 
+**Look away while it works.** When the AI finishes, or stops to ask you something (an approval prompt), while you're in the editor or another window, copane tells you:
+- a notice ("claude finished" / "claude is waiting for your answer")
+- the terminal bell (Windows Terminal flashes the taskbar)
+- **✓ done** / **⚠ needs you** in the AI pane header and the status bar, until you look (Ctrl+J)
+
+With `"ai": { "notify": "desktop" }` you also get a system notification: a Windows toast on WSL, Notification Center on macOS, `notify-send` on Linux. `"off"` turns it all off.
+
 ## Big projects
 
 - **Ctrl+P:** an empty query lists recently opened files first. The file index is built in the background at startup, so the first Ctrl+P is instant.
@@ -112,7 +119,7 @@ Run commands from the AI pane with `!`, for example `! bun test`.
 
 ## Look
 
-- **Panes:** the panes have no boxes. A thin divider separates them, and you can drag it to resize.
+- **Panes:** the panes have no boxes. A thin divider separates them: drag it to resize, double-click it to go back to the default width.
 - **Headers:** each pane has one. The left pane has two tabs, `FILES` (the tree) and `SEARCH` (search and replace in all files); click one to switch. The editor's header is its tab row, with icons, and the active tab is accent-coloured while the editor has focus. The AI pane shows the command and `● ready`, or a spinner while it's working.
 - **Breadcrumbs:** under the tabs, `src › editor › EditorPane.tsx › BufferView` shows the folder path, the file and the symbol under the cursor. Click a folder to show it in the tree.
 - **Status bar,** left to right:
@@ -323,7 +330,7 @@ If icons show as boxes, your terminal isn't using a Nerd Font yet. On Windows, f
 - **Line numbers:** click a number to select that line, drag to select several.
 - **Ctrl+click** (or Alt+click) a name to go to its definition.
 - **Right-click:** a menu with Go to definition, Find all references, Cut, Copy, Paste, Select all and Send to AI. In the AI pane it offers Copy, Paste and Restart.
-- **Panes:** clicking a pane focuses it. Drag the border between panes to resize them for this session.
+- **Panes:** clicking a pane focuses it. Drag the border between panes to resize them, and double-click it to reset that pane's width.
 - **Tree and picker:** the wheel scrolls, rows highlight on hover, and a click opens the file or toggles the folder. Right-click a tree row for file actions.
 - **Tabs:** click to switch, click × or middle-click to close, wheel over the tab bar to cycle.
 - **Status bar:** the key hints are buttons, and clicking the AI status switches focus.
@@ -340,7 +347,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
 
 ```json
 {
-  "ai": { "command": "claude", "args": [], "startHidden": false },
+  "ai": { "command": "claude", "args": [], "startHidden": false, "notify": "bell" },
   "editor": { "highlightMaxBytes": 1000000, "copyOnSelect": false, "saveBeforeAi": true, "autocomplete": true, "wordWrap": false, "highlightCursor": true, "indentGuides": true, "autoIndent": true, "autoClosingBrackets": true, "formatter": "auto", "formatOnSave": false },
   "lsp": { "python": { "command": ["pylsp"] } },
   "tree": { "icons": "simple" },

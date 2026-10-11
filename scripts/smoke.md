@@ -64,3 +64,6 @@ Run in a real terminal, in plain mode and inside tmux.
 54. A Markdown file with `![x](pic.png)` next to it shows the picture in the preview, while a badge URL shows its alt text.
 55. Open docs/demo.gif: it plays, and the header says "435 frames · ▶ playing". Space pauses and resumes. Switch to another tab and back: it picks up again.
 56. Right-click a file in the tree, Reveal in File Explorer: Windows Explorer opens with the file selected (Finder on macOS). Shift+Alt+R does the same for the tree's selection, and for the open file from the editor. Right-click empty space in the tree: it offers revealing the project folder.
+57. Ask Claude for a change, then press Ctrl+B (tree) while it works: when it finishes, a notice says "claude finished", the bell rings (Windows Terminal flashes the taskbar), and the AI header and status bar show ✓ done until Ctrl+J. With `ai.notify: "desktop"`, a Windows toast appears too.
+58. Ask for something that needs approval (a shell command), and switch to the editor: "⚠ needs you" and a warning notice appear. Answer in the pane: the badge clears.
+59. Drag the tree's and the AI pane's dividers, then double-click each: the pane goes back to its default width, and stays so after a restart.

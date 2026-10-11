@@ -10,6 +10,11 @@ export const configSchema = z
         /** Start the AI pane hidden. */
         startHidden: z.boolean().default(false),
         maxScrollbackBytes: z.number().int().min(0).max(50_000_000).default(2_000_000),
+        /**
+         * When the AI finishes or waits for your answer while you're not looking at its pane: "bell"
+         * (a notice and the terminal bell), "desktop" (also a system notification), or "off".
+         */
+        notify: z.enum(["bell", "desktop", "off"]).default("bell"),
       })
       .prefault({}),
     editor: z

@@ -5,6 +5,10 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Alerts when the AI finishes or waits for your answer while you're not looking: a notice, the terminal bell, and ✓ done / ⚠ needs you in the AI header and status bar. `ai.notify: "desktop"` adds a system notification (Windows toast on WSL, macOS Notification Center, notify-send); `"off"` disables them.
+- Double-click a pane divider to reset that pane to its default width.
+
 ### Fixed
 - Staging and committing no longer fail at random with "index.lock: File exists": the background git status no longer takes git's index lock.
 

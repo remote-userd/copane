@@ -178,6 +178,7 @@ const aiConfig = {
   command: config.ai.command,
   args: config.ai.args,
   maxScrollbackBytes: config.ai.maxScrollbackBytes,
+  notify: config.ai.notify,
 }
 
 createRoot(renderer).render(

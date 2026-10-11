@@ -86,7 +86,9 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
       : ""
   const lang = text ? langName(text.filetype) : buf?.kind === "image" ? (buf.image?.format.toUpperCase() ?? "Image") : buf ? "Markdown preview" : ""
   const eol = text ? (text.eol === "\r\n" ? "CRLF" : "LF") : ""
-  const aiText = aiStatus ? `${g.ai} ${aiStatus.replace(/ ●$/, "")}` : ""
+  // A badge while the AI has news you haven't looked at (finished, or waiting for an answer).
+  const badge = ui.aiAttention === "waiting" ? " ⚠ needs you" : ui.aiAttention === "finished" ? " ✓ done" : ""
+  const aiText = aiStatus ? `${g.ai} ${aiStatus.replace(/ ●$/, "")}${badge}` : ""
 
   const noticeColor = ui.notice?.kind === "error" ? colors.error : ui.notice?.kind === "warn" ? colors.warn : colors.ok
   // A problem on the cursor's line replaces the hints (like VS Code's status message).
@@ -190,7 +192,7 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
         ) : null}
       </box>
       {aiText ? (
-        <Segment bg={ui.focus === "ai" ? colors.accentDim : colors.segmentBg} onPress={() => void runCommand(ws, ui.focus === "ai" ? "focus.editor" : "focus.ai")}>
+        <Segment bg={ui.focus === "ai" || ui.aiAttention ? colors.accentDim : colors.segmentBg} onPress={() => void runCommand(ws, ui.focus === "ai" ? "focus.editor" : "focus.ai")}>
           {aiText}
         </Segment>
       ) : null}

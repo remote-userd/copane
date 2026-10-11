@@ -77,6 +77,8 @@ export interface UiState {
   maximized: { tree: boolean; ai: boolean } | null
   /** Show a live preview beside Markdown files (Ctrl+K V). */
   mdSide: boolean
+  /** The AI finished or is waiting for you while you weren't looking; cleared when its pane gets focus. */
+  aiAttention: "finished" | "waiting" | null
 }
 
 export function createUiStore(initial?: Partial<UiState>): Store<UiState> {
@@ -92,6 +94,7 @@ export function createUiStore(initial?: Partial<UiState>): Store<UiState> {
     updateReady: false,
     maximized: null,
     mdSide: false,
+    aiAttention: null,
     wordWrap: false,
     sidebar: "files",
     searchSeed: null,

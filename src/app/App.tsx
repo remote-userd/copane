@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from "react"
+import { useRef, useState, useSyncExternalStore } from "react"
 import { useTerminalDimensions } from "@opentui/react"
 import { EditorPane } from "../editor/EditorPane"
 import { useAppKeymap } from "../keymap/useAppKeymap"
@@ -46,11 +46,18 @@ export function paneWidths(
   return { treeWidth: tree, aiWidth: ai }
 }
 
-/** The 1-column line between two panes; drag it to resize. Brightens on hover and while dragging. */
+/** Two presses on a divider this close together are a double-click (the renderer reports only presses). */
+const DOUBLE_CLICK_MS = 400
+
+/**
+ * The 1-column line between two panes; drag it to resize, double-click to go back to the default
+ * width (as in VS Code). Brightens on hover and while dragging.
+ */
 function Divider({ side }: { side: "tree" | "ai" }) {
   const ws = useWorkspace()
   const ui = useUi()
   const [hover, setHover] = useState(false)
+  const lastPress = useRef(0)
   const active = hover || ui.resizing === side
   return (
     <box
@@ -63,6 +70,13 @@ function Divider({ side }: { side: "tree" | "ai" }) {
       onMouseDown={(e) => {
         e.stopPropagation()
         e.preventDefault()
+        const now = Date.now()
+        if (now - lastPress.current < DOUBLE_CLICK_MS) {
+          lastPress.current = 0
+          ws.ui.set(side === "tree" ? { resizing: null, treeWidth: null } : { resizing: null, aiWidth: null })
+          return
+        }
+        lastPress.current = now
         ws.ui.set({ resizing: side })
       }}
     />
