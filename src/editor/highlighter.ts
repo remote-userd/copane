@@ -1,4 +1,8 @@
 import { getTreeSitterClient, type SimpleHighlight } from "@opentui/core"
+import { registerGrammars } from "./grammars"
+
+// Before anything highlights: the parser worker reads the grammar list when it starts.
+registerGrammars()
 
 export const SYNTAX_HL_REF = 1
 

@@ -1,5 +1,6 @@
 import { relative, resolve, basename, extname, sep } from "node:path"
-import { imageInfo, pathToFiletype, type TextareaRenderable } from "@opentui/core"
+import { imageInfo, type TextareaRenderable } from "@opentui/core"
+import { filetypeOf } from "./grammars"
 import { hashText, loadFile, saveFile, type Eol } from "./fileio"
 import { mergeTexts } from "./merge"
 import { applyHighlights, computeHighlights, mapHighlights } from "./highlighter"
@@ -161,7 +162,7 @@ export class BufferStore {
       path: abs,
       relPath: relative(this.root, abs) || basename(abs),
       name: basename(abs),
-      filetype: pathToFiletype(abs),
+      filetype: filetypeOf(abs),
       eol: loaded.eol,
       dirty: false,
       conflict: false,
@@ -243,7 +244,7 @@ export class BufferStore {
     const moved = this.under(oldPath)
     for (const b of moved) {
       const abs = newPath + b.path.slice(oldPath.length)
-      const filetype = pathToFiletype(abs)
+      const filetype = filetypeOf(abs)
       const retype = filetype !== b.filetype
       b.path = abs
       b.relPath = relative(this.root, abs) || basename(abs)

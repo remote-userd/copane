@@ -8,7 +8,8 @@
 import { readFileSync } from "node:fs"
 import type { ReactNode } from "react"
 import { Lexer, type Token, type Tokens } from "marked"
-import { imageInfo, pathToFiletype, TextAttributes, type ImageRenderProtocol } from "@opentui/core"
+import { imageInfo, TextAttributes, type ImageRenderProtocol } from "@opentui/core"
+import { filetypeOf } from "../editor/grammars"
 import { ui as colors } from "../config/theme"
 import { getSyntaxStyle } from "../editor/syntaxStyle"
 import { AnimatedImage } from "./AnimatedImage"
@@ -291,7 +292,7 @@ function List({ token, ctx, depth, base }: { token: Tokens.List; ctx: MdContext;
 
 function CodeBlock({ token }: { token: Tokens.Code }) {
   const lang = token.lang?.split(/\s/)[0] ?? ""
-  const filetype = lang ? (pathToFiletype(`x.${lang}`) ?? lang) : undefined
+  const filetype = lang ? (filetypeOf(`x.${lang}`) ?? lang) : undefined
   return (
     <box backgroundColor={colors.mdCodeBg} paddingLeft={1} paddingRight={1} flexDirection="column">
       {lang ? (

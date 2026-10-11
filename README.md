@@ -366,7 +366,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
 
 ## Syntax highlighting
 
-Highlighting uses Tree-sitter through OpenTUI. The bundled grammars cover JavaScript, TypeScript, TSX, Markdown and Zig. You can register more grammars with `getTreeSitterClient().addFiletypeParser(...)`.
+Highlighting uses Tree-sitter through OpenTUI, for JavaScript, TypeScript, TSX, Python, Rust, Go, C, C++, Bash, HTML, CSS, JSON (and JSONC), YAML, TOML, Markdown and Zig. The same grammars colour fenced code blocks in the Markdown preview. The grammars are embedded in the binary, so nothing needs installing. To add a language, see `src/editor/grammars.ts`.
 
 ## Development
 

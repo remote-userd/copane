@@ -6,6 +6,7 @@ All notable changes to copane are listed here. The format follows
 ## [Unreleased]
 
 ### Added
+- Syntax highlighting for Python, Rust, Go, C, C++, Bash, HTML, CSS, JSON/JSONC, YAML and TOML (#4, #5, #6), in the editor and in Markdown code blocks. The official Tree-sitter grammars are embedded in the binary.
 - Send problems or changes to the AI in one key (#17): Ctrl+K F types the errors and warnings (`@file#L12 error: …`) with "fix these"; Ctrl+K D types your git diff with "review these". Also `f` in the Problems list, `v` in Source control, and "Ask AI to fix" in the quick-fix menu (Alt+.).
 
 ## [0.4.0] - 2026-10-11
