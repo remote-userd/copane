@@ -147,12 +147,30 @@ export function BranchPicker({ mode = "switch" }: { mode?: "switch" | "delete" }
                 onMouseDown={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  void run(item)
+                  // Right-click deletes, like the × at the end of the row.
+                  if (e.button === 2) remove(item)
+                  else void run(item)
                 }}
               >
-                <text selectable={false} wrapMode="none" fg={item === CREATE ? colors.ok : b?.current ? colors.accent : colors.text}>
+                <text selectable={false} wrapMode="none" flexGrow={1} fg={item === CREATE ? colors.ok : b?.current ? colors.accent : colors.text}>
                   {item === CREATE ? `+ Create branch "${name}"` : `${b?.current ? "● " : "  "}${item}`}
                 </text>
+                {idx === sel && item !== CREATE && !b?.current && !deleting ? (
+                  <box
+                    flexShrink={0}
+                    paddingLeft={1}
+                    paddingRight={1}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      remove(item)
+                    }}
+                  >
+                    <text selectable={false} fg={colors.error}>
+                      × delete
+                    </text>
+                  </box>
+                ) : null}
               </box>
             )
           })
@@ -160,7 +178,7 @@ export function BranchPicker({ mode = "switch" }: { mode?: "switch" | "delete" }
       </box>
       <box height={1}>
         <text selectable={false} fg={confirm ? colors.warn : error ? colors.error : colors.dim}>
-          {confirm ? confirm.text : (error ?? (deleting ? "Enter deletes · Esc closes" : "Enter switches · Shift+Del deletes · Esc closes"))}
+          {confirm ? confirm.text : (error ?? (deleting ? "Enter or click deletes · Esc closes" : "Enter switches · Shift+Del or right-click deletes · Esc"))}
         </text>
       </box>
     </Modal>

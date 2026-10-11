@@ -6,7 +6,7 @@ All notable changes to copane are listed here. The format follows
 ## [Unreleased]
 
 ### Added
-- Delete a branch: Shift+Delete in the branch picker (Ctrl+Alt+B), or "Delete a branch" in the palette. Asks first, and again before deleting unmerged work; the current branch is protected.
+- Delete a branch: Shift+Delete, the × on the selected row or a right-click in the branch picker (Ctrl+Alt+B), or "Delete a branch" in the palette. Asks first, and again before deleting unmerged work; the current branch is protected.
 - Several agents side by side (#18): Ctrl+Alt+N opens another CLI in an AI pane tab (`ai.agents` lists extra ones), optionally in its own git worktree on a new branch. Tabs keep running when hidden and show working / done / needs you; Ctrl+Alt+PageDown/PageUp switch, and "send to AI" goes to the visible tab. Close a tab with its ×, a middle-click or Ctrl+Alt+W; closing a worktree tab offers to remove the worktree (the branch stays).
 - AI turns (Ctrl+Alt+Z, #15): every prompt that changes files becomes a turn listing the files, +/− counts and each change since before the turn. Undo the whole turn, one file or one change; files the AI created are removed. Exact even with your own uncommitted edits (a `git stash create` snapshot at the start of each turn), and works with any AI CLI.
 - Markdown preview: GitHub's emoji shortcodes (`:rocket:` → 🚀, not in code) and HTML tables, rendered like Markdown tables with their alignment (#14).
