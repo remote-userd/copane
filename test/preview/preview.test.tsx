@@ -27,7 +27,7 @@ test("an image opens as a tab with its format and size, not as a binary-file err
   const ws = createWorkspace(root)
   const buf = await ws.buffers.open(join(root, "logo.png"))
   expect(buf.kind).toBe("image")
-  expect(buf.image).toEqual({ format: "png", width: 64, height: 32, bytes: expect.any(Number) })
+  expect(buf.image).toEqual({ format: "png", width: 64, height: 32, bytes: expect.any(Number), frames: 1 })
   h = await renderApp(ws, { tree: <text>TREE</text> })
   await until(() => h!.frame().includes("PNG · 64×32") && h!.frame().includes("█"))
   // Drawn at its own size (64×32 pixels is about 8×2 cells), not stretched over the pane.

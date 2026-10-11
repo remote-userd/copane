@@ -158,7 +158,7 @@ Run commands from the AI pane with `!`, for example `! bun test`.
     - the HTML READMEs use: centred `<div align="center">` blocks, `<b>`, `<br>`, `<img>`, `<details>`
   - Arrow keys, PgUp/PgDn and Home/End scroll a preview tab, and the mouse wheel scrolls both.
   - Images in the file show in the preview when they are local. Remote images (badges, for example) aren't downloaded, so they show their alt text.
-- **Images:** PNG, JPEG, WebP and GIF (first frame) open as a tab instead of an error, with the format, size and file size above the picture. Small images keep their own size, and big ones shrink to fit. They reload when the file changes. Ctrl+L sends the image to the AI as `@path`, and Claude Code can look at it. SVG files open as text.
+- **Images:** PNG, JPEG, WebP and GIF open as a tab instead of an error, with the format, size and file size above the picture. Animated GIFs play (Space pauses), in image tabs and in the Markdown preview, and stop while hidden. Small images keep their own size, and big ones shrink to fit. They reload when the file changes. Ctrl+L sends the image to the AI as `@path`, and Claude Code can look at it. SVG files open as text.
 - **How images are drawn:** sharp pictures in terminals with kitty graphics or sixel (kitty, WezTerm, Ghostty, foot, iTerm2, and Windows Terminal 1.22+), and coloured blocks elsewhere and inside tmux. If the picture is blank or garbled, set `"preview": { "imageProtocol": "blocks" }` (or `"sixel"`, `"kitty"`).
 
 ## Code intelligence

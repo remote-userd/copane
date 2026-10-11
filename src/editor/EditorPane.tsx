@@ -499,7 +499,7 @@ export function EditorPane() {
           <box flexGrow={1} flexBasis={0} flexDirection="column">
             {list.map((b) => {
               const on = b.id === active?.id
-              if (b.kind === "image") return <ImageView key={b.id} buf={b} active={on} />
+              if (b.kind === "image") return <ImageView key={b.id} buf={b} active={on} focused={focused && on} />
               if (b.kind === "preview") return <MarkdownPreview key={b.id} path={b.source!} active={on} focused={focused && on} version={b.version} />
               return <BufferView key={b.id} buf={b} active={on} focused={focused && on} wrap={ui.wordWrap} />
             })}

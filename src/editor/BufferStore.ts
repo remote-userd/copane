@@ -4,6 +4,7 @@ import { hashText, loadFile, saveFile, type Eol } from "./fileio"
 import { mergeTexts } from "./merge"
 import { applyHighlights, computeHighlights, mapHighlights } from "./highlighter"
 import { getSyntaxStyle } from "./syntaxStyle"
+import { parseGif } from "../preview/gif"
 
 /** Images opened as a picture instead of text (formats OpenTUI decodes). */
 export const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"])
@@ -23,6 +24,8 @@ export interface ImageMeta {
   width: number
   height: number
   bytes: number
+  /** Animated GIFs: how many frames (1 for a still image). */
+  frames: number
 }
 
 export interface Buffer {
@@ -583,7 +586,15 @@ async function readImageMeta(path: string): Promise<ImageMeta | null> {
   try {
     const bytes = await Bun.file(path).bytes()
     const info = imageInfo(bytes)
-    return { format: String(info.format), width: info.width, height: info.height, bytes: bytes.length }
+    let frames = 1
+    if (info.format === "gif") {
+      try {
+        frames = parseGif(bytes).frames.length
+      } catch {
+        // OpenTUI read it; show it still
+      }
+    }
+    return { format: String(info.format), width: info.width, height: info.height, bytes: bytes.length, frames }
   } catch {
     return null
   }

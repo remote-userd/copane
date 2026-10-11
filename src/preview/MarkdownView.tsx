@@ -11,6 +11,7 @@ import { Lexer, type Token, type Tokens } from "marked"
 import { imageInfo, pathToFiletype, TextAttributes, type ImageRenderProtocol } from "@opentui/core"
 import { ui as colors } from "../config/theme"
 import { getSyntaxStyle } from "../editor/syntaxStyle"
+import { AnimatedImage } from "./AnimatedImage"
 import { imageCells, localImagePath } from "./images"
 
 const { BOLD, ITALIC, UNDERLINE, STRIKETHROUGH, DIM } = TextAttributes
@@ -22,6 +23,8 @@ export interface MdContext {
   /** Columns available, for images, tables and rules. */
   width: number
   protocol: ImageRenderProtocol
+  /** Play animated GIFs (while the preview is visible). */
+  animate: boolean
 }
 
 // ---- inline text ----
@@ -199,7 +202,7 @@ function LocalImages({ images, ctx }: { images: { path: string; w: number; h: nu
   return (
     <box flexDirection="row" gap={1} flexWrap="wrap">
       {images.map((img, i) => (
-        <image key={i} source={img.path} fit="fit" protocol={ctx.protocol} {...imageCells(img.w, img.h, ctx.width, MAX_IMAGE_ROWS)} />
+        <AnimatedImage key={i} path={img.path} protocol={ctx.protocol} playing={ctx.animate} {...imageCells(img.w, img.h, ctx.width, MAX_IMAGE_ROWS)} />
       ))}
     </box>
   )

@@ -62,3 +62,4 @@ Run in a real terminal, in plain mode and inside tmux.
 52. In Windows Terminal (1.22+), open a PNG from the tree: a sharp picture with "PNG · w×h · size" above it. Inside tmux the same file shows as coloured blocks.
 53. With an image tab showing, open F1 and a right-click menu over it, then close them: no picture fragments are left on top of the UI. Switch tabs and back: the picture redraws.
 54. A Markdown file with `![x](pic.png)` next to it shows the picture in the preview, while a badge URL shows its alt text.
+55. Open docs/demo.gif: it plays, and the header says "435 frames · ▶ playing". Space pauses and resumes. Switch to another tab and back: it picks up again.

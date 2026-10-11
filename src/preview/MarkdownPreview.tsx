@@ -83,7 +83,7 @@ export function MarkdownPreview({ path, active, focused, version = 0 }: { path: 
       }}
     >
       {focused ? <ScrollKeys scroll={scroll} /> : null}
-      <MarkdownView text={text} ctx={{ path, width, protocol: ws.config.preview.imageProtocol }} />
+      <MarkdownView text={text} ctx={{ path, width, protocol: ws.config.preview.imageProtocol, animate: active }} />
     </scrollbox>
   )
 }
