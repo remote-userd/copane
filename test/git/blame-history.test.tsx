@@ -62,7 +62,8 @@ test("status bar shows blame for the cursor line; history and commit views open"
   ws.buffers.onCursorChange(ws.buffers.active!.id)
   const { runCommand } = await import("../../src/keymap/commands")
   await runCommand(ws, "git.blameLine")
-  await until(() => h!.frame().includes("Commit "))
+  // The title shows at once; the commit's details arrive from git a moment later.
+  await until(() => h!.frame().includes("Start the file"))
   expect(h.frame()).toContain("Start the file")
   await h.step(() => h!.keys.pressEscape())
   await Bun.sleep(150)
