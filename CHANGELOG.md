@@ -5,6 +5,9 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Committing accepts: once a file's content is what HEAD has (you committed it, the AI did, or it was checked out), its AI review marks clear on their own, so they never pile up. Untracked files stay marked until committed.
+
 ## [0.6.0] - 2026-10-11
 
 ### Added

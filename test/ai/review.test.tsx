@@ -213,3 +213,44 @@ test("from the AI pane: the header offers the review, Ctrl+Alt+V lands on the fi
   expect(h.frame()).not.toContain("to review")
   ws.ai?.kill()
 })
+
+test("committing accepts: committed files drop out; uncommitted, untracked and edited-after files stay", async () => {
+  const { GitStatus } = await import("../../src/files/gitStatus")
+  const env = { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@t", GIT_OPTIONAL_LOCKS: "0" }
+  const sh = (cwd: string, ...args: string[]) => Bun.spawnSync(["git", ...args], { cwd, env, stdout: "pipe", stderr: "pipe" })
+  const root = await fixture({ "a.txt": "a\n", "b.txt": "b\n", "c.txt": "c\n" })
+  sh(root, "init", "-q", "-b", "main")
+  sh(root, "add", ".")
+  sh(root, "commit", "-qm", "init")
+  // The AI's turn: three files changed, one created.
+  writeFileSync(join(root, "a.txt"), "a AI\n")
+  writeFileSync(join(root, "b.txt"), "b AI\n")
+  writeFileSync(join(root, "c.txt"), "c AI\n")
+  writeFileSync(join(root, "new.txt"), "new AI\n")
+  const review = new AiReview(new BufferStore({ root }))
+  const turns = fakeTurns()
+  review.watch(turns.log)
+  turns.add(["a.txt", "b.txt", "c.txt", "new.txt"].map((f) => ({ path: join(root, f), before: f === "new.txt" ? null : f[0] + "\n" })))
+  const git = new GitStatus(root)
+  await git.start(50)
+  const off = review.followGit(git)
+  try {
+    // Commit a.txt, and c.txt, then edit c.txt again before the sweep could matter.
+    sh(root, "commit", "-qm", "a and c", "--", "a.txt", "c.txt")
+    writeFileSync(join(root, "c.txt"), "c AI, edited after\n")
+    await git.refresh(0)
+    await until(() => !review.has(join(root, "a.txt")))
+    expect(review.has(join(root, "a.txt"))).toBe(false)
+    await Bun.sleep(400)
+    expect(review.files().sort()).toEqual([join(root, "b.txt"), join(root, "c.txt"), join(root, "new.txt")])
+    // The new file clears once committed too.
+    sh(root, "add", "new.txt")
+    sh(root, "commit", "-qm", "new")
+    await git.refresh(0)
+    await until(() => !review.has(join(root, "new.txt")))
+    expect(review.files().sort()).toEqual([join(root, "b.txt"), join(root, "c.txt")])
+  } finally {
+    off()
+    git.stop()
+  }
+})

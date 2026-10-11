@@ -13,6 +13,7 @@ import type { Workspace } from "../app/workspace"
 import type { BufferStore } from "../editor/BufferStore"
 import type { CodeEditorRenderable } from "../editor/CodeEditorRenderable"
 import { applyHunk, hunkAt, hunks, revertHunk, type Hunk } from "../editor/hunks"
+import type { GitStatus } from "../files/gitStatus"
 import type { TurnLog } from "./turns"
 
 const lf = (text: string) => text.replace(/\r\n/g, "\n")
@@ -106,6 +107,32 @@ export class AiReview {
       if (!timer) return
       clearTimeout(timer)
       await save()
+    }
+  }
+
+  /**
+   * Committing accepts: a file whose content is what HEAD has (you or the AI committed it, or it
+   * was checked out) has no AI changes left to review. Untracked and ignored files have no HEAD
+   * text, so they stay until committed.
+   */
+  followGit(git: GitStatus): () => void {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const sweep = async () => {
+      timer = null
+      for (const path of this.files()) {
+        const head = await git.headText(path)
+        if (head === null || !this.bases.has(path)) continue
+        if (lf(head) === (await this.textNow(path))) this.acceptFile(path)
+      }
+    }
+    const off = git.subscribe(() => {
+      if (!this.bases.size) return
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => void sweep(), 300)
+    })
+    return () => {
+      off()
+      if (timer) clearTimeout(timer)
     }
   }
 

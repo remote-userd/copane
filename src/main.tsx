@@ -132,6 +132,7 @@ const review = new AiReview(ws.buffers)
 const reviewFile = reviewStatePath(ws.root)
 await review.load(reviewFile) // what was left to review last session
 review.watch(turns)
+review.followGit(git) // committing a file accepts its AI changes
 onShutdown(review.persist(reviewFile, ws.root))
 ws.review = review
 
