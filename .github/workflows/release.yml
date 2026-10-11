@@ -38,7 +38,7 @@ jobs:
           mkdir -p out/copane
           cp dist/copane LICENSE out/copane/
           tar -C out -czf copane-${{ matrix.target }}.tar.gz copane
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: copane-${{ matrix.target }}
           path: copane-${{ matrix.target }}.tar.gz
@@ -47,7 +47,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
       - run: sha256sum copane-*.tar.gz > SHA256SUMS
