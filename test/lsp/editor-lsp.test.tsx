@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "bun:test"
 import { join } from "node:path"
 import { LspManager } from "../../src/lsp/LspManager"
-import { createWorkspace, fixture, renderApp, type Harness } from "../helpers"
+import { createWorkspace, fixture, renderApp, type Harness, waitUntil } from "../helpers"
 
 const TSC = join(import.meta.dir, "../../node_modules/.bin/tsc")
 let h: Harness | null = null
@@ -12,12 +12,7 @@ afterEach(() => {
   h = null
 })
 
-async function until(cond: () => boolean, ms = 15_000) {
-  for (const end = Date.now() + ms; Date.now() < end && !cond(); ) {
-    await Bun.sleep(50)
-    await h?.setup.renderOnce()
-  }
-}
+const until = (cond: () => boolean | Promise<boolean>, ms = 15_000) => waitUntil(cond, ms, () => h?.setup.renderOnce())
 
 test("diagnostics, F8, completion and go to definition in the editor", async () => {
   const root = await fixture({
@@ -52,7 +47,8 @@ test("diagnostics, F8, completion and go to definition in the editor", async () 
   // Typing "." opens suggestions automatically; Tab accepts the first match.
   ta.setCursor(2, 22)
   await h.step(() => h!.keys.typeText("()."))
-  await until(() => h!.frame().includes("toLowerCase"))
+  // The list opens at the top (charAt…); toLowerCase is further down until typing filters it.
+  await until(() => h!.frame().includes("charAt"))
   await h.step(() => h!.keys.typeText("toLo"))
   await h.step(() => h!.keys.pressTab())
   expect(ta.plainText.split("\n")[2]).toBe('greet("a").toUpperCase().toLowerCase')

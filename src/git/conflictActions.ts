@@ -5,6 +5,10 @@ import { conflictAt, findConflicts, resolveConflict, type Conflict, type Side } 
 
 /** Conflicts per buffer, kept up to date by the editor as text changes. */
 const byBuffer = new Map<number, Conflict[]>()
+/** Tests: buffer ids restart at 1 per store, so a previous test's conflicts would show up. */
+export function resetConflicts(): void {
+  byBuffer.clear()
+}
 const listeners = new Set<() => void>()
 let version = 0
 

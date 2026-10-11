@@ -86,6 +86,15 @@ const terminals = new Map<number, EmbeddedTerminalRenderable>()
 /** Each tab's handle (send text to its CLI); ws.ai forwards to the visible one. */
 const handles = new Map<number, AiHandle & { proc: () => AgentProcess | null }>()
 
+/** Tests: no tabs, terminals or handles left from another test (ids restart at 1). */
+export function resetAgentTabs(): void {
+  for (const h of handles.values()) h.kill()
+  handles.clear()
+  terminals.clear()
+  lastOutput.clear()
+  tabs.set({ sessions: [], active: 0, state: {} })
+}
+
 /** The status bar's AI segment: the visible tab's status. */
 export const aiStatusSource = {
   subscribe: tabs.subscribe,

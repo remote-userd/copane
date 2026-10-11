@@ -1,12 +1,15 @@
-import { afterEach, expect, test } from "bun:test"
+import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { parseKeypress } from "@opentui/core"
 import { GitStatus } from "../../src/files/gitStatus"
 import { keyToString } from "../../src/keymap/keys"
-import { createWorkspace, fixture, renderApp, type Harness } from "../helpers"
+import { createWorkspace, fixture, renderApp, type Harness, waitUntil, GIT_ENV } from "../helpers"
 
-const ENV = { GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@t" }
+// Several waits on the UI and git per test: more room than the default 5 s.
+setDefaultTimeout(15_000)
+
+const ENV = GIT_ENV
 let h: Harness | null = null
 let git: GitStatus | null = null
 afterEach(() => {
@@ -16,12 +19,7 @@ afterEach(() => {
 })
 const sh = (cwd: string, ...args: string[]) => Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, ...ENV, GIT_OPTIONAL_LOCKS: "0" } }).stdout.toString()
 const branchList = (root: string) => sh(root, "branch", "--format=%(refname:short)").trim().split("\n").sort()
-async function until(cond: () => boolean, ms = 4000) {
-  for (const end = Date.now() + ms; Date.now() < end && !cond(); ) {
-    await Bun.sleep(30)
-    await h?.setup.renderOnce()
-  }
-}
+const until = (cond: () => boolean | Promise<boolean>, ms = 4000) => waitUntil(cond, ms, () => h?.setup.renderOnce())
 
 async function repoWithBranches() {
   const root = await fixture({ "a.ts": "a\n" })

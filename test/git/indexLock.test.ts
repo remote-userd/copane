@@ -3,9 +3,9 @@ import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { GitStatus } from "../../src/files/gitStatus"
 import { GitRepo } from "../../src/git/repo"
-import { fixture } from "../helpers"
+import { fixture, GIT_ENV } from "../helpers"
 
-const ENV = { GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@t" }
+const ENV = GIT_ENV
 
 test("background reads (status, diff) never make a commit fail on .git/index.lock", async () => {
   const root = await fixture({ "a.txt": "0" })

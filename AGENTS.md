@@ -80,7 +80,11 @@ Main flows:
 
 ## Checking your work
 
-1. `bun run typecheck` and `bun test` pass. Add tests next to the existing ones: unit tests for logic, and `renderApp()` + `h.frame()` for what appears on screen (see `test/preview/preview.test.tsx` for the pattern, including the `until()` helper for async rendering).
+1. `bun run typecheck` and `bun test` pass. Add tests next to the existing ones: unit tests for logic, and `renderApp()` + `h.frame()` for what appears on screen (see `test/preview/preview.test.tsx` for the pattern). From `test/helpers.tsx`:
+   - `waitUntil(cond, ms, render)` waits for async results and throws when they never come; never synchronise with a fixed `Bun.sleep`. Files wrap it as a local `until` that renders their harness.
+   - `GIT_ENV` for git commands in tests (fixed author, no optional locks: a test's own `git status` must not take the index lock while the app commits).
+   - `renderApp()` resets module-level state first (`resetModuleState()`); a new module-level store or cache gets a reset there too.
+   - Tests with several waits call `setDefaultTimeout(15_000)` (Bun's default is 5 s).
 2. Walk through the items in `scripts/smoke.md` your change touches, and add an item for new behaviour.
 3. To see the real UI without a terminal of your own, record it with [vhs](https://github.com/charmbracelet/vhs): a tape that runs `bun run dev <path>` and takes a `Screenshot` (see `scripts/demo/demo.tape`). Clear inherited `CLAUDE*` variables first if you run inside Claude Code.
 4. User-facing changes go in the README and under `Unreleased` in `CHANGELOG.md`.

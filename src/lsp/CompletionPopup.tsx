@@ -62,6 +62,10 @@ async function triggerCompletion(ws: Workspace, set: (s: State | null) => void, 
 
 let openExplicitly: (() => void) | null = null
 let visible = false
+/** Tests: no list left "open" by a test that ended with it on screen. */
+export function resetCompletion(): void {
+  visible = false
+}
 /** True while the list is on screen, so Tab and Enter go to it rather than the editor. */
 export const completionVisible = () => visible
 /** Command entry point (Ctrl+Space). */

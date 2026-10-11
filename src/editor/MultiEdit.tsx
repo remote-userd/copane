@@ -32,6 +32,10 @@ interface State {
 }
 
 let state: State | null = null
+/** Tests: no multi-cursor session left from another test. */
+export function resetMultiEdit(): void {
+  state = null
+}
 /** Set while this module edits the buffer, so its own changes do not end the session. */
 let applying = false
 const listeners = new Set<() => void>()

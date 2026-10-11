@@ -1,11 +1,14 @@
-import { afterEach, expect, test } from "bun:test"
+import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { GitStatus } from "../../src/files/gitStatus"
 import { ago, describeBlame } from "../../src/git/blame"
-import { createWorkspace, fixture, renderApp, type Harness } from "../helpers"
+import { createWorkspace, fixture, renderApp, type Harness, waitUntil } from "../helpers"
 
-const ENV = { GIT_AUTHOR_NAME: "Ann Dev", GIT_AUTHOR_EMAIL: "a@d", GIT_COMMITTER_NAME: "Ann Dev", GIT_COMMITTER_EMAIL: "a@d" }
+// Several waits on the UI and git per test: more room than the default 5 s.
+setDefaultTimeout(15_000)
+
+const ENV = { GIT_AUTHOR_NAME: "Ann Dev", GIT_AUTHOR_EMAIL: "a@d", GIT_COMMITTER_NAME: "Ann Dev", GIT_COMMITTER_EMAIL: "a@d", GIT_OPTIONAL_LOCKS: "0" }
 let h: Harness | null = null
 let git: GitStatus | null = null
 afterEach(() => {
@@ -15,12 +18,7 @@ afterEach(() => {
 })
 const sh = (cwd: string, ...args: string[]) =>
   Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, ...ENV } }).stdout.toString()
-async function until(cond: () => boolean, ms = 4000) {
-  for (const end = Date.now() + ms; Date.now() < end && !cond(); ) {
-    await Bun.sleep(30)
-    await h?.setup.renderOnce()
-  }
-}
+const until = (cond: () => boolean | Promise<boolean>, ms = 4000) => waitUntil(cond, ms, () => h?.setup.renderOnce())
 
 test("ago and describeBlame", () => {
   const now = 1_000_000_000

@@ -1,23 +1,21 @@
-import { afterEach, expect, test } from "bun:test"
+import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { AiReview } from "../../src/ai/review"
 import type { Turn, TurnLog } from "../../src/ai/turns"
 import { Store } from "../../src/app/store"
 import { BufferStore } from "../../src/editor/BufferStore"
-import { createWorkspace, fixture, renderApp, type Harness } from "../helpers"
+import { createWorkspace, fixture, renderApp, type Harness, waitUntil, GIT_ENV } from "../helpers"
+
+// Several waits on the UI and git per test: more room than the default 5 s.
+setDefaultTimeout(15_000)
 
 let h: Harness | null = null
 afterEach(() => {
   h?.setup.renderer.destroy()
   h = null
 })
-async function until(cond: () => boolean, ms = 3000) {
-  for (const end = Date.now() + ms; Date.now() < end && !cond(); ) {
-    await Bun.sleep(25)
-    await h?.setup.renderOnce()
-  }
-}
+const until = (cond: () => boolean | Promise<boolean>, ms = 3000) => waitUntil(cond, ms, () => h?.setup.renderOnce())
 
 /** Just what AiReview reads of a TurnLog: the turns, and their store. */
 function fakeTurns() {
@@ -216,7 +214,7 @@ test("from the AI pane: the header offers the review, Ctrl+Alt+V lands on the fi
 
 test("committing accepts: committed files drop out; uncommitted, untracked and edited-after files stay", async () => {
   const { GitStatus } = await import("../../src/files/gitStatus")
-  const env = { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@t", GIT_OPTIONAL_LOCKS: "0" }
+  const env = GIT_ENV
   const sh = (cwd: string, ...args: string[]) => Bun.spawnSync(["git", ...args], { cwd, env, stdout: "pipe", stderr: "pipe" })
   const root = await fixture({ "a.txt": "a\n", "b.txt": "b\n", "c.txt": "c\n" })
   sh(root, "init", "-q", "-b", "main")

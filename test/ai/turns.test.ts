@@ -3,9 +3,9 @@ import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { TurnLog } from "../../src/ai/turns"
 import { GitRepo } from "../../src/git/repo"
-import { fixture } from "../helpers"
+import { fixture, GIT_ENV } from "../helpers"
 
-const ENV = { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@t" }
+const ENV = GIT_ENV
 
 async function repo(files: Record<string, string>, untracked: Record<string, string> = {}) {
   const root = await fixture(files)

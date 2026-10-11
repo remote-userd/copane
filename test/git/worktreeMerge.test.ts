@@ -2,9 +2,9 @@ import { expect, test } from "bun:test"
 import { existsSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { GitRepo } from "../../src/git/repo"
-import { fixture } from "../helpers"
+import { fixture, GIT_ENV } from "../helpers"
 
-const env = { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@t", GIT_OPTIONAL_LOCKS: "0" }
+const env = GIT_ENV
 const sh = (cwd: string, ...args: string[]) => Bun.spawnSync(["git", ...args], { cwd, env, stdout: "pipe", stderr: "pipe" }).stdout.toString()
 
 /** A repo, and a worktree on its own branch where an "agent" committed one change and left two more. */

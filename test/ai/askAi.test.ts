@@ -6,7 +6,7 @@ import { formatChangesForAgent, formatProblemsForAgent } from "../../src/ai/send
 import type { Workspace } from "../../src/app/workspace"
 import { GitStatus } from "../../src/files/gitStatus"
 import type { LspManager } from "../../src/lsp/LspManager"
-import { createWorkspace, fixture } from "../helpers"
+import { createWorkspace, fixture, GIT_ENV } from "../helpers"
 
 /** An AI pane stand-in that records what would be typed and pasted. */
 function fakeAi(ws: Workspace) {
@@ -85,7 +85,7 @@ test("no problems: says so and sends nothing", async () => {
 
 test("review changes sends the uncommitted diff and new files from a real repo", async () => {
   const root = await fixture({ "a.ts": "one\n" })
-  const env = { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@t" }
+  const env = GIT_ENV
   for (const args of [["init", "-q"], ["add", "."], ["commit", "-qm", "init"]]) Bun.spawnSync(["git", ...args], { cwd: root, env })
   writeFileSync(join(root, "a.ts"), "two\n")
   writeFileSync(join(root, "new.ts"), "fresh\n")

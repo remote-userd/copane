@@ -3,7 +3,7 @@ import { join } from "node:path"
 import type { TextareaRenderable } from "@opentui/core"
 import { BufferStore } from "../../src/editor/BufferStore"
 import { LspManager, hoverText } from "../../src/lsp/LspManager"
-import { fixture } from "../helpers"
+import { fixture, waitUntil } from "../helpers"
 
 const TSC = join(import.meta.dir, "../../node_modules/.bin/tsc")
 const spec = { key: "ts", command: [TSC, "--lsp", "--stdio"], languages: { typescript: "typescript" } }
@@ -24,9 +24,7 @@ class Ta {
   addHighlight() {}
 }
 
-async function until(cond: () => boolean, ms = 15_000) {
-  for (const end = Date.now() + ms; Date.now() < end && !cond(); ) await Bun.sleep(50)
-}
+const until = (cond: () => boolean | Promise<boolean>, ms = 15_000) => waitUntil(cond, ms)
 
 test("TypeScript 7 server: diagnostics follow edits; completion, hover, definition", async () => {
   const root = await fixture({ "a.ts": "export const n: number = 'x'\nn.toFix\n" })
@@ -137,8 +135,7 @@ test("a server stops once its last file has been closed a while, and starts agai
   await Bun.sleep(400)
   expect(lsp.status()).toBe("ts") // b.ts still open
   buffers.close(b.id)
-  await Bun.sleep(100)
-  await buffers.open("a.ts") // reopened in time: the same server carries on
+  await buffers.open("a.ts") // reopened in time (right away, so a slow machine can't miss it): the same server carries on
   await Bun.sleep(400)
   expect(lsp.status()).toBe("ts")
   buffers.close(buffers.active!.id)

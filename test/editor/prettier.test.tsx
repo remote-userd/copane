@@ -3,7 +3,7 @@ import { chmod } from "node:fs/promises"
 import { join } from "node:path"
 import { configSchema } from "../../src/config/schema"
 import { findPrettier } from "../../src/editor/prettier"
-import { createWorkspace, fixture, renderApp, type Harness } from "../helpers"
+import { createWorkspace, fixture, renderApp, type Harness, waitUntil } from "../helpers"
 
 let h: Harness | null = null
 afterEach(() => {
@@ -23,9 +23,7 @@ async function project(text: string, editor: Record<string, unknown> = {}) {
   return { h, ws, root }
 }
 
-const until = async (cond: () => boolean, ms = 2000) => {
-  for (const end = Date.now() + ms; !cond() && Date.now() < end; ) await Bun.sleep(10)
-}
+const until = (cond: () => boolean | Promise<boolean>, ms = 2000) => waitUntil(cond, ms)
 
 test("the project's Prettier is found from the file up to the root", async () => {
   const root = await fixture({ "src/deep/a.ts": "", "node_modules/.bin/prettier": FAKE })

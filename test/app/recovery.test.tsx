@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test"
+import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { testRender } from "@opentui/react/test-utils"
@@ -6,7 +6,10 @@ import { App } from "../../src/app/App"
 import { ErrorBoundary } from "../../src/app/ErrorBoundary"
 import { restoreRecovery, saveRecovery } from "../../src/app/recovery"
 import { useUi, WorkspaceContext } from "../../src/app/workspace"
-import { createWorkspace, fixture, renderApp, type Harness } from "../helpers"
+import { createWorkspace, fixture, renderApp, type Harness, waitUntil } from "../helpers"
+
+// Several waits on the UI and git per test: more room than the default 5 s.
+setDefaultTimeout(15_000)
 
 let h: Harness | null = null
 let destroy: (() => void) | null = null
@@ -16,13 +19,7 @@ afterEach(() => {
   h = null
   destroy = null
 })
-async function until(cond: () => boolean, render: () => Promise<void>, what: string, ms = 3000) {
-  for (const end = Date.now() + ms; !cond(); ) {
-    if (Date.now() > end) throw new Error(`timed out waiting for ${what}`)
-    await Bun.sleep(20)
-    await render()
-  }
-}
+const until = (cond: () => boolean, render: () => unknown, _what: string, ms = 3000) => waitUntil(cond, ms, render)
 
 test("a crash backs up unsaved changes; the next start puts them back, undoably", async () => {
   const root = await fixture({ "a.txt": "saved\n", "b.txt": "clean\n" })

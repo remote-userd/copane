@@ -1,10 +1,11 @@
 import { expect, test } from "bun:test"
-import { mkdtempSync } from "node:fs"
+import { existsSync, mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createWorkspace } from "../../src/app/workspace"
 import { loadLayout, persistLayout } from "../../src/app/layoutState"
 import { runCommand } from "../../src/keymap/commands"
+import { waitUntil } from "../helpers"
 
 test("toggle AI pane: hiding moves focus off it; showing again restores", async () => {
   const ws = createWorkspace("/tmp", { focus: "ai" })
@@ -29,7 +30,7 @@ test("dragged pane widths are saved after the drag and loaded next time", async 
   ws.ui.set({ resizing: "ai", aiWidth: 50 })
   expect(await loadLayout(path)).toEqual({}) // not while dragging
   ws.ui.set({ resizing: null })
-  await Bun.sleep(30) // the save is asynchronous
+  await waitUntil(() => existsSync(path), 2000) // the save is asynchronous
   expect(await Bun.file(path).json()).toEqual({ treeWidth: null, aiWidth: 50 })
   expect(await loadLayout(path)).toEqual({ treeWidth: null, aiWidth: 50 })
   stop()

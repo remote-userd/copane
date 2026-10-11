@@ -16,6 +16,10 @@ import { sendChangesForReview } from "../ai/askAi"
 const none = { subscribe: () => () => {}, getSnapshot: () => 0 }
 /** The message being written survives closing the panel. */
 let draft = ""
+/** Tests: no message left over from another test. */
+export function resetCommitDraft(): void {
+  draft = ""
+}
 
 type Section = "conflict" | "staged" | "changes"
 interface Row {

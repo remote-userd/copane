@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { runCommand } from "../../src/keymap/commands"
 import { previewPath } from "../../src/editor/BufferStore"
 import { imageCells, localImagePath } from "../../src/preview/images"
-import { createWorkspace, fixture, renderApp, type Harness } from "../helpers"
+import { createWorkspace, fixture, renderApp, type Harness, waitUntil } from "../helpers"
 import { makePng } from "../support/png"
 
 let h: Harness | null = null
@@ -12,12 +12,7 @@ afterEach(() => {
   h?.setup.renderer.destroy()
   h = null
 })
-async function until(cond: () => boolean, ms = 3000) {
-  for (const end = Date.now() + ms; Date.now() < end && !cond(); ) {
-    await Bun.sleep(30)
-    await h?.setup.renderOnce()
-  }
-}
+const until = (cond: () => boolean | Promise<boolean>, ms = 3000) => waitUntil(cond, ms, () => h?.setup.renderOnce())
 
 const README = "# Shop Title\n\nSome **bold** text.\n\n| Name | Price |\n| --- | --- |\n| Cable | 9 |\n"
 

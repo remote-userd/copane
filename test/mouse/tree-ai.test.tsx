@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test"
+import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
 import { join } from "node:path"
 import { MouseButtons } from "@opentui/core/testing"
 import { AiReview, aiMarks } from "../../src/ai/review"
@@ -6,19 +6,17 @@ import type { Turn, TurnLog } from "../../src/ai/turns"
 import { Store } from "../../src/app/store"
 import { FileTree } from "../../src/files/FileTree"
 import { TreeModel } from "../../src/files/TreeModel"
-import { createWorkspace, fixture, renderApp, type Harness } from "../helpers"
+import { createWorkspace, fixture, renderApp, type Harness, waitUntil } from "../helpers"
+
+// Several waits on the UI and git per test: more room than the default 5 s.
+setDefaultTimeout(15_000)
 
 let h: Harness | null = null
 afterEach(() => {
   h?.setup.renderer.destroy()
   h = null
 })
-async function until(cond: () => boolean, ms = 3000) {
-  for (const end = Date.now() + ms; Date.now() < end && !cond(); ) {
-    await Bun.sleep(25)
-    await h?.setup.renderOnce()
-  }
-}
+const until = (cond: () => boolean | Promise<boolean>, ms = 3000) => waitUntil(cond, ms, () => h?.setup.renderOnce())
 
 /** Just what the tree and AiReview read of a TurnLog. */
 function fakeTurns() {

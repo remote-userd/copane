@@ -20,7 +20,7 @@ test("parsePorcelain maps XY codes to marks, skipping rename sources", () => {
 })
 
 function git(cwd: string, ...args: string[]) {
-  const r = Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...args], { cwd, stdout: "pipe", stderr: "pipe" })
+  const r = Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } })
   if (r.exitCode !== 0) throw new Error(r.stderr.toString())
 }
 

@@ -1,22 +1,20 @@
-import { afterEach, expect, test } from "bun:test"
+import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
 import { readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { TurnLog } from "../../src/ai/turns"
 import { GitRepo } from "../../src/git/repo"
-import { createWorkspace, fixture, renderApp, type Harness } from "../helpers"
+import { createWorkspace, fixture, renderApp, type Harness, waitUntil, GIT_ENV } from "../helpers"
+
+// Several waits on the UI and git per test: more room than the default 5 s.
+setDefaultTimeout(15_000)
 
 let h: Harness | null = null
 afterEach(() => {
   h?.setup.renderer.destroy()
   h = null
 })
-async function until(cond: () => boolean, ms = 3000) {
-  for (const end = Date.now() + ms; Date.now() < end && !cond(); ) {
-    await Bun.sleep(25)
-    await h?.setup.renderOnce()
-  }
-}
-const ENV = { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@t" }
+const until = (cond: () => boolean | Promise<boolean>, ms = 3000) => waitUntil(cond, ms, () => h?.setup.renderOnce())
+const ENV = GIT_ENV
 
 test("Ctrl+Alt+Z lists the turn, shows its changes, and u undoes it", async () => {
   const root = await fixture({ "cart.ts": "let total = 0\nfor (let i = 1; i < n; i++) {}\nexport { total }\n" })

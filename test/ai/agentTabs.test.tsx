@@ -1,10 +1,13 @@
-import { afterEach, expect, test } from "bun:test"
+import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
 import { existsSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { TerminalPane, worktreeFor, type AiConfig } from "../../src/ai/TerminalPane"
 import type { MenuItem } from "../../src/app/state"
 import { GitStatus } from "../../src/files/gitStatus"
-import { createWorkspace, fixture, renderApp, type Harness } from "../helpers"
+import { createWorkspace, fixture, renderApp, type Harness, waitUntil, GIT_ENV } from "../helpers"
+
+// Several waits on the UI and git per test: more room than the default 5 s.
+setDefaultTimeout(15_000)
 
 let h: Harness | null = null
 let git: GitStatus | null = null
@@ -14,13 +17,9 @@ afterEach(() => {
   git?.stop()
   h = null
 })
-async function until(cond: () => boolean, ms = 4000) {
-  for (const end = Date.now() + ms; Date.now() < end && !cond(); ) {
-    await Bun.sleep(30)
-    await h?.setup.renderOnce()
-  }
-}
-const ENV = { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@t" }
+// Agents start, stop and git worktrees change here: slow under a loaded machine.
+const until = (cond: () => boolean | Promise<boolean>, ms = 8000) => waitUntil(cond, ms, () => h?.setup.renderOnce())
+const ENV = GIT_ENV
 
 const config = (): AiConfig => ({
   command: "/bin/sh",
@@ -81,7 +80,7 @@ test("an agent in a git worktree works on its own branch; closing can remove the
   await until(() => h!.frame().includes("second-agent-ready"))
   expect(existsSync(join(wt.path, "a.txt"))).toBe(true)
   expect(h!.frame()).toContain("SECOND ⎇ COPANE/SECOND-1")
-  const branch = Bun.spawnSync(["git", "branch", "--show-current"], { cwd: wt.path }).stdout.toString().trim()
+  const branch = Bun.spawnSync(["git", "branch", "--show-current"], { cwd: wt.path, env: ENV }).stdout.toString().trim()
   expect(branch).toBe("copane/second-1")
 
   await h!.step(() => ws.agents!.closeActive())
@@ -91,7 +90,7 @@ test("an agent in a git worktree works on its own branch; closing can remove the
   await h!.step(() => modal.options.find((o) => o.key === "r")!.run())
   await until(() => !existsSync(wt.path))
   expect(existsSync(wt.path)).toBe(false)
-  expect(Bun.spawnSync(["git", "branch", "--list", "copane/second-1"], { cwd: root }).stdout.toString()).toContain("copane/second-1")
+  expect(Bun.spawnSync(["git", "branch", "--list", "copane/second-1"], { cwd: root, env: ENV }).stdout.toString()).toContain("copane/second-1")
 })
 
 test("worktree paths sit beside the project, with a branch per agent", () => {
@@ -178,7 +177,7 @@ test("discarding a worktree agent's work removes its worktree, branch and tab", 
   await h!.step(() => modal.options.find((o) => o.key === "m")!.run())
   await until(() => h!.frame().includes("A new.txt"))
   await h!.step(() => h!.keys.pressKey("d"))
-  expect(h!.frame()).toContain("Throw away 3 changed files")
+  await until(() => h!.frame().includes("Throw away 3 changed files"))
   await h!.step(() => h!.keys.pressKey("y"))
   await until(() => !existsSync(wt.path))
   expect(existsSync(wt.path)).toBe(false)

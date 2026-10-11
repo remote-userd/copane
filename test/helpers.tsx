@@ -5,6 +5,26 @@ import { act, type ReactNode } from "react"
 import { testRender } from "@opentui/react/test-utils"
 import { App, type AppSlots } from "../src/app/App"
 import { createWorkspace, WorkspaceContext, type Workspace } from "../src/app/workspace"
+import { resetAgentTabs } from "../src/ai/TerminalPane"
+import { resetNavHistory } from "../src/app/navHistory"
+import { windowFocus } from "../src/app/windowFocus"
+import { resetMultiEdit } from "../src/editor/MultiEdit"
+import { resetConflicts } from "../src/git/conflictActions"
+import { resetCommitDraft } from "../src/git/SourceControlPanel"
+import { resetCompletion } from "../src/lsp/CompletionPopup"
+
+/**
+ * Environment for git commands in tests: a fixed author, and no optional locks (a test's own
+ * `git status` must not take the index lock while the app commits, which made commits flaky).
+ */
+export const GIT_ENV = {
+  ...process.env,
+  GIT_AUTHOR_NAME: "T",
+  GIT_AUTHOR_EMAIL: "t@t",
+  GIT_COMMITTER_NAME: "T",
+  GIT_COMMITTER_EMAIL: "t@t",
+  GIT_OPTIONAL_LOCKS: "0",
+}
 
 export async function fixture(files: Record<string, string>): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "cedit-fx-"))
@@ -19,9 +39,37 @@ export function numbered(n: number): string {
   return Array.from({ length: n }, (_, i) => `line ${i + 1}`).join("\n") + "\n"
 }
 
+/**
+ * Wait until `cond` holds, calling `render` between checks. Throws when it never does: a silent
+ * timeout would surface later as a confusing failed expect (or a test that hits Bun's 5 s limit).
+ */
+export async function waitUntil(cond: () => boolean | Promise<boolean>, ms = 4000, render?: () => unknown): Promise<void> {
+  const end = Date.now() + ms
+  while (!(await cond())) {
+    if (Date.now() > end) throw new Error(`Timed out after ${ms} ms waiting for: ${cond.toString().replace(/\s+/g, " ").slice(0, 160)}`)
+    await Bun.sleep(25)
+    await render?.()
+  }
+}
+
 export type Harness = Awaited<ReturnType<typeof renderApp>>
 
+/**
+ * Some state lives at module level (shared by every workspace in the process): reset it so a
+ * test starts the way the app does, whatever the previous test left behind.
+ */
+export function resetModuleState(): void {
+  resetAgentTabs()
+  resetConflicts()
+  resetCommitDraft()
+  resetNavHistory()
+  resetMultiEdit()
+  resetCompletion()
+  windowFocus.set({ focused: true })
+}
+
 export async function renderApp(ws: Workspace, slots: AppSlots = {}, size = { width: 140, height: 30 }, extra?: ReactNode) {
+  resetModuleState()
   const setup = await testRender(
     <WorkspaceContext.Provider value={ws}>
       <App slots={slots} />
