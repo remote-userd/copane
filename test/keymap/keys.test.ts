@@ -45,6 +45,12 @@ test.each(GLOBAL)("%s reaches its global command", (_name, bytes, command) => {
   expect(buildBindings().global.get(keyToString(parseKeypress(bytes)!))).toBe(command)
 })
 
+test("Ctrl+Alt+W closes the agent tab, only from the AI pane", () => {
+  const key = keyToString(parseKeypress("\x1b\x17")!)
+  expect(buildBindings().ai.get(key)).toBe("ai.closeAgent")
+  expect(buildBindings().global.get(key)).toBeUndefined()
+})
+
 test("chords: Ctrl+K then a second key", () => {
   const b = buildBindings({ editor: { "Ctrl+K Ctrl+W": "buffer.close" } })
   const k = keyToString(parseKeypress("\x0b")!)

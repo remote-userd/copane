@@ -105,7 +105,7 @@ The editor is built around a loop: ask Claude, see what it changed, keep or undo
 
 Run commands from the AI pane with `!`, for example `! bun test`.
 
-**Several agents.** **Ctrl+Alt+N** (or **+ agent** in the AI pane's header) starts another CLI in a new tab, such as a second Claude for another task, or Codex beside Claude. Each tab keeps running while hidden, and its header shows whether it's working, done or waiting for you. **Ctrl+Alt+PageDown / PageUp** switch tabs, and Ctrl+L and the other "send to AI" keys go to the visible one. Pick **…in a git worktree** to give an agent its own checkout (`../<project>-<agent>-1` on branch `copane/<agent>-1`), so parallel agents never edit the same files; closing that tab offers to remove the worktree while keeping its branch. List extra CLIs in the config: `"ai": { "agents": [{ "name": "codex", "command": "codex" }] }`.
+**Several agents.** **Ctrl+Alt+N** (or **+ agent** in the AI pane's header) starts another CLI in a new tab, such as a second Claude for another task, or Codex beside Claude. Each tab keeps running while hidden, and its header shows whether it's working, done or waiting for you. **Ctrl+Alt+PageDown / PageUp** switch tabs, and Ctrl+L and the other "send to AI" keys go to the visible one. Close a tab with its **×**, a middle-click, **Ctrl+Alt+W** in the AI pane, or right-click › Close this agent. Pick **…in a git worktree** to give an agent its own checkout (`../<project>-<agent>-1` on branch `copane/<agent>-1`), so parallel agents never edit the same files; closing that tab offers to remove the worktree while keeping its branch. List extra CLIs in the config: `"ai": { "agents": [{ "name": "codex", "command": "codex" }] }`.
 
 **Look away while it works.** When the AI finishes, or stops to ask you something (an approval prompt), while you're in the editor or another window, copane tells you:
 - a notice ("claude finished" / "claude is waiting for your answer")
@@ -272,6 +272,7 @@ Press **F1** for the command palette: every command, searchable, with its shortc
 | Ctrl+Alt+Z | AI turns: review and undo what the AI changed, per prompt |
 | Ctrl+Alt+N | New agent tab (another CLI, or one in its own git worktree) |
 | Ctrl+Alt+PageDown / PageUp | Next / previous agent tab |
+| Ctrl+Alt+W (in the AI pane) | Close the agent tab |
 | Ctrl+W / Ctrl+Alt+T | Close tab / reopen the last closed tab (also Ctrl+Shift+T where the terminal sends it) |
 | Ctrl+PageUp / Ctrl+PageDown | Previous or next tab |
 | Alt+1 … Alt+9 | Go to tab 1–8, Alt+9 the last |

@@ -128,6 +128,8 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "ctrl+alt+j": "view.toggleAi",
     "ctrl+alt+d": "git.changes",
     "ctrl+alt+z": "ai.turns",
+    // Only in the AI pane: Ctrl+W there belongs to the CLI.
+    "ctrl+alt+w": "ai.closeAgent",
     "ctrl+alt+n": "ai.newAgent",
     "ctrl+alt+pagedown": "ai.nextAgent",
     "ctrl+alt+pageup": "ai.prevAgent",

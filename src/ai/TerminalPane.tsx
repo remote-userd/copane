@@ -89,7 +89,7 @@ function tabLabel(s: Session): string {
 }
 
 /** The header: a tab per agent (with its state), and + to start another. */
-function AiHeader({ focused, onNew }: { focused: boolean; onNew: (x: number, y: number) => void }) {
+function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: (x: number, y: number) => void; onClose: (id: number) => void }) {
   const t = useSyncExternalStore(tabs.subscribe, tabs.get)
   const [frame, setFrame] = useState(0)
   const busy = (id: number) => Date.now() - (t.state[id]?.last ?? 0) < BUSY_MS
@@ -118,14 +118,24 @@ function AiHeader({ focused, onNew }: { focused: boolean; onNew: (x: number, y: 
         const markColor = busy(s.id) || st?.attention === "waiting" ? colors.warn : st?.attention ? colors.ok : colors.headerFg
         const label = tabLabel(s).toUpperCase()
         return (
-          <HoverBox key={s.id} onPress={() => tabs.set({ active: s.id })} bg={active && !one ? colors.segmentBg : undefined} paddingX={one ? 0 : 1}>
-            <text selectable={false} fg={active && focused ? colors.accent : colors.headerFg}>
-              {active && focused ? <strong>{label}</strong> : label}
-            </text>
-            <text selectable={false} fg={markColor}>
-              {" " + mark}
-            </text>
-          </HoverBox>
+          <box key={s.id} flexDirection="row" flexShrink={0} backgroundColor={active && !one ? colors.segmentBg : undefined}>
+            {/* Click switches to the tab; a middle-click closes it, as editor tabs do. */}
+            <HoverBox onPress={(button) => (button === 1 && !one ? onClose(s.id) : tabs.set({ active: s.id }))} paddingX={one ? 0 : 1}>
+              <text selectable={false} fg={active && focused ? colors.accent : colors.headerFg}>
+                {active && focused ? <strong>{label}</strong> : label}
+              </text>
+              <text selectable={false} fg={markColor}>
+                {" " + mark}
+              </text>
+            </HoverBox>
+            {one ? null : (
+              <HoverBox onPress={() => onClose(s.id)} paddingX={0}>
+                <text selectable={false} fg={colors.dim}>
+                  {"× "}
+                </text>
+              </HoverBox>
+            )}
+          </box>
         )
       })}
       <box flexGrow={1} />
@@ -422,7 +432,7 @@ export function TerminalPane({ config }: { config: AiConfig }) {
           },
           { label: "Restart", disabled: h?.proc()?.status.kind === "running", run: () => ws.ai?.restart() },
           { label: "New agent tab…", hint: "Ctrl+Alt+N", run: () => ws.agents?.openMenu(x, y) },
-          { label: "Close this agent", disabled: tabs.get().sessions.length < 2, run: () => ws.agents?.closeActive() },
+          { label: "Close this agent", hint: "Ctrl+Alt+W", disabled: tabs.get().sessions.length < 2, run: () => ws.agents?.closeActive() },
         ],
       },
     })
@@ -456,7 +466,7 @@ export function TerminalPane({ config }: { config: AiConfig }) {
         if (text) void ws.clipboard.copy(text).then(() => ws.notify(`Copied ${text.length} chars`))
       }}
     >
-      <AiHeader focused={focused} onNew={() => ws.agents?.openMenu()} />
+      <AiHeader focused={focused} onNew={() => ws.agents?.openMenu()} onClose={(id) => closeSession(ws, id)} />
       {t.sessions.map((s) => (
         <AgentSession key={s.id} session={s} active={s.id === t.active} focused={focused} config={config} />
       ))}

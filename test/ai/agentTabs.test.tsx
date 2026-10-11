@@ -36,10 +36,12 @@ async function pane(root: string) {
   await until(() => h!.frame().includes("first-agent-ready"))
   return ws
 }
+/** A menu item; running it closes the menu first, as a click on it does. */
 const menuItem = (ws: ReturnType<typeof createWorkspace>, label: string) => {
   const modal = ws.ui.get().modal
   if (modal?.kind !== "menu") throw new Error("no menu open")
-  return modal.items.find((i: MenuItem) => i.label === label)!
+  const item = modal.items.find((i: MenuItem) => i.label === label)!
+  return { ...item, run: () => (ws.ui.set({ modal: null }), item.run()) }
 }
 
 test("a second agent opens in its own tab; text goes to the visible tab; tabs switch and close", async () => {
@@ -94,4 +96,24 @@ test("an agent in a git worktree works on its own branch; closing can remove the
 
 test("worktree paths sit beside the project, with a branch per agent", () => {
   expect(worktreeFor("/work/app", "Claude Code", 2)).toEqual({ path: "/work/app-claude-code-2", branch: "copane/claude-code-2" })
+})
+
+test("× on a tab closes it, and so does a middle-click; a single tab has neither", async () => {
+  const ws = await pane(await fixture({ "a.txt": "a" }))
+  expect(h!.frame()).not.toContain("×")
+  await h!.step(() => ws.agents!.openMenu())
+  await h!.step(() => menuItem(ws, "New second").run())
+  await until(() => h!.frame().includes("second-agent-ready"))
+  const x = h!.findAt("×", 60) // the first tab's ×, in the AI pane's header
+  await h!.step(() => h!.mouse.click(x.x, x.y))
+  await until(() => !h!.frame().includes("×"))
+  expect(h!.frame()).not.toContain("SH ") // the first tab (/bin/sh) is gone
+  expect(h!.frame()).toContain("SECOND")
+  await h!.step(() => ws.agents!.openMenu())
+  await h!.step(() => menuItem(ws, "New second").run())
+  await until(() => h!.frame().includes("SECOND 2"))
+  const tab = h!.find("SECOND 2")
+  await h!.step(() => h!.mouse.click(tab.x, tab.y, 1))
+  await until(() => !h!.frame().includes("SECOND 2"))
+  expect(h!.frame()).not.toContain("SECOND 2")
 })
