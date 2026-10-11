@@ -5,6 +5,8 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-11
+
 ### Added
 - Report a problem (F1): the AI in the side pane gets copane's version, platform, terminal and the end of the error log (paths shortened), asks what happened, searches existing issues, and shows the drafted GitHub issue; it posts it with `gh` only after you say yes, or gives you a pre-filled link. Internal-error notices point to it.
 - Automatic updates, like Claude Code's: once a day the installed binary checks GitHub and installs a new release in the background; the status bar then offers a restart, and the next start runs it anyway. `"update": "notify"` only says a release is out (a click in the status bar installs it), `"off"` never checks. If installing fails (no permission to replace the binary), it falls back to notifying.
@@ -93,7 +95,8 @@ First public release.
 - VS Code keys and settings import.
 - Release binaries for Linux and macOS (x64 and arm64), and a one-line installer.
 
-[Unreleased]: https://github.com/sevheng/copane/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/sevheng/copane/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/sevheng/copane/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/sevheng/copane/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/sevheng/copane/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/sevheng/copane/compare/v0.4.0...v0.5.0
