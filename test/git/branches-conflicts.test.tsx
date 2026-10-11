@@ -13,7 +13,7 @@ afterEach(() => {
   h = null
 })
 const sh = (cwd: string, ...args: string[]) =>
-  Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, ...ENV } }).stdout.toString()
+  Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, ...ENV, GIT_OPTIONAL_LOCKS: "0" } }).stdout.toString()
 async function until(cond: () => boolean, ms = 4000) {
   for (const end = Date.now() + ms; Date.now() < end && !cond(); ) {
     await Bun.sleep(30)

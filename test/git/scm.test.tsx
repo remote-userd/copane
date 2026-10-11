@@ -14,7 +14,9 @@ afterEach(() => {
 })
 
 function sh(cwd: string, ...args: string[]) {
-  return Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, ...ENV } }).stdout.toString()
+  // The test polls `git status` while the app commits: without this its own reads would take
+  // .git/index.lock and make the app's commit fail (as they did on slow macOS runners).
+  return Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, ...ENV, GIT_OPTIONAL_LOCKS: "0" } }).stdout.toString()
 }
 
 async function until(cond: () => boolean, ms = 3000) {
@@ -70,12 +72,12 @@ test("commit with nothing staged offers to stage all; y commits everything", asy
   await h!.step(() => h!.keys.pressEnter())
   await until(() => h!.frame().includes("Stage all changes and commit?"))
   await h!.step(() => h!.keys.pressKey("y"))
-  await until(() => sh(root, "status", "--porcelain") === "", 10_000)
+  await until(() => sh(root, "status", "--porcelain") === "")
   expect(sh(root, "status", "--porcelain")).toBe("")
   await until(() => h!.frame().includes("No changes"))
   expect(h!.frame()).toContain("No changes")
   expect(h!.frame()).toContain("Committed")
-}, 15_000) // real git on a loaded CI machine can take seconds per step
+})
 
 test("r + y reverts the selected file", async () => {
   const { root } = await setup()
