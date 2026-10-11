@@ -114,7 +114,7 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
     seg(eol, 0) -
     seg(lspStatus, 0) -
     seg(aiText) -
-    (ui.updateReady ? 30 : 0)
+    (ui.updateReady ? 30 : ui.updateAvailable ? 26 : 0)
   const hints: [string, CommandId][] = []
   for (const h of ui.focus === "ai" ? aiHints : editorHints) {
     const w = Bun.stringWidth(h[0]) + 2
@@ -147,6 +147,12 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
           <HoverBox onPress={() => void runCommand(ws, "app.restart")} bg={colors.accent} paddingX={1}>
             <text selectable={false} fg={colors.statusBg}>
               ⟳ Update installed: restart
+            </text>
+          </HoverBox>
+        ) : ui.updateAvailable ? (
+          <HoverBox onPress={() => void runCommand(ws, "app.installUpdate")} bg={colors.segmentBg} paddingX={1}>
+            <text selectable={false} fg={colors.accent}>
+              ⬆ copane {ui.updateAvailable}: install
             </text>
           </HoverBox>
         ) : null}

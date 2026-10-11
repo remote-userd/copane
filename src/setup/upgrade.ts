@@ -46,27 +46,23 @@ async function fetchOk(url: string): Promise<Response> {
   return res
 }
 
-/** Run the upgrade and return the exit code. */
-export async function upgrade(log: (line: string) => void = console.log): Promise<number> {
-  if (!isCompiled()) {
-    log("Running from source: update with `git pull`, then `bun run install:cli`.")
-    return 1
-  }
+/** The latest release's tag (v1.2.3) on GitHub. */
+export async function latestRelease(): Promise<string> {
+  const release = (await (await fetchOk(`https://api.github.com/repos/${REPO}/releases/latest`)).json()) as { tag_name?: string }
+  if (!release.tag_name) throw new Error("no release found")
+  return release.tag_name
+}
+
+/**
+ * Download a release for this platform, check it against SHA256SUMS, and rename it over the
+ * running binary (the way install.sh does), so open editors see one clean change and offer a
+ * restart. Throws with a readable message.
+ */
+export async function installRelease(tag: string, target = process.execPath): Promise<void> {
   const asset = assetName()
-  if (!asset) {
-    log(`No release build for ${process.platform}-${process.arch}.`)
-    return 1
-  }
+  if (!asset) throw new Error(`no release build for ${process.platform}-${process.arch}`)
   const dir = await mkdtemp(join(tmpdir(), "copane-upgrade-"))
   try {
-    const release = (await (await fetchOk(`https://api.github.com/repos/${REPO}/releases/latest`)).json()) as { tag_name?: string }
-    const tag = release.tag_name
-    if (!tag) throw new Error("no release found")
-    if (!isNewer(tag, pkg.version)) {
-      log(`copane ${pkg.version} is up to date.`)
-      return 0
-    }
-    log(`Downloading copane ${tag} (${asset})...`)
     const base = `https://github.com/${REPO}/releases/download/${tag}`
     const [archive, sums] = await Promise.all([
       fetchOk(`${base}/${asset}`).then((r) => r.bytes()),
@@ -82,7 +78,6 @@ export async function upgrade(log: (line: string) => void = console.log): Promis
     if ((await tar.exited) !== 0) throw new Error(`could not unpack ${asset}: ${(await Bun.readableStreamToText(tar.stderr)).trim()}`)
 
     // Replace by rename: running editors keep their old file and see one clean change.
-    const target = process.execPath
     const next = `${target}.new`
     try {
       await Bun.write(next, Bun.file(join(dir, "copane", "copane")))
@@ -94,12 +89,33 @@ export async function upgrade(log: (line: string) => void = console.log): Promis
       if (code === "EACCES" || code === "EPERM") throw new Error(`no permission to write ${target}; try again with sudo`)
       throw err
     }
-    log(`Updated copane ${pkg.version} → ${tag} (${target}). Open editors offer a restart.`)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+}
+
+/** Run the upgrade and return the exit code. */
+export async function upgrade(log: (line: string) => void = console.log): Promise<number> {
+  if (!isCompiled()) {
+    log("Running from source: update with `git pull`, then `bun run install:cli`.")
+    return 1
+  }
+  if (!assetName()) {
+    log(`No release build for ${process.platform}-${process.arch}.`)
+    return 1
+  }
+  try {
+    const tag = await latestRelease()
+    if (!isNewer(tag, pkg.version)) {
+      log(`copane ${pkg.version} is up to date.`)
+      return 0
+    }
+    log(`Downloading copane ${tag} (${assetName()})...`)
+    await installRelease(tag)
+    log(`Updated copane ${pkg.version} → ${tag} (${process.execPath}). Open editors offer a restart.`)
     return 0
   } catch (err) {
     log(`Upgrade failed: ${(err as Error).message}`)
     return 1
-  } finally {
-    await rm(dir, { recursive: true, force: true })
   }
 }

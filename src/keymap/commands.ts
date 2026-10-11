@@ -1,7 +1,8 @@
 import { relative } from "node:path"
 import type { Workspace } from "../app/workspace"
 import { shutdown } from "../app/shutdown"
-import { restart } from "../app/update"
+import { isCompiled, restart } from "../app/update"
+import pkg from "../../package.json"
 import { openFind, wordUnderCursor } from "../editor/FindBar"
 import { gotoChange, revertHunkAt, stageHunk } from "../git/hunkActions"
 import { blameFor } from "../git/blame"
@@ -387,6 +388,23 @@ function sendContext(ws: Workspace, instruction?: string): void {
 export const commands = {
   "app.quit": { title: "Quit", run: (ws) => leave(ws, "quit") },
   "app.restart": { title: "Restart (load a newly installed version)", run: (ws) => leave(ws, "restart") },
+  "app.installUpdate": {
+    title: "Install the latest copane release",
+    run: async (ws) => {
+      if (!isCompiled()) return ws.notify("Running from source: update with git pull, then bun run install:cli", "warn")
+      const { latestRelease, installRelease, isNewer } = await import("../setup/upgrade")
+      ws.notify("Checking for a new release…")
+      const tag = await latestRelease()
+      if (!isNewer(tag, pkg.version)) {
+        ws.ui.set({ updateAvailable: null })
+        return ws.notify(`copane ${pkg.version} is up to date`)
+      }
+      ws.notify(`Installing copane ${tag}…`)
+      await installRelease(tag)
+      // The binary watcher now shows "Update installed: restart".
+      ws.ui.set({ updateAvailable: null })
+    },
+  },
   "file.save": { title: "Save file", run: saveActive },
   "file.saveAll": { title: "Save all files", run: async (ws) => void (await saveAll(ws)) },
   "file.picker": { title: "Go to file", run: (ws) => ws.ui.set({ modal: { kind: "picker" } }) },

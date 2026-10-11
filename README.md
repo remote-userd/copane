@@ -58,9 +58,7 @@ ce src/main.ts       # a file (its project folder is the workspace)
 ce ~/projects/app    # another folder
 ```
 
-**Updating:** `ce --upgrade` installs the latest release in place (or run the install line again). After an update, every open editor shows
-"⟳ Update installed: restart" in the status bar. Click it or press Ctrl+Alt+R: unsaved files
-prompt first, then the editor restarts on the new version with the same folder and tabs.
+**Updating:** copane updates itself. Once a day it checks GitHub for a new release and installs it in the background, so the next time you start `ce` you're on the latest version. Every open editor then shows "⟳ Update installed: restart" in the status bar: click it or press Ctrl+Alt+R and, after asking about unsaved files, the editor restarts on the new version with the same folder and tabs. `ce --upgrade` installs the latest release right away. To choose when to update, set `"update": "notify"` (the status bar says when a release is out, and a click installs it) or `"off"` (never checks).
 
 `ce --version` prints the installed version.
 
@@ -373,6 +371,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
   "lsp": { "python": { "command": ["pylsp"] } },
   "tree": { "icons": "simple" },
   "preview": { "imageProtocol": "auto" },
+  "update": "auto",
   "keys": { "global": { "ctrl+o": "file.picker", "ctrl+l": null } }
 }
 ```

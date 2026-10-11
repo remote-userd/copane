@@ -15,6 +15,8 @@ import { Profiler } from "react"
 const noop = () => {}
 import { saveBeforeAi } from "./app/saveBeforeAi"
 import { isCompiled, setLaunchCwd, takeRestoreState, watchForUpdate } from "./app/update"
+import { startAutoUpdate } from "./app/autoUpdate"
+import { installRelease, latestRelease } from "./setup/upgrade"
 import { FileTree } from "./files/FileTree"
 import { FilePicker } from "./files/FilePicker"
 import { SearchModal } from "./files/SearchModal"
@@ -215,10 +217,24 @@ if (restored) {
 // A newer build installed over this binary: offer a restart from the status bar.
 if (isCompiled()) {
   const stop = watchForUpdate(process.execPath, () => {
-    ws.ui.set({ updateReady: true })
+    ws.ui.set({ updateReady: true, updateAvailable: null })
     ws.notify("New version installed (Ctrl+Alt+R)")
   })
   onShutdown(stop)
+  // New releases: checked once a day, installed in the background unless update is "notify"/"off".
+  onShutdown(
+    startAutoUpdate(
+      config.update,
+      { current: pkg.version, latest: latestRelease, install: (tag) => installRelease(tag) },
+      {
+        available: (tag, why) => {
+          ws.ui.set({ updateAvailable: tag })
+          ws.notify(why ? `copane ${tag} is out, but installing it failed: ${why}` : `copane ${tag} is out (click it in the status bar to install)`, why ? "warn" : "info")
+        },
+        installed: (tag) => ws.notify(`copane ${tag} installed in the background (Ctrl+Alt+R restarts, or it starts next time)`),
+      },
+    ),
+  )
 }
 
 function TreeSlot() {

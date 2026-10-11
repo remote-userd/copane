@@ -81,6 +81,12 @@ export const configSchema = z
         imageProtocol: z.enum(["auto", "kitty", "sixel", "blocks"]).default("auto"),
       })
       .prefault({}),
+    /**
+     * New releases (checked once a day): "auto" installs them in the background (the status bar
+     * then offers a restart), "notify" only says one is out (`copane --upgrade` installs it),
+     * "off" never checks. Only for the installed binary, not `bun run dev`.
+     */
+    update: z.enum(["auto", "notify", "off"]).default("auto"),
     /** Extra key bindings per layer, e.g. { "global": { "ctrl+o": "file.picker" } }. null removes one. */
     keys: z
       .partialRecord(z.enum(["global", "editor", "tree", "ai"]), z.record(z.string(), z.string().nullable()))

@@ -61,6 +61,8 @@ export interface UiState {
   resizing: "tree" | "ai" | null
   /** A newer build was installed while running; offer a restart. */
   updateReady: boolean
+  /** A newer release is out but not installed (update: "notify", or installing failed): its tag. */
+  updateAvailable: string | null
   /** Find bar over the editor: open, with replace row, and whether it has keyboard focus. */
   find: { replace: boolean; active: boolean; seed: number; anchor: { row: number; col: number } } | null
   findQuery: string
@@ -94,6 +96,7 @@ export function createUiStore(initial?: Partial<UiState>): Store<UiState> {
     aiWidth: null,
     resizing: null,
     updateReady: false,
+    updateAvailable: null,
     maximized: null,
     mdSide: false,
     aiAttention: null,
