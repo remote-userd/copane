@@ -101,7 +101,7 @@ const ws = createWorkspace(
   {
     focus: args.file ? "editor" : "tree",
     aiVisible: !config.ai.startHidden,
-    // Start with the tree and the AI pane only: the editor shows when a file opens (Ctrl+Alt+X too).
+    // Start with the tree and the AI pane only: Ctrl+Alt+X or Ctrl+E shows the editor.
     aiMaximized: config.editor.startHidden && !config.ai.startHidden ? { tree: true, editor: false } : null,
     wordWrap: config.editor.wordWrap,
     ...(await loadLayout()),
@@ -211,7 +211,7 @@ const restored = await takeRestoreState()
 if (restored) {
   // Restarted (e.g. after an update): bring back the tabs, then the active one.
   void (async () => {
-    // In "maximize AI" the editor stays hidden until you open a file yourself.
+    // With the editor hidden ("maximize AI"), the tabs come back behind it.
     const max = ws.ui.get().aiMaximized
     for (const path of restored.files) await ws.buffers.open(path).catch(() => null)
     const active = restored.active ? ws.buffers.byPath(restored.active) : null
@@ -220,7 +220,6 @@ if (restored) {
       void tree.reveal(active.source ?? active.path)
       if (!max) ws.ui.set({ focus: "editor" })
     }
-    if (max) ws.ui.set({ aiMaximized: max })
     ws.notify("Restarted")
   })()
 } else if (args.file) {

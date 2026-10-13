@@ -320,7 +320,7 @@ function setFocus(ws: Workspace, focus: "tree" | "editor" | "ai"): void {
   }
   // "Maximize AI" hid the editor: Ctrl+E brings it back when it has tabs to show.
   const max = ui.aiMaximized
-  const showEditor = focus === "editor" && max && !max.editor && ws.buffers.list().length ? { aiMaximized: { ...max, editor: true } } : {}
+  const showEditor = focus === "editor" && max && !max.editor && ws.buffers.list().length ? { aiMaximized: { ...max, editor: true }, notice: null } : {}
   ws.ui.set({
     focus,
     ...showEditor,
@@ -572,11 +572,11 @@ export const commands = {
     },
   },
   "view.maximizeAi": {
-    title: "Maximize AI pane (the editor shows when you open a file; again: hide it) / restore",
+    title: "Maximize AI pane: hide the editor (Ctrl+E shows it) / restore",
     run(ws) {
       const ui = ws.ui.get()
       const max = ui.aiMaximized
-      // The editor came back for a file: hide it again. Already hidden: restore the layout.
+      // The editor was shown with Ctrl+E: hide it again. Already hidden: restore the layout.
       if (max && !(max.editor && ws.buffers.list().length)) return ws.ui.set({ treeVisible: max.tree, aiMaximized: null })
       const tree = max ? max.tree : ui.maximized ? ui.maximized.tree : ui.treeVisible
       ws.ui.set({ aiMaximized: { tree, editor: false }, maximized: null, treeVisible: false, aiVisible: true, focus: "ai" })

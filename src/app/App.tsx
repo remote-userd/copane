@@ -113,7 +113,7 @@ export function App({ slots = {} }: { slots?: AppSlots }) {
   const showTree = ui.treeVisible && !!slots.tree && dims.width >= 100
   const showAi = ui.aiVisible && !!slots.ai
   const { treeWidth, aiWidth } = paneWidths(dims.width, ui, showTree, showAi)
-  // "Maximize AI": the editor only takes room after you open a file, and until its last tab closes.
+  // "Maximize AI": the editor only takes room once you show it (Ctrl+E), and until its last tab closes.
   const fileCount = useBufferSelector((b) => b.list().length)
   const hideEditor = !!ui.aiMaximized && showAi && (!ui.aiMaximized.editor || fileCount === 0)
   const fullAi = dims.width - (showTree ? treeWidth + 1 : 0)
@@ -122,8 +122,10 @@ export function App({ slots = {} }: { slots?: AppSlots }) {
     if (hideEditor && ui.focus === "editor") {
       ws.ui.set({ focus: "ai" })
       ws.ai?.focus()
+      // A file opened (tree, Ctrl+P) into the hidden editor: say how to see it.
+      if (fileCount) ws.notify("Editor hidden: Ctrl+E shows it")
     }
-  }, [hideEditor, ui.focus, ws])
+  }, [hideEditor, ui.focus, ws, fileCount])
 
   if (tooSmall) {
     return (

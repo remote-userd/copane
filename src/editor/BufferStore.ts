@@ -134,16 +134,9 @@ export class BufferStore {
   }
 
   // ---- open / close / switch ----
-  /** Open a file in a tab, or switch to its tab. */
   async open(path: string): Promise<Buffer> {
-    const buf = await this.load(path)
-    this.opened(buf.id)
-    return buf
-  }
-
-  private async load(path: string): Promise<Buffer> {
     const source = previewSource(path)
-    if (source !== null) return this.preview(source)
+    if (source !== null) return this.openPreview(source)
     const abs = resolve(this.root, path)
     const existing = this.byPath(abs)
     if (existing) {
@@ -193,12 +186,6 @@ export class BufferStore {
 
   /** Open (or switch to) the rendered view of a Markdown file. */
   openPreview(source: string): Buffer {
-    const buf = this.preview(source)
-    this.opened(buf.id)
-    return buf
-  }
-
-  private preview(source: string): Buffer {
     const abs = resolve(this.root, source)
     const path = previewPath(abs)
     const existing = this.byPath(path)
@@ -608,16 +595,6 @@ export class BufferStore {
   }
 
   private reloadListeners = new Set<(id: number, before: string, after: string) => void>()
-  private openListeners = new Set<(id: number) => void>()
-  private opened(id: number): void {
-    for (const l of this.openListeners) l(id)
-  }
-  /** A file was opened or switched to on purpose (not a tab coming forward after a close). */
-  onOpen(listener: (id: number) => void): () => void {
-    this.openListeners.add(listener)
-    return () => this.openListeners.delete(listener)
-  }
-
   private textListeners = new Set<(id: number) => void>()
 
   /** Called after every text change of any buffer (typing, undo, reload). */

@@ -156,7 +156,7 @@ function tabLabel(s: Session): string {
 function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: () => void; onClose: (id: number) => void }) {
   const ws = useWorkspace()
   const ui = useUi()
-  // The AI pane fills the window (⤡ restores); with the editor back for a file, ⤢ hides it again.
+  // The editor is hidden (⤡ restores); shown with Ctrl+E, ⤢ hides it again.
   const files = useBufferSelector((b) => b.list().length)
   const aiFull = !!ui.aiMaximized && !(ui.aiMaximized.editor && files)
   const t = useSyncExternalStore(tabs.subscribe, tabs.get)
@@ -257,7 +257,7 @@ function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: () => 
           {one ? "+ new" : "+"}
         </text>
       </HoverBox>
-      {/* Maximize AI (Ctrl+Alt+X): the editor shows when you open a file; again hides it, then restores. */}
+      {/* Maximize AI (Ctrl+Alt+X): hides the editor until you show it; again restores. */}
       <HoverBox onPress={() => void runCommand(ws, "view.maximizeAi")}>
         <text selectable={false} fg={aiFull ? colors.accent : colors.headerFg}>
           {aiFull ? "⤡" : "⤢"}

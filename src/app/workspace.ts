@@ -94,11 +94,6 @@ export function createWorkspace(
       noticeTimer = setTimeout(() => uiStore.set({ notice: null }), kind === "error" ? 8000 : 4000)
     },
   }
-  // "Maximize AI": opening a file brings the editor back beside the AI pane.
-  ws.buffers.onOpen(() => {
-    const max = uiStore.get().aiMaximized
-    if (max && !max.editor) uiStore.set({ aiMaximized: { ...max, editor: true } })
-  })
   return ws
 }
 

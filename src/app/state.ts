@@ -92,8 +92,8 @@ export interface UiState {
   /** Pane visibility before "maximize editor", restored by toggling it again. */
   maximized: { tree: boolean; ai: boolean } | null
   /**
-   * "Maximize AI": the AI pane fills the window and the editor shows only after you open a file
-   * (`editor`). `tree` is the tree's visibility to restore.
+   * "Maximize AI": the editor is hidden until you show it (Ctrl+E with tabs open: `editor`); opening
+   * a file doesn't. `tree` is the tree's visibility to restore.
    */
   aiMaximized: { tree: boolean; editor: boolean } | null
   /** Show a live preview beside Markdown files (Ctrl+K V). */

@@ -295,7 +295,7 @@ Press **F1** for the command palette: every command, searchable, with its shortc
 | Ctrl+J | Focus the AI pane, or back to the editor from it |
 | Ctrl+Alt+J | Show or hide the AI pane |
 | Ctrl+Alt+M | Maximize the editor, and press again to restore |
-| Ctrl+Alt+X | Maximize the AI pane (or **⤢** in its header): it fills the window, even with tabs open. Opening a file (or Ctrl+E with tabs open) brings the editor back beside it; pressing again hides it, and pressing once more restores the layout. `ce` starts with only the tree and the AI pane (`editor.startHidden: false` starts with the editor) |
+| Ctrl+Alt+X | Maximize the AI pane (or **⤢** in its header): it fills the window, even with tabs open. The editor stays hidden while files open (from the tree, Ctrl+P, links) until you show it: Ctrl+E (with tabs open) brings it back beside the AI pane, pressing again hides it, and pressing once more restores the layout. `ce` starts with only the tree and the AI pane (`editor.startHidden: false` starts with the editor) |
 | Ctrl+L | Send the current file, or the selected lines, to the AI prompt |
 | Ctrl+K F | Send errors and warnings to the AI ("fix these") |
 | Ctrl+K D | Send your git changes to the AI ("review these") |

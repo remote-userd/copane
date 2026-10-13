@@ -133,7 +133,7 @@ test("AI actions send the context plus a request and submit it", async () => {
   expect(ws.ui.get().focus).toBe("ai")
 })
 
-test("maximize AI: the AI pane fills the window, even with tabs open, until you open a file", async () => {
+test("maximize AI: the editor stays hidden when files open, until you show it", async () => {
   const dir = await mkdtemp(join(tmpdir(), "ce-maxai-"))
   await writeFile(join(dir, "a.ts"), "const a = 1\n")
   await writeFile(join(dir, "b.ts"), "const b = 2\n")
@@ -152,24 +152,31 @@ test("maximize AI: the AI pane fills the window, even with tabs open, until you 
   expect(aiColumn()).toBe(0)
   expect(setup.captureCharFrame()).not.toContain("const a = 1")
 
-  // Opening a file brings it back beside the AI pane.
-  await step(() => ws.buffers.open("b.ts"))
+  // Opening a file (as a tree click does) keeps it hidden, and says how to show it.
+  await step(async () => {
+    await ws.buffers.open("b.ts")
+    ws.ui.set({ focus: "editor" })
+  })
+  expect(aiColumn()).toBe(0)
+  expect(ws.ui.get().focus).toBe("ai")
+  expect(ws.ui.get().notice?.text).toContain("Ctrl+E")
+
+  // Ctrl+E shows it beside the AI pane; Ctrl+Alt+X hides it again; once more restores the layout.
+  await step(() => runCommand(ws, "focus.editor"))
   expect(setup.captureCharFrame()).toContain("const b = 2")
   expect(aiColumn()).toBeGreaterThan(30)
-
-  // Pressing again hides it, still maximized; once more restores the layout.
   await step(() => runCommand(ws, "view.maximizeAi"))
   expect(aiColumn()).toBe(0)
   expect(ws.ui.get().aiMaximized).toEqual({ tree: true, editor: false })
   await step(() => runCommand(ws, "view.maximizeAi"))
   expect(ws.ui.get()).toMatchObject({ aiMaximized: null, treeVisible: true })
   expect(setup.captureCharFrame()).toContain("TREE-SLOT")
+  expect(setup.captureCharFrame()).toContain("const b = 2")
 
-  // Closing the last tab hides the editor and hands the keyboard to the AI.
+  // Closing the last tab hides a shown editor and hands the keyboard to the AI.
   await step(() => runCommand(ws, "view.maximizeAi"))
-  await step(() => ws.buffers.open("b.ts"))
+  await step(() => runCommand(ws, "focus.editor"))
   await step(() => {
-    ws.ui.set({ focus: "editor" })
     for (const b of [...ws.buffers.list()]) ws.buffers.close(b.id)
   })
   expect(aiColumn()).toBe(0)
