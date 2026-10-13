@@ -1,5 +1,7 @@
 import { Renderable, TextareaRenderable, type KeyEvent, type MouseEvent, type RenderContext, type TextareaOptions } from "@opentui/core"
 import { Glide } from "../app/glide"
+import { SYNTAX_HL_REF } from "./highlighter"
+import { combinedStyle, isOverlay } from "./syntaxStyle"
 
 export interface LayerHighlight {
   line: number
@@ -210,7 +212,37 @@ export class CodeEditorRenderable extends TextareaRenderable {
     const list = this.direct.get(line)
     if (list) list.push(hl)
     else this.direct.set(line, [hl])
-    super.addHighlight(line, hl)
+    this.nativeAdd(line, hl)
+  }
+
+  /**
+   * Hand one highlight to the native buffer. It shows one highlight per cell, so an overlay (the
+   * word under the cursor, a find match) would hide the syntax colour under it: it is cut where
+   * the colours change, and each piece gets the overlay's background with the colour below.
+   */
+  private nativeAdd(line: number, hl: NativeHighlight): void {
+    const syntax = hl.hlRef === SYNTAX_HL_REF || !isOverlay(hl.styleId) ? undefined : this.layers.get(SYNTAX_HL_REF)?.get(line)
+    if (!syntax?.length) return super.addHighlight(line, hl)
+    const cuts = new Set([hl.start, hl.end])
+    for (const s of syntax) {
+      if (s.start > hl.start && s.start < hl.end) cuts.add(s.start)
+      if (s.end > hl.start && s.end < hl.end) cuts.add(s.end)
+    }
+    const points = [...cuts].sort((a, b) => a - b)
+    let run: NativeHighlight | null = null
+    for (let i = 0; i + 1 < points.length; i++) {
+      const a = points[i]!
+      const b = points[i + 1]!
+      let under: number | null = null
+      for (const s of syntax) if (s.start <= a && s.end >= b) under = s.styleId // the last one shows
+      const styleId = under === null ? hl.styleId : combinedStyle(hl.styleId, under)
+      if (run && run.styleId === styleId) run.end = b
+      else {
+        if (run) super.addHighlight(line, run)
+        run = { ...hl, start: a, end: b, styleId }
+      }
+    }
+    if (run) super.addHighlight(line, run)
   }
 
   override removeHighlightsByRef(ref: number): void {
@@ -258,21 +290,35 @@ export class CodeEditorRenderable extends TextareaRenderable {
     if (!changed || changed.length > Math.max(32, next.size)) {
       super.removeHighlightsByRef(ref)
       this.drawn.set(ref, next)
-      for (const [line, list] of next) for (const h of list) super.addHighlight(line, layerHl(h, ref))
+      // Overlays on a line were cut against the old colours: such a line is redrawn whole instead.
+      const recut = ref === SYNTAX_HL_REF ? new Set([...next.keys(), ...(old?.keys() ?? [])].filter((line) => this.hasOverlay(line))) : null
+      for (const [line, list] of next) if (!recut?.has(line)) for (const h of list) this.nativeAdd(line, layerHl(h, ref))
+      for (const line of recut ?? []) this.redrawLine(line)
       return
     }
     this.drawn.set(ref, next)
     for (const line of changed) {
       // A line this layer never drew (it just came into the window): add to what is there.
-      if (!old!.has(line)) {
-        for (const h of next.get(line) ?? []) super.addHighlight(line, layerHl(h, ref))
+      if (!old!.has(line) && !(ref === SYNTAX_HL_REF && this.hasOverlay(line))) {
+        for (const h of next.get(line) ?? []) this.nativeAdd(line, layerHl(h, ref))
         continue
       }
-      // The native buffer clears a line for every ref at once, so put back the other layers too.
-      super.clearLineHighlights(line)
-      for (const [r, lines] of this.drawn) for (const h of lines.get(line) ?? []) super.addHighlight(line, layerHl(h, r))
-      for (const h of this.direct.get(line) ?? []) super.addHighlight(line, h)
+      this.redrawLine(line)
     }
+  }
+
+  /** Clear a line and put back everything on it: the native buffer clears a line for every ref at once. */
+  private redrawLine(line: number): void {
+    super.clearLineHighlights(line)
+    for (const [r, lines] of this.drawn) for (const h of lines.get(line) ?? []) this.nativeAdd(line, layerHl(h, r))
+    for (const h of this.direct.get(line) ?? []) this.nativeAdd(line, h)
+  }
+
+  /** Whether an overlay (see nativeAdd) is drawn on a line. */
+  private hasOverlay(line: number): boolean {
+    if (this.direct.get(line)?.some((h) => isOverlay(h.styleId))) return true
+    for (const [r, lines] of this.drawn) if (r !== SYNTAX_HL_REF && lines.get(line)?.some((h) => isOverlay(h.styleId))) return true
+    return false
   }
 
   /**

@@ -15,8 +15,8 @@ import { replaceSeed, selectAllSoon } from "../app/seededInput"
 const SEARCH_HL_REF = 0x5ea4
 function searchStyles() {
   return {
-    match: extraStyle("search.match", { bg: colors.findMatchBg }),
-    current: extraStyle("search.current", { bg: colors.findCurrentBg }),
+    match: extraStyle("search.match", { bg: colors.findMatchBg }, { overlay: true }),
+    current: extraStyle("search.current", { bg: colors.findCurrentBg }, { overlay: true }),
   }
 }
 

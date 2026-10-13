@@ -76,8 +76,8 @@ const INDENT_REF = 0x1de7
 const DECOR_RADIUS = 400
 function decorStyles() {
   return {
-    bracket: extraStyle("decor.bracket", { bg: colors.bracketMatchBg, bold: true }),
-    word: extraStyle("decor.word", { bg: colors.wordOccurrenceBg }),
+    bracket: extraStyle("decor.bracket", { bg: colors.bracketMatchBg, bold: true }, { overlay: true }),
+    word: extraStyle("decor.word", { bg: colors.wordOccurrenceBg }, { overlay: true }),
     indent: extraStyle("decor.indent", { bg: colors.indentGuideBg }),
   }
 }

@@ -57,7 +57,7 @@ function paint(ws: Workspace): void {
   if (!ed) return
   ed.removeHighlightsByRef(HL_REF)
   if (!state) return ed.requestRender()
-  const styleId = extraStyle("multi.occurrence", { bg: colors.findCurrentBg })
+  const styleId = extraStyle("multi.occurrence", { bg: colors.findCurrentBg }, { overlay: true })
   const lines = ed.plainText.split("\n")
   for (const o of state.occs) {
     const line = lines[o.row] ?? ""
