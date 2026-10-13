@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { basename } from "node:path"
 import { HoverBox } from "./Modal"
 import { useUi, useWorkspace } from "./workspace"
 import { ui as colors } from "../config/theme"
@@ -28,6 +29,12 @@ export function Sidebar({ files, search }: { files: ReactNode; search: ReactNode
       <box height={1} flexShrink={0} flexDirection="row" backgroundColor={colors.headerBg} overflow="hidden">
         {tab("files", nerd ? "\u{f02dc}" : "FILES")}
         {tab("search", nerd ? "\u{f0349}" : "SEARCH")}
+        {/* The project's folder name, right-aligned; it gives way first when the pane is narrow. */}
+        <box flexGrow={1} flexShrink={1} flexDirection="row" justifyContent="flex-end" paddingRight={1} overflow="hidden">
+          <text selectable={false} fg={colors.headerFg} wrapMode="none" truncate>
+            {basename(ws.root)}
+          </text>
+        </box>
       </box>
       <box flexGrow={1} flexDirection="column" visible={ui.sidebar === "files"}>
         {files}

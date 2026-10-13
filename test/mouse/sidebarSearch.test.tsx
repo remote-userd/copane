@@ -128,3 +128,12 @@ test("mouse: tabs, ▸ replace, toggles, × dismisses, ⇄ on a match and on a f
   await click("FILES")
   expect(h.frame()).toContain("TREE BODY")
 })
+
+test("the sidebar's tab row names the project folder", async () => {
+  const { h, root } = await app({ "a.ts": "x\n" })
+  const name = root.split("/").pop()!
+  const top = h.frame().split("\n").find((l) => l.includes("FILES") || l.includes("\u{f02dc}"))!
+  // A long name is shortened in the middle; both ends stay.
+  expect(top).toContain(name.slice(0, 4))
+  expect(top).toContain(name.slice(-4))
+})

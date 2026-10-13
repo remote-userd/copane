@@ -1,4 +1,4 @@
-import { resolve } from "node:path"
+import { basename, resolve } from "node:path"
 import { createCliRenderer } from "@opentui/core"
 import { createRoot, useTerminalDimensions } from "@opentui/react"
 import { App } from "./app/App"
@@ -90,6 +90,9 @@ renderer.on("blur", () => windowFocus.set({ focused: false }))
 // Every pane, popup and preview listens for keys; Node's leak warning at 10 would print over the UI.
 renderer.keyInput.setMaxListeners(100)
 installPerfLog(renderer)
+// The terminal tab shows the project's folder name; an empty title on exit hands it back to the shell.
+renderer.setTerminalTitle(basename(args.root))
+onShutdown(() => renderer.setTerminalTitle(""))
 
 const ws = createWorkspace(
   args.root,

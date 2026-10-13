@@ -5,6 +5,9 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- The project's folder name shows in the sidebar's tab row and as the terminal tab's title.
+
 ## [0.8.0] - 2026-10-11
 
 ### Added
