@@ -17,7 +17,14 @@ export interface MenuItem {
 }
 
 export type Modal =
-  | { kind: "menu"; x: number; y: number; items: MenuItem[] }
+  | {
+      kind: "menu"
+      x: number
+      y: number
+      items: MenuItem[]
+      /** The dialog the menu opened over: it stays on screen, and Escape or a click outside returns to it. */
+      over?: Modal
+    }
   | { kind: "confirm"; title: string; body: string; options: ConfirmOption[] }
   | {
       kind: "prompt"
@@ -33,8 +40,9 @@ export type Modal =
   | { kind: "search"; replace?: boolean; restore?: boolean }
   | { kind: "diff"; bufId: number }
   | { kind: "scm" }
-  | { kind: "branches"; mode?: "switch" | "delete" }
-  | { kind: "history"; path: string | null; sha?: string }
+  /** `back`: the dialog this one opened from (Source control); closing returns to it. */
+  | { kind: "branches"; mode?: "switch" | "delete"; back?: Modal }
+  | { kind: "history"; path: string | null; sha?: string; back?: Modal }
   | { kind: "palette" }
   | { kind: "info"; x: number; y: number; text: string }
   | { kind: "problems" }

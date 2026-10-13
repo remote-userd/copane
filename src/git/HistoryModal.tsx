@@ -3,6 +3,7 @@ import { openFile } from "../app/navHistory"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import { Modal } from "../app/Modal"
 import { useWorkspace } from "../app/workspace"
+import type { Modal as ModalState } from "../app/state"
 import { ui as colors } from "../config/theme"
 import type { LogEntry } from "./repo"
 
@@ -10,7 +11,7 @@ import type { LogEntry } from "./repo"
  * File history (commits touching a file, with that file's diff per commit) or a single
  * commit (from blame). ↑↓ choose, PgUp/PgDn scroll, y copies the sha, Enter opens the file.
  */
-export function HistoryModal({ path, sha }: { path: string | null; sha?: string }) {
+export function HistoryModal({ path, sha, back }: { path: string | null; sha?: string; back?: ModalState }) {
   const ws = useWorkspace()
   const dims = useTerminalDimensions()
   const repo = ws.git?.repo ?? null
@@ -18,7 +19,7 @@ export function HistoryModal({ path, sha }: { path: string | null; sha?: string 
   const [sel, setSel] = useState(0)
   const [diff, setDiff] = useState<string[]>([])
   const [top, setTop] = useState(0)
-  const close = () => ws.ui.set({ modal: null })
+  const close = () => ws.ui.set({ modal: back ?? null })
 
   useEffect(() => {
     if (!repo) return setCommits([])
@@ -49,7 +50,7 @@ export function HistoryModal({ path, sha }: { path: string | null; sha?: string 
     else if (key.name === "pageup") setTop((t) => Math.max(0, t - viewH + 2))
     else if (key.name === "y" && current) void ws.clipboard.copy(current.sha).then(() => ws.notify(`Copied ${current.sha}`))
     else if (key.name === "return" && path) {
-      close()
+      ws.ui.set({ modal: null }) // to the editor, not back to a dialog
       void openFile(ws, path)
     }
   })

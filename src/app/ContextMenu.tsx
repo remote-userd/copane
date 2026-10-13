@@ -13,11 +13,12 @@ export function ContextMenu({ menu }: { menu: Menu }) {
   const enabled = menu.items.map((it, i) => (it.disabled ? -1 : i)).filter((i) => i >= 0)
   const [sel, setSel] = useState(enabled[0] ?? 0)
 
-  const close = () => ws.ui.set({ modal: null })
+  // Dismissed: back to the dialog it opened over, if any. A chosen item decides where it goes.
+  const close = () => ws.ui.set({ modal: menu.over ?? null })
   const choose = (i: number) => {
     const item = menu.items[i]
     if (!item || item.disabled) return
-    close()
+    ws.ui.set({ modal: null })
     void safely(ws, item.run)
   }
   const step = (d: number) => {

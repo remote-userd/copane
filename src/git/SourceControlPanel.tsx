@@ -20,7 +20,7 @@ import { setGitActivity, useGitActivity, useSpinner, type GitActivity } from "./
 const none = { subscribe: () => () => {}, getSnapshot: () => 0 }
 /** The message being written survives closing the panel. */
 let draft = ""
-/** So does the selected file (a right-click menu closes the panel and opens it again). */
+/** So does the selected file (a menu item that leaves the panel opens it again). */
 let lastCursor: Cursor | null = null
 /** Tests: no message or selection left over from another test. */
 export function resetCommitDraft(): void {
@@ -393,7 +393,7 @@ export function SourceControlPanel() {
     await done(`${unstage ? "Unstaged" : "Staged"} a change in ${row.entry.rel}`)
   }
 
-  // Right-click on a file: a menu. It replaces this panel, so each item opens the panel again.
+  // Right-click on a file: a menu over the panel. Dismissing it returns here; an item that acts opens the panel again.
   const rowMenu = (r: Row, x: number, y: number) => {
     const g = git
     const rp = repo
@@ -405,6 +405,7 @@ export function SourceControlPanel() {
         kind: "menu",
         x,
         y,
+        over: { kind: "scm" },
         items: [
           { label: "Open file", hint: "Enter", run: () => void openAt(ws, r.entry.path, 0, 0, 0) },
           {
@@ -442,7 +443,7 @@ export function SourceControlPanel() {
                 },
               }),
           },
-          { label: "File history", run: () => ws.ui.set({ modal: { kind: "history", path: r.entry.path } }) },
+          { label: "File history", run: () => ws.ui.set({ modal: { kind: "history", path: r.entry.path, back: { kind: "scm" } } }) },
           { label: "Review all changes with AI", hint: "v", run: () => sendChangesForReview(ws) },
         ],
       },
@@ -580,7 +581,7 @@ export function SourceControlPanel() {
         if (key.shift) void pull()
         break
       case "b":
-        ws.ui.set({ modal: { kind: "branches" } })
+        ws.ui.set({ modal: { kind: "branches", back: { kind: "scm" } } })
         break
       case "pagedown":
         setTop((t) => Math.min(maxTop, t + viewH - 2))
@@ -758,7 +759,7 @@ export function SourceControlPanel() {
             {btn(buttons[3]!, () => void sendChangesForReview(ws))}
             {btn(buttons[4]!, () => void push())}
             {btn(buttons[5]!, () => void pull())}
-            {btn(buttons[6]!, () => ws.ui.set({ modal: { kind: "branches" } }))}
+            {btn(buttons[6]!, () => ws.ui.set({ modal: { kind: "branches", back: { kind: "scm" } } }))}
           </box>
           <box height={1} />
           {rows.length === 0 ? (

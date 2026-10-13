@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import { Modal } from "../app/Modal"
 import { useWorkspace } from "../app/workspace"
+import type { Modal as ModalState } from "../app/state"
 import { ui as colors } from "../config/theme"
 import { fuzzyFilter } from "../files/fuzzy"
 import type { Branch } from "./repo"
@@ -12,7 +13,7 @@ const CREATE = "\u0000create"
  * Ctrl+Alt+B: switch to a branch (fuzzy), or create one from what you typed; Shift+Delete deletes
  * the selected one. In "delete" mode (the Delete a branch command), Enter deletes.
  */
-export function BranchPicker({ mode = "switch" }: { mode?: "switch" | "delete" }) {
+export function BranchPicker({ mode = "switch", back }: { mode?: "switch" | "delete"; back?: ModalState }) {
   const ws = useWorkspace()
   const dims = useTerminalDimensions()
   const repo = ws.git?.repo ?? null
@@ -21,7 +22,7 @@ export function BranchPicker({ mode = "switch" }: { mode?: "switch" | "delete" }
   const [sel, setSel] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<{ text: string; yes: () => Promise<void> | void } | null>(null)
-  const close = () => ws.ui.set({ modal: null })
+  const close = () => ws.ui.set({ modal: back ?? null })
 
   const load = () => void repo?.branches().then(setBranches)
   useEffect(load, [repo])

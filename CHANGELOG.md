@@ -5,6 +5,10 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Source control: right-clicking a file no longer closes the panel. The menu opens over it, and Esc or a click outside goes back to the panel.
+- Source control: Branches (`b`) and a file's history opened from the panel go back to it on Esc, and after switching branch.
+
 ## [0.9.0] - 2026-10-13
 
 ### Changed

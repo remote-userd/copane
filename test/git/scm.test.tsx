@@ -226,6 +226,48 @@ test("right-click on a file opens a menu; Stage stages it and the panel comes ba
   expect(h!.frame()).toContain("Source control")
 })
 
+test("dismissing the right-click menu (Escape or a click outside) keeps the panel open", async () => {
+  await panel({ "a.ts": "a\n" }, { "a.ts": "b\n" })
+  await until(() => h!.frame().includes("Changes (1)"))
+  const rightClick = async () => {
+    const at = h!.find(" M a.ts")
+    await h!.step(() => h!.mouse.click(at.x + 3, at.y, MouseButtons.RIGHT))
+    await until(() => h!.frame().includes("Discard changes…"))
+    // The panel stays under the menu.
+    expect(h!.frame()).toContain("Changes (1)")
+  }
+  await rightClick()
+  await h!.step(() => h!.keys.pressEscape())
+  await until(() => !h!.frame().includes("Discard changes…"))
+  expect(h!.frame()).toContain("Changes (1)")
+  await rightClick()
+  await h!.step(() => h!.mouse.click(1, 1))
+  await until(() => !h!.frame().includes("Discard changes…"))
+  expect(h!.frame()).toContain("Changes (1)")
+  // Keys reach the panel again: Escape closes it.
+  await h!.step(() => h!.keys.pressEscape())
+  await until(() => !h!.frame().includes("Changes (1)"))
+})
+
+test("Branches (b) and a file's history, opened from the panel, go back to it on Escape", async () => {
+  await panel({ "a.ts": "a\n" }, { "a.ts": "b\n" })
+  await until(() => h!.frame().includes("Changes (1)"))
+  await press("b")
+  await until(() => h!.frame().includes("Switch branch"))
+  await h!.step(() => h!.keys.pressEscape())
+  await until(() => h!.frame().includes("Changes (1)"))
+  expect(h!.frame()).not.toContain("Switch branch")
+
+  const at = h!.find(" M a.ts")
+  await h!.step(() => h!.mouse.click(at.x + 3, at.y, MouseButtons.RIGHT))
+  await until(() => h!.frame().includes("File history"))
+  await h!.step(() => h!.mouse.click(h!.find("File history").x, h!.find("File history").y))
+  await until(() => h!.frame().includes("copy sha"))
+  await h!.step(() => h!.keys.pressEscape())
+  await until(() => h!.frame().includes("Changes (1)"))
+  expect(h!.frame()).not.toContain("copy sha")
+})
+
 test("a clean tree says so, with commits to push and the last commit", async () => {
   await panel({ "a.ts": "a\n" }, {}, {
     before: (root) => {
