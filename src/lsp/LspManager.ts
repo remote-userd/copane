@@ -1,6 +1,7 @@
 import type { BufferStore } from "../editor/BufferStore"
 import { RpcConnection } from "./rpc"
-import { serverFor, type LspOverrides, type ServerSpec } from "./servers"
+import { basename } from "node:path"
+import { installHint, serverFor, type LspOverrides, type ServerSpec } from "./servers"
 import { workspaceEditFiles, type TextEdit } from "./edits"
 
 export interface Position {
@@ -162,7 +163,8 @@ class Client {
       {
         processId: process.pid,
         rootUri,
-        workspaceFolders: [{ uri: rootUri, name: "workspace" }],
+        workspaceFolders: [{ uri: rootUri, name: basename(root) || "workspace" }],
+        ...(this.spec.initializationOptions ? { initializationOptions: this.spec.initializationOptions } : {}),
         capabilities: {
           general: { positionEncodings: ["utf-16"] },
           workspace: { workspaceFolders: true, configuration: true, symbol: {}, applyEdit: true, workspaceEdit: { documentChanges: true } },
@@ -241,9 +243,13 @@ interface OpenDoc {
   symbols?: { version: number; symbols: Promise<unknown[] | null> }
 }
 
+/** One client per server, project (package) and command: a monorepo gets one per package. */
+const clientKey = (spec: ServerSpec) => `${spec.key}\0${spec.root ?? ""}\0${spec.command.join(" ")}`
+
 /**
- * Language servers for the workspace: starts one per language on first use, keeps open
- * buffers in sync, collects diagnostics (pushed or pulled), and answers editor requests.
+ * Language servers for the workspace: starts one per language and project (each package of a
+ * monorepo) on first use, keeps open buffers in sync, collects diagnostics (pushed or pulled),
+ * and answers editor requests.
  */
 export class LspManager {
   private clients = new Map<string, Client>()
@@ -262,6 +268,9 @@ export class LspManager {
   private opening = new Set<string>()
   /** Files whose language has no server (looked up once). */
   private noServer = new Set<string>()
+  /** A file's language has no server installed: told once per language, with what to install. */
+  onMissing: ((filetype: string, hint: string) => void) | null = null
+  private told = new Set<string>()
   /** A server with no open documents is stopped after this long (they can hold a lot of memory). */
   idleStopMs = 60_000
   private buffers: BufferStore | null = null
@@ -269,7 +278,7 @@ export class LspManager {
   constructor(
     readonly root: string,
     private overrides: LspOverrides = {},
-    private resolve: (filetype: string | undefined) => ServerSpec | null | Promise<ServerSpec | null> = (ft) => serverFor(ft, root, overrides),
+    private resolve: (filetype: string | undefined, path: string) => ServerSpec | null | Promise<ServerSpec | null> = (ft, path) => serverFor(ft, root, overrides, path),
   ) {}
 
   subscribe = (l: Listener) => {
@@ -304,29 +313,38 @@ export class LspManager {
   private open(path: string, filetype: string | undefined, text: () => string): void {
     if (this.stopped || this.opening.has(path) || this.noServer.has(path)) return
     this.opening.add(path)
-    void Promise.resolve(this.resolve(filetype)).then((spec) => {
+    void Promise.resolve(this.resolve(filetype, path)).then((spec) => {
       this.opening.delete(path)
       if (!spec) this.noServer.add(path)
+      if (!spec && filetype && !this.stopped) this.missing(filetype)
       // The buffer may have been closed (or opened elsewhere) while looking up its server.
       if (!spec || !filetype || this.stopped || this.docs.has(path) || (this.buffers && !this.buffers.byPath(path))) return
       this.start(path, filetype, spec, text)
     })
   }
 
+  private missing(filetype: string): void {
+    const hint = this.overrides[filetype] === undefined ? installHint(filetype) : null
+    if (!hint || this.told.has(hint)) return
+    this.told.add(hint)
+    this.onMissing?.(filetype, hint)
+  }
+
   private start(path: string, filetype: string, spec: ServerSpec, text: () => string): void {
-    let client = this.clients.get(spec.key)
-    if (!client && this.gaveUp(spec.key)) return
+    const key = clientKey(spec)
+    let client = this.clients.get(key)
+    if (!client && this.gaveUp(key)) return
     if (!client) {
       client = new Client(
         spec,
-        this.root,
+        spec.root ?? this.root,
         (p, d) => this.setDiagnostics(p, d),
         () => this.emit(),
         (files) => this.onApplyEdit?.(files),
-        () => this.died(spec.key, created),
+        () => this.died(key, created),
       )
       const created: Client = client
-      this.clients.set(spec.key, client)
+      this.clients.set(key, client)
       this.emit()
     }
     if (client.idleTimer) clearTimeout(client.idleTimer)
@@ -401,8 +419,9 @@ export class LspManager {
     if (client.idleTimer) clearTimeout(client.idleTimer)
     client.idleTimer = setTimeout(() => {
       client.idleTimer = null
-      if (this.clients.get(client.spec.key) !== client || [...this.docs.values()].some((d) => d.client === client)) return
-      this.clients.delete(client.spec.key)
+      const key = clientKey(client.spec)
+      if (this.clients.get(key) !== client || [...this.docs.values()].some((d) => d.client === client)) return
+      this.clients.delete(key)
       client.stop()
       this.emit()
     }, this.idleStopMs)
@@ -481,8 +500,10 @@ export class LspManager {
   /** Short status for the status bar: which servers run, or failed. */
   status(): string {
     const parts: string[] = []
-    for (const c of this.clients.values()) parts.push(c.state === "ready" ? c.spec.key : c.state === "starting" ? `${c.spec.key}…` : `${c.spec.key} ✗`)
-    for (const key of this.crashes.keys()) if (!this.clients.has(key) && this.gaveUp(key)) parts.push(`${key} ✗`)
+    // A package's server says which package: "typescript:backend".
+    const label = (spec: ServerSpec) => (spec.root && spec.root !== this.root ? `${spec.key}:${basename(spec.root)}` : spec.key)
+    for (const c of this.clients.values()) parts.push(c.state === "ready" ? label(c.spec) : c.state === "starting" ? `${label(c.spec)}…` : `${label(c.spec)} ✗`)
+    for (const key of this.crashes.keys()) if (!this.clients.has(key) && this.gaveUp(key)) parts.push(`${key.split("\0")[0]} ✗`)
     return parts.join(" ")
   }
 
