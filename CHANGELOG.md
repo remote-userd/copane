@@ -18,7 +18,7 @@ All notable changes to copane are listed here. The format follows
 - Ctrl+click (or Alt+click) a `file:line` or a URL in an AI pane tab to open it.
 - **+ › Resume claude ⎇ copane/…** reopens an agent worktree whose tab closed (or from before a restart), with its change count and Review & merge; Claude continues its last conversation.
 - **Maximize AI pane** (Ctrl+Alt+X, or **⤢** in the AI pane header): the AI pane fills the window, even with tabs open. Opening a file doesn't bring the editor back: Ctrl+E (with tabs open) shows it beside the AI pane, pressing again (or closing the last tab) hides it, and pressing once more restores the tree and editor.
-- The text cursor is a thin blinking line, as in VS Code, in the editor and every input. `editor.cursorStyle` (`"line"`, `"block"`, `"underline"`) changes it.
+- The text cursor is a thin blinking line, as in VS Code, in the editor, every input and the AI pane's tabs (a program there can still pick its own shape, as vim does). `editor.cursorStyle` (`"line"`, `"block"`, `"underline"`) changes it.
 - `ce` starts with only the file tree and the AI pane; the editor shows when you ask for it (Ctrl+E, Ctrl+Alt+X or ⤡). `editor.startHidden: false` starts with the editor as before.
 - Resource usage in the status bar (`▤ 1.2G 15%`): memory and CPU of copane and everything it started. Click it to see what each language server, agent and terminal uses. Turn it off with **Toggle resource usage** (F1) or `statusBar.resources: false`.
 

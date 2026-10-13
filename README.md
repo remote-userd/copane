@@ -252,7 +252,7 @@ Terminals can't send some Ctrl+Shift keys (they arrive as the plain Ctrl key), s
 | Alt+F5 (next change) | Alt+F5 | Same key. Alt+H shows the change |
 | Ctrl+Shift+V (Markdown preview) | Alt+Shift+V | Ctrl+Shift+V arrives as Ctrl+V (paste). Ctrl+K V opens it to the side, as in VS Code |
 
-Settings that match VS Code's: `editor.cursorStyle` (`"line"`, the default, `"block"` or `"underline"`), `editor.wordWrap` (Alt+Z toggles it), `editor.formatOnSave`, `editor.autoClosingBrackets`. **Import VS Code settings** in the palette (F1) copies yours into the config (it finds VS Code's settings on Linux, macOS, Windows, and Windows from WSL). Ctrl+F starts with the selection or the word under the cursor, and typing replaces it.
+Settings that match VS Code's: `editor.cursorStyle` (`"line"`, the default, `"block"` or `"underline"`; also the AI pane's tabs, unless their program picks a shape), `editor.wordWrap` (Alt+Z toggles it), `editor.formatOnSave`, `editor.autoClosingBrackets`. **Import VS Code settings** in the palette (F1) copies yours into the config (it finds VS Code's settings on Linux, macOS, Windows, and Windows from WSL). Ctrl+F starts with the selection or the word under the cursor, and typing replaces it.
 
 Rebind anything in `~/.config/copane/config.json` under `keys` (command names are in `src/keymap/commands.ts`), including two-key chords: `{ "keys": { "editor": { "ctrl+k ctrl+w": "buffer.close" } } }`.
 

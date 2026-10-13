@@ -8,6 +8,7 @@ import { onShutdown } from "../app/shutdown"
 import { Store } from "../app/store"
 import { ui as colors } from "../config/theme"
 import { HoverBox } from "../app/Modal"
+import { cursorSequence, resetsCursorStyle } from "./cursorStyle"
 import { runCommand } from "../keymap/commands"
 import { AgentProcess, type AgentStatus } from "./AgentProcess"
 import { GitRepo } from "../git/repo"
@@ -304,6 +305,9 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
         if (e.button === 0 && ws.ui.get().focus !== "ai") ws.ui.set({ focus: "ai" })
       },
     })
+    // The cursor shape of editor.cursorStyle (a thin line by default), until the program asks for another.
+    const cursor = cursorSequence(ws.config.editor.cursorStyle)
+    term.write(cursor)
     const run = session.terminal?.run ?? null
     // A terminal's recent output as text, scanned for errors once it settles.
     const output = session.terminal ? new OutputLines() : null
@@ -426,6 +430,7 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
       onOutput: (data) => {
         if (disposed) return // the tab closed; the CLI is being stopped
         term.write(data)
+        if (resetsCursorStyle(data)) term.write(cursor)
         if (output) {
           output.push(data)
           errorTimer ??= setTimeout(scanErrors, 300)
