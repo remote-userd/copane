@@ -392,7 +392,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
 
 ## Syntax highlighting
 
-Highlighting uses Tree-sitter through OpenTUI, for JavaScript, TypeScript, TSX, Python, Rust, Go, C, C++, Bash, HTML, CSS, JSON (and JSONC), YAML, TOML, Markdown and Zig. The same grammars colour fenced code blocks in the Markdown preview. The grammars are embedded in the binary, so nothing needs installing. To add a language, see `src/editor/grammars.ts`.
+Highlighting uses Tree-sitter through OpenTUI, for JavaScript, TypeScript, JSX/TSX, Python, Rust, Go, C, C++, Bash, HTML, CSS, SCSS, Vue, Svelte, Astro, JSON (and JSONC), YAML, TOML, nginx config, Markdown and Zig. Code inside markup is coloured as its own language: `<script>` and `<style>` in HTML, and the scripts, styles and `{ }` / `{{ }}` expressions of Vue, Svelte and Astro. nginx config is recognised as `nginx.conf`, `*.nginx`, and `.conf` or extensionless files in an `nginx` folder (`sites-available/default`). The same grammars colour fenced code blocks in the Markdown preview. The grammars are embedded in the binary, so nothing needs installing. To add a language, see `src/editor/grammars.ts`.
 
 ## Development
 

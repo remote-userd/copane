@@ -1,0 +1,2 @@
+https://github.com/tree-sitter-grammars/tree-sitter-vue at ce8011a414fdf8091f4e4071752efc376f4afb08
+Built with tree-sitter-cli 0.25.10: `tree-sitter build --wasm`. The .scm queries here are ours (adapted from the repo's).

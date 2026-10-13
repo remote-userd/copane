@@ -5,6 +5,9 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Syntax highlighting for SCSS, Vue, Svelte, Astro and nginx config, in the editor and in Markdown code blocks. HTML now colours the JavaScript and CSS in `<script>` and `<style>`, and Vue, Svelte and Astro colour their scripts, styles and template expressions as TypeScript and SCSS.
+
 ## [0.9.2] - 2026-10-13
 
 ### Added
