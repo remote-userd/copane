@@ -6,6 +6,8 @@ import { useWorkspace } from "../app/workspace"
 import type { Modal as ModalState } from "../app/state"
 import { ui as colors } from "../config/theme"
 import type { LogEntry } from "./repo"
+import { shortAgo } from "./blame"
+import { clipCols } from "../editor/CodeEditorRenderable"
 
 /**
  * File history (commits touching a file, with that file's diff per commit) or a single
@@ -23,7 +25,7 @@ export function HistoryModal({ path, sha, back }: { path: string | null; sha?: s
 
   useEffect(() => {
     if (!repo) return setCommits([])
-    if (sha) setCommits([{ sha, author: "", when: "", subject: "" }])
+    if (sha) setCommits([{ sha, author: "", when: "", time: 0, subject: "" }])
     else void repo.log(path ?? undefined).then(setCommits)
   }, [repo, path, sha])
 
@@ -68,7 +70,9 @@ export function HistoryModal({ path, sha, back }: { path: string | null; sha?: s
               ? colors.warn
               : colors.text
   const w = Math.min(dims.width - 4, 170)
-  const listW = sha ? 0 : Math.min(48, Math.floor(w * 0.35))
+  const listW = sha ? 0 : Math.min(64, Math.floor(w * 0.42))
+  // Who and when on each row (GitLens style), when the list has room for a subject too.
+  const authorW = listW >= 44 ? Math.min(14, Math.floor(listW * 0.25)) : 0
   const title = sha ? `Commit ${sha.slice(0, 8)}` : `History: ${path ? repo?.rel(path) : "repository"}${commits ? ` (${commits.length})` : ""}`
   const listTop = Math.max(0, Math.min(sel - viewH + 1, (commits?.length ?? 0) - viewH))
 
@@ -100,6 +104,12 @@ export function HistoryModal({ path, sha, back }: { path: string | null; sha?: s
                     <text selectable={false} fg={colors.warn}>
                       {c.sha.slice(0, 7)}{" "}
                     </text>
+                    {authorW ? (
+                      <text selectable={false} wrapMode="none" fg={colors.headerFg}>
+                        {clipCols(c.author, authorW - 1).padEnd(authorW)}
+                        {shortAgo(c.time).padStart(3)}{" "}
+                      </text>
+                    ) : null}
                     <text selectable={false} wrapMode="none" fg={idx === sel ? colors.text : colors.dim}>
                       {c.subject}
                     </text>

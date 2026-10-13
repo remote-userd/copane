@@ -464,6 +464,7 @@ export function SourceControlPanel() {
     `Push${b?.ahead ? ` ↑${b.ahead}` : ""} (P)`,
     `Pull${b?.behind ? ` ↓${b.behind}` : ""} (U)`,
     "Branch (b)",
+    "History (g)",
   ]
   const listH = Math.max(3, innerH - (1 + msgLines + 1 + wrappedRows(buttons, leftW) + 1))
   const viewH = Math.max(3, innerH - 1)
@@ -582,6 +583,9 @@ export function SourceControlPanel() {
         break
       case "b":
         ws.ui.set({ modal: { kind: "branches", back: { kind: "scm" } } })
+        break
+      case "g":
+        ws.ui.set({ modal: { kind: "history", path: null, back: { kind: "scm" } } })
         break
       case "pagedown":
         setTop((t) => Math.min(maxTop, t + viewH - 2))
@@ -760,6 +764,7 @@ export function SourceControlPanel() {
             {btn(buttons[4]!, () => void push())}
             {btn(buttons[5]!, () => void pull())}
             {btn(buttons[6]!, () => ws.ui.set({ modal: { kind: "branches", back: { kind: "scm" } } }))}
+            {btn(buttons[7]!, () => ws.ui.set({ modal: { kind: "history", path: null, back: { kind: "scm" } } }))}
           </box>
           <box height={1} />
           {rows.length === 0 ? (

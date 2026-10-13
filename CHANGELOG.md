@@ -5,6 +5,10 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- GitLens-style blame: the cursor line's author, age and summary after its end (`git.inlineBlame`), and **Alt+B** for a file blame column beside the editor (click a block for its commit). File history rows show each commit's author and age.
+- Commit history of the whole project: a **History (g)** button in Source control and **Commit history** in the palette. Esc from it returns to the panel.
+
 ## [0.9.1] - 2026-10-13
 
 ### Fixed

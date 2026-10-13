@@ -85,6 +85,8 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "alt+z": "view.wordWrap",
     "ctrl+d": "edit.addOccurrence",
     "alt+h": "git.peekHunk",
+    // GitLens' "Toggle File Blame".
+    "alt+b": "git.toggleFileBlame",
     "alt+f5": "git.nextChange",
     "alt+shift+f5": "git.prevChange",
     "ctrl+alt+a": "edit.allOccurrences",

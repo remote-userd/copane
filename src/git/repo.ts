@@ -184,6 +184,8 @@ export interface LogEntry {
   sha: string
   author: string
   when: string
+  /** Author time, unix seconds. */
+  time: number
   subject: string
 }
 
@@ -192,8 +194,8 @@ function parseLog(out: string): LogEntry[] {
     .split("\n")
     .filter(Boolean)
     .map((l) => {
-      const [sha = "", author = "", when = "", subject = ""] = l.split("\x1f")
-      return { sha, author, when, subject }
+      const [sha = "", author = "", when = "", time = "0", subject = ""] = l.split("\x1f")
+      return { sha, author, when, time: Number(time) || 0, subject }
     })
 }
 
@@ -515,7 +517,7 @@ export class GitRepo {
   }
 
   async log(path?: string, max = 200): Promise<LogEntry[]> {
-    const r = await this.run(["log", `-${max}`, "--format=%h%x1f%an%x1f%ar%x1f%s", ...(path ? ["--follow", "--", this.rel(path)] : [])])
+    const r = await this.run(["log", `-${max}`, "--format=%h%x1f%an%x1f%ar%x1f%at%x1f%s", ...(path ? ["--follow", "--", this.rel(path)] : [])])
     return r.ok ? parseLog(r.out) : []
   }
 

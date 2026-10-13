@@ -93,6 +93,10 @@ export const ui = {
   gitMod: claude.amber,
   gitDel: claude.rose,
   reloadBg: "#1e3322",
+  // Blame: after the cursor's line, and the file blame column (Alt+B)
+  inlineBlame: "#5f5f5f",
+  blameColumnBg: "#151515",
+  blameAuthor: "#a8a8a8",
   // Unreviewed AI edits: their gutter marker and the review bar
   aiEdit: claude.purple,
   // Warning bars above a file (changed on disk, control characters) and their buttons

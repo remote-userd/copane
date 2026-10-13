@@ -499,6 +499,10 @@ export const commands = {
       ws.ui.set({ modal: { kind: "history", path: buf ? (buf.source ?? buf.path) : null } })
     },
   },
+  "git.history": {
+    title: "Commit history (git log of the whole project)",
+    run: (ws) => (ws.git?.repo ? ws.ui.set({ modal: { kind: "history", path: null } }) : ws.notify("Not a git repository", "warn")),
+  },
   "git.blameLine": {
     title: "Show the commit that last changed this line",
     run: async (ws) => {
@@ -513,6 +517,15 @@ export const commands = {
   "git.changes": { title: "Source control: stage, commit, push", run: (ws) => ws.ui.set({ modal: { kind: "scm" } }) },
   "search.files": { title: "Search in all files", run: (ws) => openSearch(ws, false) },
   "search.replace": { title: "Replace in all files", run: (ws) => openSearch(ws, true) },
+  "git.toggleFileBlame": {
+    title: "Toggle file blame (who changed each line, as in GitLens)",
+    run(ws) {
+      if (!ws.git?.repo) return ws.notify("Not a git repository", "warn")
+      const on = !ws.ui.get().fileBlame
+      ws.ui.set({ fileBlame: on })
+      ws.notify(on ? "File blame on: click a block for its commit (Alt+B hides it)" : "File blame off")
+    },
+  },
   "view.wordWrap": {
     title: "Toggle word wrap",
     run(ws) {

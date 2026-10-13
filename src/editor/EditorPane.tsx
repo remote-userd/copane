@@ -23,6 +23,8 @@ import type { Workspace } from "../app/workspace"
 import { goToDefinition } from "../lsp/lspActions"
 import { ImageView } from "../preview/ImageView"
 import { MarkdownPreview } from "../preview/MarkdownPreview"
+import { InlineBlame } from "../git/InlineBlame"
+import { BlameColumn } from "../git/BlameColumn"
 
 /** The side preview needs this many columns for itself and for the editor beside it. */
 export const MIN_SIDE_PREVIEW = 30
@@ -510,6 +512,7 @@ export function EditorPane() {
       {active?.kind === "text" && active.sanitized ? <ControlCharsBar /> : null}
       {active?.kind === "text" ? <MergeConflictBar bufId={active.id} /> : null}
       {active?.kind === "text" ? <AiReviewBar path={active.path} /> : null}
+      {active?.kind === "text" ? <InlineBlame /> : null}
       {ui.find && active?.kind === "text" ? <FindBar /> : null}
       {list.length === 0 ? (
         <box flexGrow={1} justifyContent="center" alignItems="center" flexDirection="column">
@@ -541,6 +544,7 @@ export function EditorPane() {
             setPaneWidth(this.width)
           }}
         >
+          {ui.fileBlame && active?.kind === "text" && ws.git?.repo ? <BlameColumn key={active.id} buf={active} width={paneWidth >= 110 ? 44 : 30} /> : null}
           <box flexGrow={1} flexBasis={0} flexDirection="column">
             {list.map((b) => {
               const on = b.id === active?.id

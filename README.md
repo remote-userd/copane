@@ -157,13 +157,17 @@ With `"ai": { "notify": "desktop" }` you also get a system notification: a Windo
   - **Single changes:** → (or Tab) moves into the diff. ↑↓ pick a change, Space stages it (or unstages it in a staged file), and `r` discards it. ← goes back to the files.
   - **Committing:** write a message and press Enter (or Alt+Enter from anywhere in the panel) to commit. Ctrl+J adds a line, for a message with a body. The summary's length shows, in yellow past 72. With nothing staged, it offers to stage everything. **Amend** rewrites the last commit.
   - **AI message (`m`):** asks `claude -p` to write a message from the staged diff. You review it before committing. Turn it off with `git.aiCommitMessage: false`.
+  - **History (`g`) and Branch (`b`):** buttons and keys that open the project's commit history or the branch switcher. Esc comes back to the panel.
   - **Push and pull (`P` / `U`):** show progress, also in the status bar next to the branch if you close the panel meanwhile (the result then comes as a notice). A branch without an upstream gets offered "publish". With no remote, it says so.
 - **Changes in the editor:**
   - **Markers:** the `▎` markers compare with what's staged, so staged lines lose theirs.
   - **Peek:** **Alt+H**, or a click on a marker, shows the change inline. `s` stages just that change, and `r` reverts it (Ctrl+Z undoes).
   - **Navigation:** **Alt+F5 / Shift+Alt+F5** jump to the next / previous change, as in VS Code.
-- **Blame:** the status bar shows who last changed the cursor's line, for example `Ann · 3 days ago · Fix totals`. Lines you haven't committed show `Not committed yet`. Click it for the commit. Turn it off with `git.blame: false`.
-- **Ctrl+Alt+G, file history:** the file's commits, with each commit's changes. `y` copies a commit id.
+- **Blame, as in GitLens:**
+  - **Inline:** after the cursor's line, dimmed: `Ann, 3 days ago • Fix totals`. Turn it off with `git.inlineBlame: false`.
+  - **Status bar:** the same, `Ann · 3 days ago · Fix totals` (`Not committed yet` for your edits). Click it for the commit. Turn it off with `git.blame: false`.
+  - **File blame (Alt+B):** a column beside the editor with the author, age and summary of each block of lines, the cursor's commit shaded. It follows scrolling and word wrap. Click a block for its commit; Alt+B again hides it.
+- **Ctrl+Alt+G, file history:** the file's commits with their author and age, and each commit's changes. `y` copies a commit id. **Commit history** in the palette (or `g` in Source control) lists the whole project's commits.
 - **Ctrl+Alt+B, branches:** switch with fuzzy search, or type a new name to create a branch. It offers to save unsaved files first, and shows git's own error if the switch fails. **Shift+Delete**, the **× delete** on the selected row, or a right-click deletes a branch (or use **Delete a branch** in the palette). It asks first, and asks again before deleting a branch with commits that aren't merged anywhere. The current branch can't be deleted.
 - **Merge conflicts:** your side is tinted green and the incoming side blue. A bar shows the count and **Accept current / incoming / both** (Alt+1 / Alt+2 / Alt+3 while the cursor is in a conflict), and Alt+F5 goes to the next conflict. When you're done, save and stage the file.
 
@@ -254,6 +258,7 @@ Press **F1** for the command palette: every command, searchable, with its shortc
 | Ctrl+Alt+D | Source control: stage, commit, push |
 | Alt+H / Alt+F5 / Shift+Alt+F5 | Show the change at the cursor / next / previous change |
 | Ctrl+Alt+G / Ctrl+Alt+B | File history / switch branch |
+| Alt+B | File blame: who changed each line (GitLens' Toggle File Blame) |
 | Ctrl+Space | Autocomplete |
 | F12 / Shift+F12 / Ctrl+Alt+I | Go to definition / references / type info under the cursor |
 | F2 / Shift+Alt+F | Rename symbol everywhere / format document (also Ctrl+Alt+L) |

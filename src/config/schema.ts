@@ -62,6 +62,8 @@ export const configSchema = z
       .object({
         /** Who last changed the cursor's line, in the status bar. */
         blame: z.boolean().default(true),
+        /** The same after the end of the cursor's line, dimmed (as in GitLens). */
+        inlineBlame: z.boolean().default(true),
         /** The AI message button in Source Control (uses `claude -p`). */
         aiCommitMessage: z.boolean().default(true),
       })

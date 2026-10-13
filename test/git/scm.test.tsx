@@ -268,6 +268,17 @@ test("Branches (b) and a file's history, opened from the panel, go back to it on
   expect(h!.frame()).not.toContain("copy sha")
 })
 
+test("History (g) lists the project's commits, and Escape goes back to the panel", async () => {
+  await panel({ "a.ts": "a\n" }, { "a.ts": "b\n" })
+  await until(() => h!.frame().includes("History (g)"))
+  await h!.step(() => h!.mouse.click(h!.find("History (g)").x, h!.find("History (g)").y))
+  await until(() => h!.frame().includes("History: repository (1)"))
+  await h!.step(() => h!.keys.pressEscape())
+  await until(() => h!.frame().includes("Changes (1)"))
+  await press("g")
+  await until(() => h!.frame().includes("History: repository (1)"))
+})
+
 test("a clean tree says so, with commits to push and the last commit", async () => {
   await panel({ "a.ts": "a\n" }, {}, {
     before: (root) => {

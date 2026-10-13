@@ -1,4 +1,4 @@
-import { Renderable, TextareaRenderable, type KeyEvent, type MouseEvent, type RenderContext, type TextareaOptions } from "@opentui/core"
+import { Renderable, RGBA, TextareaRenderable, type KeyEvent, type LineInfo, type MouseEvent, type OptimizedBuffer, type RenderContext, type TextareaOptions } from "@opentui/core"
 import { Glide } from "../app/glide"
 import { SYNTAX_HL_REF } from "./highlighter"
 import { combinedStyle, isOverlay } from "./syntaxStyle"
@@ -15,6 +15,21 @@ import { colToIndex, indexToCol } from "../lsp/positions"
 import { indentUnit } from "./decorations"
 import { indentString } from "./lineOps"
 import { PAIRS, deletesPair, enterText, homeIndex, isTypingPairChar, typeChar } from "./typing"
+
+/** Columns between a line's end and its note. */
+const NOTE_GAP = 4
+
+/** `s` cut to `cols` display columns, with "…" when cut. */
+export function clipCols(s: string, cols: number): string {
+  if (cols <= 0) return ""
+  if (Bun.stringWidth(s) <= cols) return s
+  let out = ""
+  for (const ch of s) {
+    if (Bun.stringWidth(out + ch) > cols - 1) break
+    out += ch
+  }
+  return out + "…"
+}
 
 /** Lines drawn around the screen right after a jump, and added to each side per frame after. */
 const SCREEN_MARGIN = 5
@@ -147,13 +162,58 @@ export class CodeEditorRenderable extends TextareaRenderable {
    * them for the whole file, so they are read once per text, width and wrap mode, then sliced.
    */
   getLineSources(startLine: number, lineCount: number): number[] {
-    const epoch = this.info()?.contentEpoch
-    if (epoch === undefined) return this.lineInfo.lineSources.slice(startLine, startLine + lineCount)
-    const key = `${epoch}:${this.width}:${this.wrapMode}`
-    if (this.sources?.key !== key) this.sources = { key, lines: this.lineInfo.lineSources }
-    return this.sources.lines.slice(startLine, startLine + lineCount)
+    return this.visualLines().lineSources.slice(startLine, startLine + lineCount)
   }
-  private sources: { key: string; lines: number[] } | null = null
+
+  /** The whole file's visual lines (sources, widths), read once per text, width and wrap mode. */
+  private visualLines(): LineInfo {
+    const epoch = this.info()?.contentEpoch
+    if (epoch === undefined) return this.lineInfo
+    const key = `${epoch}:${this.width}:${this.wrapMode}`
+    if (this.sources?.key !== key) this.sources = { key, info: this.lineInfo }
+    return this.sources.info
+  }
+  private sources: { key: string; info: LineInfo } | null = null
+
+  /** The source line of each screen row, top to bottom. */
+  screenLineSources(): number[] {
+    const vp = this.editorView.getViewport()
+    return this.getLineSources(vp.offsetY, vp.height)
+  }
+
+  /**
+   * Dimmed text after a line's end (the cursor line's blame, as in GitLens). Drawn only while the
+   * cursor is on that line and nothing is selected, so a note that arrives late never sits on another line.
+   */
+  private note: { row: number; text: string; fg: RGBA } | null = null
+  setLineNote(note: { row: number; text: string; fg: string } | null): void {
+    const same = note && this.note && note.row === this.note.row && note.text === this.note.text
+    if (same || (!note && !this.note)) return
+    this.note = note ? { row: note.row, text: note.text, fg: RGBA.fromHex(note.fg) } : null
+    this.requestRender()
+  }
+
+  protected override renderSelf(buffer: OptimizedBuffer): void {
+    super.renderSelf(buffer)
+    const n = this.note
+    if (!n || this.logicalCursor.row !== n.row || this.hasSelection()) return
+    const info = this.visualLines()
+    // The line's last visual row (lineSources only grows): its end is where the note goes.
+    let lo = 0
+    let hi = info.lineSources.length - 1
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1
+      if (info.lineSources[mid]! <= n.row) lo = mid
+      else hi = mid - 1
+    }
+    if (info.lineSources[lo] !== n.row) return
+    const vp = this.editorView.getViewport()
+    const y = lo - vp.offsetY
+    const x = (info.lineWidthCols[lo] ?? 0) - vp.offsetX + NOTE_GAP
+    if (y < 0 || y >= vp.height || x < 0) return
+    const text = clipCols(n.text, this.width - x)
+    if (text.length >= 8) buffer.drawText(text, this.x + x, this.y + y, n.fg)
+  }
 
   /**
    * Highlight layers (syntax colours, indent guides): stored for the whole file, but only the
