@@ -171,6 +171,7 @@ export function SourceControlPanel() {
 
   const push = async () => {
     if (!repo) return
+    if (git?.branch?.detached) return fail("HEAD is detached: switch to a branch (b) to push")
     busy("Pushing…")
     const r = await repo.push((l) => busy(`Pushing… ${l}`))
     if ("ok" in r) return done("Pushed")

@@ -4,6 +4,7 @@ Run in a real terminal, in plain mode and inside tmux.
 
 1. `bun run dev some-file.ts` opens the file with syntax colours and line numbers.
 1a. The sidebar's tab row shows the project folder name on the right, and the terminal tab is titled with it. After Ctrl+Q the shell gets its own title back.
+1b. Push to an ssh remote whose key needs a passphrase (not in an agent). Source control shows an error within a few seconds; the screen is not garbled and keys still work.
 2. Type, then press Ctrl+S. The dirty dot clears and the file on disk matches.
 3. Ctrl+Z after saving marks the tab dirty again.
 4. Ctrl+P, type part of a path, press Enter. The file opens in a new tab and is revealed in the tree.

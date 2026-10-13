@@ -27,11 +27,21 @@ export async function git(
       stdin: opts.stdin === undefined ? "ignore" : new TextEncoder().encode(opts.stdin),
       stdout: "pipe",
       stderr: "pipe",
+      // Its own session, without our terminal: ssh and gpg passphrase prompts and hooks can't
+      // draw over the UI or wait for keys there. They fail instead, and git reports it.
+      detached: true,
       // GIT_OPTIONAL_LOCKS=0: reads (status, diff, blame…) skip the opportunistic index refresh that
       // takes .git/index.lock, so they never make a commit or `git add` fail. Writes still lock.
-      env: { ...Bun.env, GIT_TERMINAL_PROMPT: "0", GIT_OPTIONAL_LOCKS: "0", ...opts.env },
+      // GCM_INTERACTIVE / SSH_ASKPASS_REQUIRE: no credential windows or askpass programs either.
+      env: { ...Bun.env, GIT_TERMINAL_PROMPT: "0", GIT_OPTIONAL_LOCKS: "0", GCM_INTERACTIVE: "never", SSH_ASKPASS_REQUIRE: "never", ...opts.env },
     })
-    const timer = opts.timeoutMs ? setTimeout(() => p.kill(), opts.timeoutMs) : null
+    let timedOut = false
+    const timer = opts.timeoutMs
+      ? setTimeout(() => {
+          timedOut = true
+          killGroup(p)
+        }, opts.timeoutMs)
+      : null
     const errChunks: string[] = []
     const readErr = (async () => {
       const dec = new TextDecoder()
@@ -49,11 +59,32 @@ export async function git(
         errChunks.push(rest)
       }
     })()
-    const [out, code] = await Promise.all([Bun.readableStreamToText(p.stdout), p.exited, readErr])
+    const out = Bun.readableStreamToText(p.stdout)
+    const code = await p.exited
+    // A child git started (ssh, a hook) can keep the pipes open after git itself is gone:
+    // wait a moment for the rest of the output, never for the child.
+    const all = Promise.all([out, readErr])
+    const drained = await Promise.race([all.then(() => true), Bun.sleep(timedOut ? 100 : 2_000).then(() => false)])
+    if (!drained) killGroup(p)
     if (timer) clearTimeout(timer)
-    return { ok: code === 0, out, err: errChunks.join("\n").trim() }
+    const text = drained ? await out : ""
+    if (timedOut) return { ok: false, out: text, err: `git ${args.find((a) => !a.startsWith("-")) ?? ""} timed out (waiting for a password, a hook or a signing prompt?)` }
+    return { ok: code === 0, out: text, err: errChunks.join("\n").trim() }
   } catch (err) {
     return { ok: false, out: "", err: (err as Error).message }
+  }
+}
+
+/** Ends git and everything it started (ssh, hooks): it leads its own process group. */
+function killGroup(p: { pid: number; kill: (sig?: number) => void }): void {
+  try {
+    process.kill(-p.pid, "SIGKILL")
+  } catch {
+    try {
+      p.kill(9)
+    } catch {
+      // already gone
+    }
   }
 }
 
@@ -225,7 +256,8 @@ export class GitRepo {
   }
 
   async commit(message: string, amend = false): Promise<{ sha: string } | { error: string }> {
-    const r = await this.run(["commit", ...(amend ? ["--amend"] : []), "-F", "-"], { stdin: message })
+    // Hooks and commit signing can run long or wait for a passphrase: don't wait forever.
+    const r = await this.run(["commit", ...(amend ? ["--amend"] : []), "-F", "-"], { stdin: message, timeoutMs: 120_000 })
     if (!r.ok) return { error: firstError(r.err || r.out) }
     const sha = (await this.run(["rev-parse", "--short", "HEAD"])).out.trim()
     return { sha }
@@ -352,7 +384,7 @@ export class GitRepo {
 
   /** Merge a branch into the current one (always a merge commit). Conflicts are left in the files. */
   async merge(branch: string): Promise<{ ok: true } | { conflicts: number } | { error: string }> {
-    const r = await this.run(["merge", "--no-ff", "--no-edit", branch])
+    const r = await this.run(["merge", "--no-ff", "--no-edit", branch], { timeoutMs: 120_000 })
     if (r.ok) return { ok: true }
     const conflicts = (await this.status()).filter((e) => e.conflict).length
     return conflicts ? { conflicts } : { error: firstError(r.err || r.out) }

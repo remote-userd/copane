@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test"
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { GitRepo, NOT_COMMITTED, firstError } from "../../src/git/repo"
+import { GitRepo, NOT_COMMITTED, firstError, git } from "../../src/git/repo"
 import { fixture, GIT_ENV } from "../helpers"
 
 const ENV = GIT_ENV
@@ -108,4 +108,37 @@ test("push/pull: clear errors without remote or upstream; works against a bare o
 test("firstError picks the fatal/error line", () => {
   expect(firstError("hint: x\nfatal: not a git repository\n")).toBe("not a git repository")
   expect(firstError("error: Your local changes would be overwritten\nAborting")).toBe("Your local changes would be overwritten")
+})
+
+// A stand-in for ssh that never answers, with a child that keeps git's pipes open.
+async function hangingScript(dir: string) {
+  const path = join(dir, "hang.sh")
+  await Bun.write(path, "#!/bin/sh\nsleep 300 &\nsleep 300\n")
+  chmodSync(path, 0o755)
+  return path
+}
+
+test("a push that hangs (ssh waiting forever) ends at the timeout, children included", async () => {
+  const { root } = await repoWith({ "a.ts": "a\n" })
+  sh(root, "remote", "add", "origin", "ssh://nowhere.invalid/x.git")
+  const ssh = await hangingScript(mkdtempSync(join(tmpdir(), "cedit-ssh-")))
+  const t = performance.now()
+  const r = await git(root, ["push", "origin", "main"], { timeoutMs: 500, env: { GIT_SSH_COMMAND: ssh } })
+  expect(performance.now() - t).toBeLessThan(3_000)
+  expect(r.ok).toBe(false)
+  expect(r.err).toContain("timed out")
+})
+
+test("a commit hook that never finishes hits the timeout", async () => {
+  const { root } = await repoWith({ "a.ts": "a\n" })
+  const hook = join(root, ".git/hooks/pre-commit")
+  await Bun.write(hook, "#!/bin/sh\nsleep 300 &\nsleep 300\n")
+  chmodSync(hook, 0o755)
+  writeFileSync(join(root, "a.ts"), "b\n")
+  sh(root, "add", ".")
+  const t = performance.now()
+  const r = await git(root, ["commit", "-m", "x"], { timeoutMs: 500 })
+  expect(performance.now() - t).toBeLessThan(3_000)
+  expect(r.ok).toBe(false)
+  expect(r.err).toContain("timed out")
 })

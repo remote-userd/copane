@@ -24,6 +24,8 @@ export interface BranchInfo {
   name: string
   ahead: number
   behind: number
+  /** HEAD is on a commit, not a branch: nothing to push or publish. */
+  detached?: boolean
 }
 
 /** Parse the `## ...` header of `git status --branch`. */
@@ -32,7 +34,7 @@ export function parseBranch(header: string): BranchInfo | null {
   if (!h) return null
   const initial = /^No commits yet on (.+)$/.exec(h)
   if (initial) return { name: initial[1]!, ahead: 0, behind: 0 }
-  if (h.startsWith("HEAD (no branch)")) return { name: "detached", ahead: 0, behind: 0 }
+  if (h.startsWith("HEAD (no branch)")) return { name: "detached", ahead: 0, behind: 0, detached: true }
   const m = /^(.+?)(?:\.\.\.\S+)?(?: \[(.*)\])?$/.exec(h)
   if (!m) return null
   const ahead = Number(/ahead (\d+)/.exec(m[2] ?? "")?.[1] ?? 0)

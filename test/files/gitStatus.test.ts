@@ -67,7 +67,7 @@ test("parseBranch reads name and ahead/behind", async () => {
   expect(parseBranch("## main...origin/main [ahead 2, behind 1]")).toEqual({ name: "main", ahead: 2, behind: 1 })
   expect(parseBranch("## feat/x...origin/feat/x [behind 3]")).toEqual({ name: "feat/x", ahead: 0, behind: 3 })
   expect(parseBranch("## No commits yet on master")).toEqual({ name: "master", ahead: 0, behind: 0 })
-  expect(parseBranch("## HEAD (no branch)")).toEqual({ name: "detached", ahead: 0, behind: 0 })
+  expect(parseBranch("## HEAD (no branch)")).toEqual({ name: "detached", ahead: 0, behind: 0, detached: true })
 })
 
 test("GitStatus reports the branch", async () => {
