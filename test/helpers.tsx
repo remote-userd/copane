@@ -11,6 +11,7 @@ import { windowFocus } from "../src/app/windowFocus"
 import { resetMultiEdit } from "../src/editor/MultiEdit"
 import { resetConflicts } from "../src/git/conflictActions"
 import { resetCommitDraft } from "../src/git/SourceControlPanel"
+import { resetGitActivity } from "../src/git/activity"
 import { resetCompletion } from "../src/lsp/CompletionPopup"
 
 /**
@@ -62,6 +63,7 @@ export function resetModuleState(): void {
   resetAgentTabs()
   resetConflicts()
   resetCommitDraft()
+  resetGitActivity()
   resetNavHistory()
   resetMultiEdit()
   resetCompletion()

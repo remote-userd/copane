@@ -7,6 +7,7 @@ import { HoverBox } from "./Modal"
 import { describeDiagnostic, diagnosticsAtCursor } from "../lsp/lspActions"
 import { useMultiEditState } from "../editor/MultiEdit"
 import { describeBlame, useLineBlame } from "../git/blame"
+import { useGitActivity, useSpinner } from "../git/activity"
 
 const none = { subscribe: () => () => {}, getSnapshot: () => 0 }
 
@@ -72,8 +73,13 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
   const g = ws.config.tree.icons === "nerd" ? STATUS_GLYPHS.nerd : STATUS_GLYPHS.plain
 
   const branch = ws.git?.branch
+  // A push, pull or commit from Source control keeps running when the panel closes: show it here.
+  const activity = useGitActivity()
+  const working = activity?.kind === "busy"
+  const spin = useSpinner(working)
+  const progress = working ? ` ${spin} ${activity.text.length > 32 ? activity.text.slice(0, 31) + "…" : activity.text}` : ""
   const branchText = branch
-    ? `${g.branch} ${branch.name}${branch.ahead ? ` ↑${branch.ahead}` : ""}${branch.behind ? ` ↓${branch.behind}` : ""}`
+    ? `${g.branch} ${branch.name}${branch.ahead ? ` ↑${branch.ahead}` : ""}${branch.behind ? ` ↓${branch.behind}` : ""}${progress}`
     : ""
   const lspStatus = ws.lsp?.status() ?? ""
   const counts = ws.lsp?.counts() ?? { errors: 0, warnings: 0 }

@@ -157,7 +157,7 @@ With `"ai": { "notify": "desktop" }` you also get a system notification: a Windo
   - **Single changes:** → (or Tab) moves into the diff. ↑↓ pick a change, Space stages it (or unstages it in a staged file), and `r` discards it. ← goes back to the files.
   - **Committing:** write a message and press Enter (or Alt+Enter from anywhere in the panel) to commit. Ctrl+J adds a line, for a message with a body. The summary's length shows, in yellow past 72. With nothing staged, it offers to stage everything. **Amend** rewrites the last commit.
   - **AI message (`m`):** asks `claude -p` to write a message from the staged diff. You review it before committing. Turn it off with `git.aiCommitMessage: false`.
-  - **Push and pull (`P` / `U`):** show progress. A branch without an upstream gets offered "publish". With no remote, it says so.
+  - **Push and pull (`P` / `U`):** show progress, also in the status bar next to the branch if you close the panel meanwhile (the result then comes as a notice). A branch without an upstream gets offered "publish". With no remote, it says so.
 - **Changes in the editor:**
   - **Markers:** the `▎` markers compare with what's staged, so staged lines lose theirs.
   - **Peek:** **Alt+H**, or a click on a marker, shows the change inline. `s` stages just that change, and `r` reverts it (Ctrl+Z undoes).

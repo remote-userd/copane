@@ -14,6 +14,7 @@ All notable changes to copane are listed here. The format follows
   - right-click a file for a menu
   - the commit message takes several lines (Ctrl+J) and shows the summary's length
   - a clean tree shows what's left to push and the last commit
+  - a push, pull or commit keeps going when you close the panel: the status bar shows it next to the branch (`⎇ main ⠋ Pushing… 45%`), and its result comes as a notice
 
 ### Fixed
 - Push, pull and commit can no longer hang the editor or draw over it: git runs without the terminal, so an ssh or gpg passphrase prompt or a hook fails with a message instead of waiting, and a timeout now ends git together with the ssh or hook it started. Commit and merge get a timeout too.

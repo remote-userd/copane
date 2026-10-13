@@ -257,3 +257,31 @@ test("with more files than fit, the selected row stays on screen", async () => {
   // In the list (with its counts), not just the diff's header.
   expect(h!.lines().some((l) => /f29\.ts\s+\+1 −1/.test(l))).toBe(true)
 })
+
+test("a push keeps showing in the status bar after the panel closes, and its result comes as a notice", async () => {
+  await panel({ "a.ts": "a\n" }, {}, {
+    before: (root) => {
+      const remote = join(root, "..", `${root.split("/").pop()}-remote.git`)
+      sh(root, "init", "-q", "--bare", remote)
+      sh(root, "remote", "add", "origin", remote)
+      sh(root, "push", "-q", "-u", "origin", "main")
+      writeFileSync(join(root, "a.ts"), "b\n")
+      sh(root, "commit", "-qam", "Local only")
+      // Now the remote answers slowly, then refuses.
+      const ssh = join(root, ".git", "slow-ssh.sh")
+      writeFileSync(ssh, "#!/bin/sh\nsleep 1\necho 'remote: no thanks' >&2\nexit 1\n")
+      Bun.spawnSync(["chmod", "+x", ssh])
+      sh(root, "remote", "set-url", "origin", "ssh://example.invalid/x.git")
+      sh(root, "config", "core.sshCommand", ssh)
+    },
+  })
+  await until(() => h!.frame().includes("↑1 to push"))
+  await press("p", { shift: true })
+  await until(() => h!.frame().includes("Pushing…"))
+  await h!.step(() => h!.keys.pressEscape())
+  await until(() => !h!.frame().includes("Source control"))
+  const bottom = () => h!.lines().filter((l) => l.trim()).at(-1) ?? ""
+  expect(bottom()).toContain("Pushing…")
+  await until(() => !bottom().includes("Pushing…"), 8000)
+  expect(bottom()).toMatch(/no thanks|Could not read|fatal/)
+})

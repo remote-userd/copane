@@ -9,6 +9,7 @@ import { openAt } from "../app/navHistory"
 import type { StatusEntry } from "./repo"
 import { sendChangesForReview } from "../ai/askAi"
 import { aiMarks } from "../ai/review"
+import { setGitActivity, useGitActivity, useSpinner, type GitActivity } from "./activity"
 
 /**
  * Source control (Ctrl+Alt+D): conflicts, staged and unstaged files with a diff of the
@@ -50,7 +51,6 @@ const LETTER = (e: StatusEntry, section: Section) => {
   return c === "?" ? "U" : c
 }
 const letterColor = (l: string) => (l === "M" ? colors.warn : l === "D" || l === "!" ? colors.error : colors.ok)
-const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
 export interface DiffLine {
   text: string
@@ -154,7 +154,6 @@ export function SourceControlPanel() {
   const [focus, setFocus] = useState<Focus>(rows.some((r) => r.section === "staged") ? "message" : "list")
   const [message, setMessage] = useState(draft)
   const [inputKey, setInputKey] = useState(0)
-  const [status, setStatus] = useState<{ text: string; kind: "info" | "error" | "busy" } | null>(null)
   const [confirm, setConfirm] = useState<{ text: string; yes: () => void } | null>(null)
   const [rawDiff, setRawDiff] = useState("")
   const [top, setTop] = useState(0)
@@ -164,7 +163,6 @@ export function SourceControlPanel() {
     changes: new Map(),
   })
   const [lastCommit, setLastCommit] = useState("")
-  const [frame, setFrame] = useState(0)
   const msgRef = useRef<TextareaRenderable | null>(null)
 
   // The selected row: the same file if it is still in its section, otherwise the file that took
@@ -191,17 +189,17 @@ export function SourceControlPanel() {
     draft = message
   }, [message])
 
-  // Info clears after a few seconds; errors stay until the next key; busy spins.
-  useEffect(() => {
-    if (status?.kind === "info") {
-      const t = setTimeout(() => setStatus((s) => (s?.kind === "info" ? null : s)), 4000)
-      return () => clearTimeout(t)
+  // Shared with the status bar: a push or commit keeps going (and showing) when the panel closes.
+  const status = useGitActivity()
+  const spin = useSpinner(status?.kind === "busy")
+  const setStatus = (st: GitActivity | null) => {
+    // Finished while the panel is closed: say how it went (the status bar only shows progress).
+    if (st && st.kind !== "busy" && ws.ui.get().modal?.kind !== "scm") {
+      ws.notify(st.text, st.kind === "error" ? "error" : "info")
+      return setGitActivity(null)
     }
-    if (status?.kind === "busy") {
-      const t = setInterval(() => setFrame((f) => f + 1), 100)
-      return () => clearInterval(t)
-    }
-  }, [status])
+    setGitActivity(st)
+  }
 
   // Diff of the selected entry.
   useEffect(() => {
@@ -240,6 +238,7 @@ export function SourceControlPanel() {
 
   const close = () => ws.ui.set({ modal: null })
   const setMsg = (m: string) => {
+    draft = m // the panel may have closed meanwhile (an AI message, a commit)
     setMessage(m)
     setInputKey((k) => k + 1) // remount the input with the new text
   }
@@ -323,6 +322,8 @@ export function SourceControlPanel() {
     if ("ok" in r) return done("Pushed")
     if (r.noUpstream && git?.branch) {
       const branch = git.branch.name
+      // The question needs the panel: closed meanwhile, say how to get it.
+      if (ws.ui.get().modal?.kind !== "scm") return fail(`${branch} has no upstream yet: push from Source control (Ctrl+Alt+D) to publish it`)
       return setConfirm({
         text: `Branch ${branch} has no upstream. Publish it to the remote? (y/n)`,
         yes: async () => {
@@ -491,7 +492,7 @@ export function SourceControlPanel() {
       return
     }
     // An error stays until you do something else.
-    if (status?.kind === "error") setStatus(null)
+    if (status?.kind === "error") setGitActivity(null)
     if (key.name === "return" && key.meta) return void commit()
     if (key.name === "escape") {
       if (focus !== "list") setFocus("list")
@@ -818,7 +819,7 @@ export function SourceControlPanel() {
           truncate
           fg={confirm ? colors.warn : status?.kind === "error" ? colors.error : status?.kind === "busy" ? colors.warn : colors.dim}
         >
-          {confirm?.text ?? (status ? `${status.kind === "busy" ? SPINNER[frame % SPINNER.length] + " " : ""}${status.text}` : hint)}
+          {confirm?.text ?? (status ? `${status.kind === "busy" ? spin + " " : ""}${status.text}` : hint)}
         </text>
       </box>
     </Modal>
