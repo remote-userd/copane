@@ -5,6 +5,8 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-10-14
+
 ### Added
 - Monorepos: each package gets its own language server, run in its folder with its own TypeScript. The status bar names them (`typescript:backend`).
 - TypeScript without a project install: `typescript-language-server` falls back to the TypeScript installed beside it, then to a global TypeScript 7 (`tsc --lsp`).
@@ -164,7 +166,8 @@ First public release.
 - VS Code keys and settings import.
 - Release binaries for Linux and macOS (x64 and arm64), and a one-line installer.
 
-[Unreleased]: https://github.com/sevheng/copane/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/sevheng/copane/compare/v0.9.3...HEAD
+[0.9.3]: https://github.com/sevheng/copane/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/sevheng/copane/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/sevheng/copane/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/sevheng/copane/compare/v0.8.0...v0.9.0
