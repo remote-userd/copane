@@ -148,20 +148,14 @@ export const aiStatusSource = {
 }
 
 function tabLabel(s: Session): string {
-  return s.branch ? `${s.name} ⎇ ${s.branch}` : s.name
+  // copane/claude-2 → claude-2: every agent worktree branch has that prefix.
+  return s.branch ? `${s.name} ⎇ ${s.branch.replace(/^copane\//, "")}` : s.name
 }
-
-const noStore = { subscribe: () => () => {} }
 
 /** The header: a tab per agent (with its state), and + to start another. */
 function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: () => void; onClose: (id: number) => void }) {
   const ws = useWorkspace()
   const t = useSyncExternalStore(tabs.subscribe, tabs.get)
-  // Once a turn is over, what it left to review: one click (or Ctrl+Alt+V) into the editor.
-  useSyncExternalStore(ws.review?.store.subscribe ?? noStore.subscribe, () => ws.review?.store.get() ?? 0)
-  const turnList = useSyncExternalStore(ws.turns?.store.subscribe ?? noStore.subscribe, () => ws.turns?.store.get().turns)
-  const running = turnList?.some((turn) => turn.endedAt === null) ?? false
-  const toReview = running ? 0 : (ws.review?.files().length ?? 0)
   const [frame, setFrame] = useState(0)
   const busy = isBusy
   const anyBusy = t.sessions.some((s) => !s.terminal && busy(s.id))
@@ -174,6 +168,8 @@ function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: () => 
   const one = t.sessions.length === 1
   return (
     <box height={1} flexShrink={0} flexDirection="row" backgroundColor={colors.headerBg} paddingLeft={1} paddingRight={1} gap={1} overflow="hidden">
+      {/* The tabs take what is left and clip, so + and the buttons on the right always show. */}
+      <box flexDirection="row" flexGrow={1} flexShrink={1} minWidth={0} gap={1} overflow="hidden">
       {t.sessions.map((s) => {
         const st = t.state[s.id]
         const active = s.id === t.active
@@ -242,19 +238,12 @@ function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: () => 
           </box>
         )
       })}
-      <box flexGrow={1} />
+      </box>
       {/* The visible terminal's error, one click from the AI (Ctrl+K E). */}
       {t.sessions.some((s) => s.id === t.active && s.terminal) && t.state[t.active]?.error ? (
         <HoverBox onPress={() => void runCommand(ws, "ai.fixTerminalError")}>
           <text selectable={false} fg={colors.error}>
             ✗ Fix with AI
-          </text>
-        </HoverBox>
-      ) : null}
-      {toReview ? (
-        <HoverBox onPress={() => void runCommand(ws, "ai.nextChange")}>
-          <text selectable={false} fg={colors.aiEdit}>
-            {`✦ ${toReview} to review`}
           </text>
         </HoverBox>
       ) : null}
@@ -736,6 +725,22 @@ async function openNewMenu(ws: Workspace, config: AiConfig, x: number | undefine
   try {
     targets = await servicesFor(ws.root, config.services ?? [])
   } catch {}
+  // Agent worktrees left from before (their tab closed, or ce restarted): open one again.
+  const open = new Set(tabs.get().sessions.map((s) => s.branch).filter(Boolean))
+  const leftover = runOnly || !repo ? [] : (await repo.worktrees()).filter((w) => w.branch?.startsWith("copane/") && !open.has(w.branch))
+  const resumeItems: MenuItem[] = leftover.map((w) => {
+    const branch = w.branch!
+    // copane/claude-4 was made for the "claude" agent: start that CLI again (else the first one).
+    const slug = branch.slice("copane/".length).replace(/-\d+$/, "")
+    const c = choices.find((x) => x.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") === slug) ?? choices[0]!
+    // Claude Code picks up its last conversation in that folder.
+    const args = basename(c.command) === "claude" && !c.args.includes("--continue") ? [...c.args, "--continue"] : c.args
+    const cwd = join(w.path, relative(repo!.top, ws.root))
+    return {
+      label: `Resume ${c.name} ⎇ ${branch}`,
+      run: () => add({ name: c.name, command: c.command, args, cwd, branch, ...(cwd !== w.path ? { worktree: w.path } : {}) }),
+    }
+  })
   if (runOnly && !targets.length)
     return ws.notify('No dev servers found: add a "dev" script to a package.json, or list them in the config ("ai": { "services": [...] })', "warn")
   const tabOf = (t: Service) => tabs.get().sessions.find((o) => o.terminal?.run === t.command && o.cwd === t.cwd)
@@ -760,6 +765,7 @@ async function openNewMenu(ws: Workspace, config: AiConfig, x: number | undefine
               { label: `New ${c.name}`, run: () => add({ name: c.name, command: c.command, args: c.args, cwd: ws.root, branch: null }) },
               { label: `New ${c.name} in a git worktree`, disabled: !repo, run: () => void inWorktree(c) },
             ]),
+            ...resumeItems,
             { label: "New terminal", hint: "Alt+`", run: () => add(terminalSession(ws.root)) },
             ...runItems,
           ],

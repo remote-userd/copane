@@ -15,8 +15,10 @@ All notable changes to copane are listed here. The format follows
 - Terminal errors: a tab whose output shows an error (compile error, stack trace, crash) turns `✗`. **✗ Fix with AI** in the header, or **Ctrl+K E**, sends it with the file and line it points to into the agent's prompt. Text for the AI never goes to a terminal tab.
 - The AI pane needs no right-click menu: **+** opens agents, terminals and dev servers, **↻** restarts a dev server, a worktree agent's `· N` opens Review & merge, and right-click copies the selection or pastes (as VS Code's terminal on Windows).
 - Ctrl+click (or Alt+click) a `file:line` or a URL in an AI pane tab to open it.
+- **+ › Resume claude ⎇ copane/…** reopens an agent worktree whose tab closed (or from before a restart), with its change count and Review & merge; Claude continues its last conversation.
 
 ### Changed
+- The AI pane header no longer repeats "✦ N to review" (the status bar has it), and worktree tabs drop the `copane/` prefix (`CLAUDE ⎇ CLAUDE-1`).
 - File tree: long names are clipped at the pane's edge instead of cut with `...` in the middle. Shift+wheel (or a sideways swipe) scrolls the tree sideways to read them, and moving the selection onto one scrolls it into view. Narrow trees (under 30 columns) indent one column per level.
 
 ## [0.9.2] - 2026-10-13

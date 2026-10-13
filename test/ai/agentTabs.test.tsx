@@ -4,6 +4,7 @@ import { join } from "node:path"
 import { TerminalPane, worktreeFor, type AiConfig } from "../../src/ai/TerminalPane"
 import type { MenuItem } from "../../src/app/state"
 import { GitStatus } from "../../src/files/gitStatus"
+import { parseWorktrees } from "../../src/git/repo"
 import { createWorkspace, fixture, renderApp, type Harness, waitUntil, GIT_ENV } from "../helpers"
 
 // Several waits on the UI and git per test: more room than the default 5 s.
@@ -79,7 +80,7 @@ test("an agent in a git worktree works on its own branch; closing can remove the
   const wt = worktreeFor(root, "second", 1)
   await until(() => h!.frame().includes("second-agent-ready"))
   expect(existsSync(join(wt.path, "a.txt"))).toBe(true)
-  expect(h!.frame()).toContain("SECOND ⎇ COPANE/SECOND-1")
+  expect(h!.frame()).toContain("SECOND ⎇ SECOND-1")
   const branch = Bun.spawnSync(["git", "branch", "--show-current"], { cwd: wt.path, env: ENV }).stdout.toString().trim()
   expect(branch).toBe("copane/second-1")
 
@@ -147,7 +148,7 @@ test("review & merge a worktree agent: its files and diffs, merge, then clean up
   const { root, ws, wt } = await worktreeAgent()
   ws.agents!.recount(ws.agents!.activeId())
   // The tab counts its changed files, after its mark; a click on the count opens Review & merge.
-  await until(() => /COPANE\/SECOND-1 \S · 3/.test(h!.frame()))
+  await until(() => /SECOND ⎇ SECOND-1 \S · 3/.test(h!.frame()))
 
   const count = h!.find("· 3")
   await h!.step(() => h!.mouse.click(count.x + 2, count.y))
@@ -207,7 +208,7 @@ test("a new worktree agent skips a number whose branch was kept after its worktr
   await h!.step(() => ws.agents!.openMenu())
   await h!.step(() => menuItem(ws, "New second in a git worktree").run())
   await until(() => h!.frame().includes("second-agent-ready"))
-  expect(h!.frame()).toContain("COPANE/SECOND-2")
+  expect(h!.frame()).toContain("⎇ SECOND-2")
   expect(existsSync(worktreeFor(root, "second", 2).path)).toBe(true)
 })
 
@@ -225,4 +226,42 @@ test("a CLI that opens with a question brings focus to the AI pane, even when it
   await until(() => ws.ui.get().focus === "ai")
   expect(ws.ui.get().focus).toBe("ai")
   expect(ws.ui.get().notice?.text).toContain("asking a question")
+})
+
+test("a worktree agent whose tab closed can be resumed from the + menu", async () => {
+  const { ws, wt } = await worktreeAgent()
+  const id = ws.agents!.activeId()
+  // Closed without removing the worktree (or ce restarted): the folder and branch stay.
+  await h!.step(() => ws.agents!.close(id))
+  await until(() => !h!.frame().includes("⎇ SECOND-1"))
+  await h!.step(() => ws.agents!.openMenu())
+  await until(() => ws.ui.get().modal?.kind === "menu")
+  await h!.step(() => menuItem(ws, "Resume second ⎇ copane/second-1").run())
+  await until(() => h!.frame().includes("SECOND ⎇ SECOND-1") && h!.frame().includes("second-agent-ready"))
+  expect(ws.agents!.session(ws.agents!.activeId())).toMatchObject({ cwd: wt.cwd, branch: "copane/second-1" })
+  // Open again: no longer offered.
+  await h!.step(() => ws.agents!.openMenu())
+  await until(() => ws.ui.get().modal?.kind === "menu")
+  const modal = ws.ui.get().modal as { items: MenuItem[] }
+  expect(modal.items.some((i) => i.label.startsWith("Resume"))).toBe(false)
+})
+
+test("git worktree list --porcelain: each folder and its branch", () => {
+  const out = "worktree /p/app\nHEAD 1111\nbranch refs/heads/main\n\nworktree /p/app-claude-4\nHEAD 2222\nbranch refs/heads/copane/claude-4\n\nworktree /p/x\nHEAD 3333\ndetached\n"
+  expect(parseWorktrees(out)).toEqual([
+    { path: "/p/app", branch: "main" },
+    { path: "/p/app-claude-4", branch: "copane/claude-4" },
+    { path: "/p/x", branch: null },
+  ])
+})
+
+test("many tabs clip, but + stays visible at the right of the header", async () => {
+  const root = await fixture({ "a.txt": "a" })
+  const ws = await pane(root)
+  for (let i = 0; i < 8; i++) {
+    await h!.step(() => ws.agents!.openMenu())
+    await h!.step(() => menuItem(ws, "New second").run())
+  }
+  await until(() => (h!.frame().match(/SECOND/g) ?? []).length >= 3)
+  expect(h!.lines()[0]!.trimEnd()).toMatch(/\+$/)
 })

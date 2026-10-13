@@ -208,6 +208,18 @@ export const NOT_COMMITTED = "0000000000000000000000000000000000000000"
 
 /** git commands that write the index, HEAD or refs (push only reads them). */
 const WRITES = new Set(["add", "apply", "rm", "restore", "update-index", "hash-object", "commit", "merge", "pull", "switch", "branch", "stash", "worktree"])
+/** `git worktree list --porcelain`: each worktree's folder and branch (null when detached). */
+export function parseWorktrees(out: string): { path: string; branch: string | null }[] {
+  return out
+    .split("\n\n")
+    .map((block) => {
+      const path = /^worktree (.+)$/m.exec(block)?.[1]
+      const branch = /^branch refs\/heads\/(.+)$/m.exec(block)?.[1] ?? null
+      return path ? { path, branch } : null
+    })
+    .filter((w): w is { path: string; branch: string | null } => w !== null)
+}
+
 /** Per repo top: the end of the chain of queued writes. */
 const writeQueue = new Map<string, Promise<void>>()
 
@@ -380,6 +392,13 @@ export class GitRepo {
   async addWorktree(path: string, branch: string): Promise<string | null> {
     const r = await this.run(["worktree", "add", "-b", branch, path, "HEAD"])
     return r.ok ? null : firstError(r.err)
+  }
+
+  /** The repo's other worktrees and their branches (`git worktree list`), not the main checkout. */
+  async worktrees(): Promise<{ path: string; branch: string | null }[]> {
+    const r = await this.run(["worktree", "list", "--porcelain"])
+    if (!r.ok) return []
+    return parseWorktrees(r.out).filter((w) => w.path !== this.top)
   }
 
   /** Remove a worktree (its branch stays). Refuses when it has uncommitted changes unless `force`. */

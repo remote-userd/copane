@@ -185,7 +185,7 @@ test("what is left to review is remembered across restarts; files back at their 
   expect(third.files()).toEqual([])
 })
 
-test("from the AI pane: the header offers the review, Ctrl+Alt+V lands on the first change in the editor", async () => {
+test("from the AI pane: Ctrl+Alt+V lands on the first change in the editor", async () => {
   const { TerminalPane } = await import("../../src/ai/TerminalPane")
   const root = await fixture({ "a.txt": "one\nAI two\nthree\n" })
   const ws = createWorkspace(root, { focus: "ai" })
@@ -197,8 +197,8 @@ test("from the AI pane: the header offers the review, Ctrl+Alt+V lands on the fi
   h = await renderApp(ws, { tree: <text>TREE</text>, ai: <TerminalPane config={config} /> }, { width: 140, height: 24 })
   await until(() => h!.frame().includes("agent-ready"))
   turns.add([{ path: join(root, "a.txt"), before: "one\ntwo\nthree\n" }])
-  await until(() => h!.frame().includes("✦ 1 to review"))
-  expect(h.lines()[0]).toContain("✦ 1 to review") // in the AI header (the first row)
+  await until(() => ws.review!.files().length === 1)
+  expect(h.lines()[0]).not.toContain("to review") // the status bar has the count, not the AI header
 
   ws.ui.set({ focus: "ai" })
   await h.step(() => h!.keys.pressKey("\x1b\x16"))
@@ -207,8 +207,7 @@ test("from the AI pane: the header offers the review, Ctrl+Alt+V lands on the fi
   expect(ws.buffers.active?.relPath).toBe("a.txt")
   expect(ws.buffers.active?.textarea?.logicalCursor.row).toBe(1)
   await h.step(() => h!.keys.pressKey("a"))
-  await until(() => !h!.frame().includes("to review"))
-  expect(h.frame()).not.toContain("to review")
+  await until(() => ws.review!.files().length === 0)
   ws.ai?.kill()
 })
 
