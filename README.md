@@ -252,7 +252,7 @@ Terminals can't send some Ctrl+Shift keys (they arrive as the plain Ctrl key), s
 | Alt+F5 (next change) | Alt+F5 | Same key. Alt+H shows the change |
 | Ctrl+Shift+V (Markdown preview) | Alt+Shift+V | Ctrl+Shift+V arrives as Ctrl+V (paste). Ctrl+K V opens it to the side, as in VS Code |
 
-Settings that match VS Code's: `editor.wordWrap` (Alt+Z toggles it), `editor.formatOnSave`, `editor.autoClosingBrackets`. **Import VS Code settings** in the palette (F1) copies yours into the config (it finds VS Code's settings on Linux, macOS, Windows, and Windows from WSL). Ctrl+F starts with the selection or the word under the cursor, and typing replaces it.
+Settings that match VS Code's: `editor.cursorStyle` (`"line"`, the default, `"block"` or `"underline"`), `editor.wordWrap` (Alt+Z toggles it), `editor.formatOnSave`, `editor.autoClosingBrackets`. **Import VS Code settings** in the palette (F1) copies yours into the config (it finds VS Code's settings on Linux, macOS, Windows, and Windows from WSL). Ctrl+F starts with the selection or the word under the cursor, and typing replaces it.
 
 Rebind anything in `~/.config/copane/config.json` under `keys` (command names are in `src/keymap/commands.ts`), including two-key chords: `{ "keys": { "editor": { "ctrl+k ctrl+w": "buffer.close" } } }`.
 
@@ -396,7 +396,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
 ```json
 {
   "ai": { "command": "claude", "args": [], "startHidden": false, "notify": "bell", "agents": [{ "name": "codex", "command": "codex" }], "services": [] },
-  "editor": { "highlightMaxBytes": 1000000, "copyOnSelect": false, "saveBeforeAi": true, "autocomplete": true, "wordWrap": false, "startHidden": true, "highlightCursor": true, "indentGuides": true, "autoIndent": true, "autoClosingBrackets": true, "formatter": "auto", "formatOnSave": false, "smoothScrolling": true },
+  "editor": { "highlightMaxBytes": 1000000, "copyOnSelect": false, "saveBeforeAi": true, "autocomplete": true, "cursorStyle": "line", "wordWrap": false, "startHidden": true, "highlightCursor": true, "indentGuides": true, "autoIndent": true, "autoClosingBrackets": true, "formatter": "auto", "formatOnSave": false, "smoothScrolling": true },
   "lsp": { "python": { "command": ["pylsp"] } },
   "tree": { "icons": "simple" },
   "statusBar": { "resources": true },

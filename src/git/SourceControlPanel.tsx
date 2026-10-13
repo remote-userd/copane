@@ -3,7 +3,7 @@ import { basename, dirname } from "node:path"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import type { TextareaRenderable } from "@opentui/core"
 import { HoverBox, Modal } from "../app/Modal"
-import { useWorkspace, type Workspace } from "../app/workspace"
+import { useWorkspace, type Workspace, useCursorStyle } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import { openAt } from "../app/navHistory"
 import type { StatusEntry } from "./repo"
@@ -134,6 +134,7 @@ function wrappedRows(labels: string[], width: number): number {
 }
 
 export function SourceControlPanel() {
+  const cursorStyle = useCursorStyle()
   const ws = useWorkspace()
   const git = ws.git
   const repo = git?.repo ?? null
@@ -743,6 +744,7 @@ export function SourceControlPanel() {
             onMouseDown={() => setFocus("message")}
           >
             <textarea
+              cursorStyle={cursorStyle}
               key={inputKey}
               ref={msgRef}
               initialValue={message}

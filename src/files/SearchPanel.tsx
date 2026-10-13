@@ -3,7 +3,7 @@ import { useKeyboard } from "@opentui/react"
 import type { InputRenderable } from "@opentui/core"
 import { basename, dirname } from "node:path"
 import { HoverBox } from "../app/Modal"
-import { useUi, useWorkspace } from "../app/workspace"
+import { useUi, useWorkspace, useCursorStyle } from "../app/workspace"
 import { applyToFiles } from "../app/fileEdits"
 import { ui as colors } from "../config/theme"
 import { openAt } from "../app/navHistory"
@@ -72,6 +72,7 @@ function HitText({ hit, selected, replaceWith }: { hit: Hit; selected: boolean; 
  * result row opens the match, and hovering a row offers ⇄ (replace it) and × (leave it out).
  */
 export function SearchPanel({ tree, height, mode }: { tree: TreeModel; height: number; mode: "sidebar" | "popup" }) {
+  const cursorStyle = useCursorStyle()
   const ws = useWorkspace()
   const ui = useUi()
   const popup = mode === "popup"
@@ -313,6 +314,7 @@ export function SearchPanel({ tree, height, mode }: { tree: TreeModel; height: n
       }}
     >
       <input
+        cursorStyle={cursorStyle}
         key={key}
         ref={ref}
         focused={active && field === f}

@@ -6,6 +6,7 @@ import { act } from "react"
 import { testRender } from "@opentui/react/test-utils"
 import { App } from "../../src/app/App"
 import { runCommand } from "../../src/keymap/commands"
+import { configSchema } from "../../src/config/schema"
 import { createWorkspace, WorkspaceContext, type Workspace } from "../../src/app/workspace"
 
 let cleanup: (() => void) | null = null
@@ -181,4 +182,18 @@ test("maximize AI: the editor stays hidden when files open, until you show it", 
   })
   expect(aiColumn()).toBe(0)
   expect(ws.ui.get().focus).toBe("ai")
+})
+
+test("the editor's cursor is a thin line as in VS Code, or what editor.cursorStyle says", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "ce-cursor-"))
+  await writeFile(join(dir, "a.ts"), "const a = 1\n")
+  for (const [setting, style] of [[undefined, "line"], ["block", "block"]] as const) {
+    const config = configSchema.parse(setting ? { editor: { cursorStyle: setting } } : {})
+    const ws = createWorkspace(dir, { focus: "editor" }, config)
+    await ws.buffers.open("a.ts")
+    const setup = await render(ws, 120, 30)
+    expect(ws.buffers.active!.textarea!.cursorStyle).toMatchObject({ style, blinking: true })
+    setup.renderer.destroy()
+    cleanup = null
+  }
 })

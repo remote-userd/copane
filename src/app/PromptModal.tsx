@@ -3,13 +3,14 @@ import { useKeyboard } from "@opentui/react"
 import type { InputRenderable } from "@opentui/core"
 import { Modal } from "./Modal"
 import type { Modal as ModalState } from "./state"
-import { useWorkspace } from "./workspace"
+import { useWorkspace, useCursorStyle } from "./workspace"
 import { ui as colors } from "../config/theme"
 
 type Prompt = Extract<ModalState, { kind: "prompt" }>
 
 /** One-line text dialog (file names). Enter submits, Esc or a click outside cancels. */
 export function PromptModal({ modal }: { modal: Prompt }) {
+  const cursorStyle = useCursorStyle()
   const ws = useWorkspace()
   const input = useRef<InputRenderable | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +54,7 @@ export function PromptModal({ modal }: { modal: Prompt }) {
         {modal.label}
       </text>
       <input
+        cursorStyle={cursorStyle}
         ref={input}
         focused
         value={modal.initial}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import { Modal } from "../app/Modal"
-import { useWorkspace } from "../app/workspace"
+import { useWorkspace, useCursorStyle } from "../app/workspace"
 import type { Modal as ModalState } from "../app/state"
 import { ui as colors } from "../config/theme"
 import { fuzzyFilter } from "../files/fuzzy"
@@ -14,6 +14,7 @@ const CREATE = "\u0000create"
  * the selected one. In "delete" mode (the Delete a branch command), Enter deletes.
  */
 export function BranchPicker({ mode = "switch", back }: { mode?: "switch" | "delete"; back?: ModalState }) {
+  const cursorStyle = useCursorStyle()
   const ws = useWorkspace()
   const dims = useTerminalDimensions()
   const repo = ws.git?.repo ?? null
@@ -125,6 +126,7 @@ export function BranchPicker({ mode = "switch", back }: { mode?: "switch" | "del
   return (
     <Modal title={deleting ? "Delete branch" : "Switch branch"} width={Math.min(64, dims.width - 4)} height={listH + 6} onClose={close}>
       <input
+        cursorStyle={cursorStyle}
         focused={!confirm}
         placeholder={deleting ? "Branch to delete" : "Branch name (type a new one to create it)"}
         backgroundColor={colors.bg}

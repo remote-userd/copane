@@ -37,6 +37,8 @@ export const configSchema = z
         highlightCursor: z.boolean().default(true),
         /** Faint marks at each indent level in leading whitespace. */
         indentGuides: z.boolean().default(true),
+        /** The text cursor: a thin "line" as in VS Code, a "block" or an "underline" (it blinks). */
+        cursorStyle: z.enum(["line", "block", "underline"]).default("line"),
         /** Start with long lines wrapped (toggle with Alt+Z). */
         wordWrap: z.boolean().default(false),
         /** Start with only the file tree and the AI pane: the editor shows when you ask (Ctrl+Alt+X, Ctrl+E). */

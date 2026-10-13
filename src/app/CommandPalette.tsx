@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import { Modal } from "./Modal"
-import { useWorkspace } from "./workspace"
+import { useWorkspace, useCursorStyle } from "./workspace"
 import { ui as colors } from "../config/theme"
 import { commands, runCommand, type CommandId } from "../keymap/commands"
 import type { buildBindings } from "../keymap/bindings"
@@ -15,6 +15,7 @@ const HIDDEN = new Set<CommandId>(["app.palette"])
 
 /** F1: every command, searchable, with its shortcut. */
 export function CommandPalette({ bindings }: { bindings: ReturnType<typeof buildBindings> }) {
+  const cursorStyle = useCursorStyle()
   const ws = useWorkspace()
   const dims = useTerminalDimensions()
   const [query, setQuery] = useState("")
@@ -59,6 +60,7 @@ export function CommandPalette({ bindings }: { bindings: ReturnType<typeof build
   return (
     <Modal title="Commands" width={Math.min(72, dims.width - 4)} height={listH + 4} onClose={close}>
       <input
+        cursorStyle={cursorStyle}
         focused
         placeholder="Type a command…"
         backgroundColor={colors.bg}

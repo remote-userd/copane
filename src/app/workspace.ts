@@ -1,4 +1,5 @@
 import { createContext, useContext, useSyncExternalStore } from "react"
+import type { CursorStyleOptions } from "@opentui/core"
 import { BufferStore } from "../editor/BufferStore"
 import { createUiStore, type Notice, type UiState } from "./state"
 import type { Store } from "./store"
@@ -103,6 +104,15 @@ export function useWorkspace(): Workspace {
   const ws = useContext(WorkspaceContext)
   if (!ws) throw new Error("WorkspaceContext missing")
   return ws
+}
+
+const cursorStyles = new Map<string, CursorStyleOptions>()
+/** The text cursor for the editor and every input (`editor.cursorStyle`), one object per style. */
+export function useCursorStyle(): CursorStyleOptions {
+  const style = useWorkspace().config.editor.cursorStyle
+  let opts = cursorStyles.get(style)
+  if (!opts) cursorStyles.set(style, (opts = { style, blinking: true }))
+  return opts
 }
 
 export function useUi(): UiState {

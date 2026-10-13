@@ -9,7 +9,7 @@ import { setConflicts } from "../git/conflictActions"
 import { ControlCharsBar, MergeConflictBar } from "./ConflictBar"
 import "./CodeEditorRenderable"
 import { lineAt, type CodeEditorRenderable, type LayerHighlight } from "./CodeEditorRenderable"
-import { useBuffers, useUi, useWorkspace } from "../app/workspace"
+import { useBuffers, useUi, useWorkspace, useCursorStyle } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import type { Buffer } from "./BufferStore"
 import { extraStyle, useSyntaxStyle } from "./syntaxStyle"
@@ -105,6 +105,7 @@ const BufferView = memo(
 )
 
 function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
+  const cursorStyle = useCursorStyle()
   const ws = useWorkspace()
   const syntaxStyle = useSyntaxStyle()
   const id = buf.id
@@ -464,6 +465,7 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
       }}
     >
       <code-editor
+        cursorStyle={cursorStyle}
         ref={ref}
         flexGrow={1}
         // The renderer handles `focused` for every element; extended elements just lack the typing.

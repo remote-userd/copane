@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import { Modal } from "../app/Modal"
-import { useWorkspace } from "../app/workspace"
+import { useWorkspace, useCursorStyle } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import { fuzzyFilter } from "./fuzzy"
 import { join, relative, sep } from "node:path"
@@ -50,6 +50,7 @@ interface Item {
  * `:42`: go to line. `#name`: symbols across the project (language server).
  */
 export function FilePicker({ tree }: { tree: TreeModel }) {
+  const cursorStyle = useCursorStyle()
   const ws = useWorkspace()
   const dims = useTerminalDimensions()
   const [initial] = useState(() => {
@@ -188,6 +189,7 @@ export function FilePicker({ tree }: { tree: TreeModel }) {
   return (
     <Modal title="Go to file" width={90} height={listH + 6} onClose={close}>
       <input
+        cursorStyle={cursorStyle}
         focused
         placeholder="File name · @symbol · :line · #project symbol"
         value={initial}

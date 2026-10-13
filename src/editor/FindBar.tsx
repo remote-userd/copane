@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useKeyboard } from "@opentui/react"
 import type { InputRenderable } from "@opentui/core"
-import { useBuffers, useUi, useWorkspace } from "../app/workspace"
+import { useBuffers, useUi, useWorkspace, useCursorStyle } from "../app/workspace"
 import { HoverBox } from "../app/Modal"
 import { ui as colors } from "../config/theme"
 import type { Workspace } from "../app/workspace"
@@ -61,6 +61,7 @@ function closeFind(ws: Workspace): void {
 }
 
 export function FindBar() {
+  const cursorStyle = useCursorStyle()
   const ws = useWorkspace()
   const ui = useUi()
   const buffers = useBuffers()
@@ -197,6 +198,7 @@ export function FindBar() {
         </box>
         <box flexGrow={1} onMouseDown={() => focusBar("find")}>
           <input
+            cursorStyle={cursorStyle}
             key={`f${find.seed}`}
             ref={findInput}
             value={ui.findQuery}
@@ -239,6 +241,7 @@ export function FindBar() {
           </box>
           <box flexGrow={1} onMouseDown={() => focusBar("replace")}>
             <input
+              cursorStyle={cursorStyle}
               key={`r${find.seed}`}
               ref={replaceInput}
               value={ui.replaceWith}
