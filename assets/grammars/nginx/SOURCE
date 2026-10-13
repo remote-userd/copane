@@ -1,0 +1,2 @@
+https://github.com/opa-oz/tree-sitter-nginx at 7cdf006ed1addef698fc680ae31721950f85e5e9
+Built with tree-sitter-cli 0.25.10: `tree-sitter build --wasm`. The .scm queries here are ours (adapted from the repo's).

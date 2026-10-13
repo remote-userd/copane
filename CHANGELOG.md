@@ -8,8 +8,9 @@ All notable changes to copane are listed here. The format follows
 ### Added
 - Monorepos: each package gets its own language server, run in its folder with its own TypeScript. The status bar names them (`typescript:backend`).
 - TypeScript without a project install: `typescript-language-server` falls back to the TypeScript installed beside it, then to a global TypeScript 7 (`tsc --lsp`).
-- Vue: syntax colours (TypeScript in `<script>`, `{{ }}` and directives, CSS in `<style>`), and code intelligence through `typescript-language-server` with Vue's TypeScript plugin.
+- Vue: syntax colours (TypeScript in `<script>`, `{{ }}` and directives, SCSS in `<style>`), and code intelligence through `typescript-language-server` with Vue's TypeScript plugin.
 - Syntax colours for SQL and Dockerfiles; `.env` files read as shell.
+- Syntax colours for SCSS, Svelte, Astro and nginx config. HTML now colours the JavaScript and CSS in `<script>` and `<style>`, and Svelte and Astro colour their scripts, styles and template expressions as TypeScript and SCSS.
 - A language with no server installed says what to install, once.
 - Terminals in the AI pane: **New terminal** (**+**, or Alt+`) opens your shell in a tab beside the agents, and **▶ Run …** opens one running a package's dev server (each package's `dev` script, or `docker compose up`, detected; or your own with `ai.services`).
 - Terminal errors: a tab whose output shows an error (compile error, stack trace, crash) turns `✗`. **✗ Fix with AI** in the header, or **Ctrl+K E**, sends it with the file and line it points to into the agent's prompt. Text for the AI never goes to a terminal tab.

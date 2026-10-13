@@ -1,12 +1,14 @@
-; copane's own: OpenTUI picks the injected language by the captured node's type
-; (see injectionMapping in src/editor/grammars.ts), so script and style must capture different types.
+; TypeScript in <script>, {{ }} and directive values (it covers plain JavaScript too).
+; SCSS in <style> (it covers plain CSS too).
+((script_element (raw_text) @injection.content)
+  (#set! injection.language "typescript"))
 
-; <script> and {{ interpolations }}: TypeScript (which also reads plain JavaScript)
-(script_element (raw_text) @injection.content)
-(interpolation (raw_text) @injection.content)
+((interpolation (raw_text) @injection.content)
+  (#set! injection.language "typescript"))
 
-; :prop="…", v-if="…", @click="…": TypeScript
-(directive_attribute (quoted_attribute_value (attribute_value) @injection.content))
+((directive_attribute
+  (quoted_attribute_value (attribute_value) @injection.content))
+  (#set! injection.language "typescript"))
 
-; <style>: CSS
-(style_element) @injection.content
+((style_element (raw_text) @injection.content)
+  (#set! injection.language "scss"))

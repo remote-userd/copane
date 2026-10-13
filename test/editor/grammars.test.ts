@@ -14,6 +14,11 @@ const SAMPLES: Record<string, string> = {
   html: '<!doctype html>\n<p class="x">Hi <!-- c --></p>\n',
   css: ".a > b { color: red; /* c */ }\n",
   json: '{ "a": [1, true, null], "b": "s" }\n',
+  scss: '$c: red;\n@mixin m($x) { color: $x; }\n.a { &:hover { @include m($c); } } // c\n',
+  vue: '<template><p :a="x" @click="go(1)">{{ msg }}</p></template>\n',
+  svelte: '{#if n > 0}<p on:click={() => n++}>{n}</p>{/if}\n',
+  astro: '---\nconst t = "hi"\n---\n<h1 class={t}>{t}</h1>\n',
+  nginx: 'server {\n  listen 80; # web\n  location /api/ { proxy_pass http://127.0.0.1:3000; }\n}\n',
   dockerfile: 'FROM node:24-alpine AS build\n# deps\nRUN npm ci && npm run build\nCMD ["node", "dist/main.js"]\n',
   sql: "-- users\nSELECT id, name FROM users WHERE id = 1 AND name = 'x';\n",
 }
@@ -30,6 +35,26 @@ test("file types for the new languages, and JSONC as JSON", () => {
   expect(["a.py", "a.yml", "a.sh", "a.toml", "a.rs", "a.go", "a.h", "a.hpp", "a.html", "a.css", "a.json", "a.jsonc"].map(filetypeOf)).toEqual([
     "python", "yaml", "bash", "toml", "rust", "go", "c", "cpp", "html", "css", "json", "json",
   ])
+  expect(["a.scss", "a.vue", "a.svelte", "a.astro"].map(filetypeOf)).toEqual(["scss", "vue", "svelte", "astro"])
+})
+
+test("nginx config by name, extension or folder, but not every file in an nginx folder", () => {
+  const nginx = ["nginx.conf", "/etc/nginx/nginx.conf", "site.nginx", "/etc/nginx/sites-available/default", "deploy/nginx/conf.d/app.conf"]
+  expect(nginx.map(filetypeOf)).toEqual(nginx.map(() => "nginx"))
+  expect(["deploy/nginx/Dockerfile", "deploy/nginx/README.md", "app.conf"].map(filetypeOf)).not.toContain("nginx")
+})
+
+// Code inside markup gets its own language's colours, through `#set! injection.language`
+// (OpenTUI's worker learns it from our patch).
+test.each([
+  ["html", "<script>const a = 1</script>\n<style>p { color: red }</style>\n", ["javascript", "css"]],
+  ["vue", '<p @click="go(1)">{{ msg }}</p>\n<script setup lang="ts">\nconst a: number = 1\n</script>\n<style>p { color: red }</style>\n', ["typescript", "scss"]],
+  ["svelte", "<script>let n = 1</script>\n<p>{n + 1}</p>\n<style>p { color: red }</style>\n", ["typescript", "scss"]],
+  ["astro", "---\nconst t = 1\n---\n<p>{t}</p>\n<style>p { color: red }</style>\n", ["typescript", "scss"]],
+] as const)("%s highlights the code inside it", async (filetype, text, langs) => {
+  const hl = await computeHighlights(text, filetype)
+  const injected = new Set(hl!.map((h) => h[3]?.injectionLang).filter(Boolean))
+  expect([...injected].sort()).toEqual([...langs].sort())
 })
 
 test("file types for full-stack files: .vue, Dockerfiles, SQL, and .env read as shell", () => {
@@ -37,7 +62,7 @@ test("file types for full-stack files: .vue, Dockerfiles, SQL, and .env read as 
   expect(paths.map(filetypeOf)).toEqual(["vue", "dockerfile", "dockerfile", "dockerfile", "sql", "bash", "bash", "bash", "typescript"])
 })
 
-test("Vue: TypeScript colours in <script>, {{ }} and directives; CSS in <style>; tags as HTML", async () => {
+test("Vue: TypeScript colours in <script>, {{ }} and directives; SCSS in <style>; tags as HTML", async () => {
   const text = [
     "<template>",
     '  <div :class="isOn ? 1 : 2" @click="toggle()">{{ count + 1 }}</div>',

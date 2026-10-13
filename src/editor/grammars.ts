@@ -1,9 +1,11 @@
 /**
  * Syntax highlighting beyond what OpenTUI bundles (JavaScript, TypeScript, Markdown, Zig): the
- * official Tree-sitter grammars (all MIT; each folder in assets/grammars has its LICENSE), embedded in the binary.
- * C++'s queries build on C's, so it gets both. Vue, Dockerfile and SQL have no release builds:
- * built from their repositories with tree-sitter-cli 0.25.10 (OpenTUI's web-tree-sitter version).
- * Vue colours its script, {{ }} and directives as TypeScript and its style as CSS (injections).
+ * official Tree-sitter grammars and, for SCSS, Vue, Svelte, Astro, nginx, Dockerfile and SQL, community ones
+ * (all MIT; each folder in assets/grammars has its LICENSE), embedded in the binary. Those without release builds
+ * were built from their repositories with tree-sitter-cli 0.25.10 (OpenTUI's web-tree-sitter version).
+ * Queries build on each other: C++ on C, SCSS on CSS, Svelte/Astro on HTML.
+ * Injections highlight the code inside (`<script>`, `<style>`, `{{ }}`...) with the language named by
+ * `#set! injection.language`, which OpenTUI's parser worker learns from patches/@opentui%2Fcore@0.6.2.patch.
  */
 import { addDefaultParsers, pathToFiletype } from "@opentui/core"
 import pythonWasm from "../../assets/grammars/python/tree-sitter-python.wasm" with { type: "file" }
@@ -24,14 +26,25 @@ import cppWasm from "../../assets/grammars/cpp/tree-sitter-cpp.wasm" with { type
 import cppHighlights from "../../assets/grammars/cpp/highlights.scm" with { type: "file" }
 import htmlWasm from "../../assets/grammars/html/tree-sitter-html.wasm" with { type: "file" }
 import htmlHighlights from "../../assets/grammars/html/highlights.scm" with { type: "file" }
+import htmlInjections from "../../assets/grammars/html/injections.scm" with { type: "file" }
 import cssWasm from "../../assets/grammars/css/tree-sitter-css.wasm" with { type: "file" }
 import cssHighlights from "../../assets/grammars/css/highlights.scm" with { type: "file" }
 import jsonWasm from "../../assets/grammars/json/tree-sitter-json.wasm" with { type: "file" }
 import jsonHighlights from "../../assets/grammars/json/highlights.scm" with { type: "file" }
+import scssWasm from "../../assets/grammars/scss/tree-sitter-scss.wasm" with { type: "file" }
+import scssHighlights from "../../assets/grammars/scss/highlights.scm" with { type: "file" }
 import vueWasm from "../../assets/grammars/vue/tree-sitter-vue.wasm" with { type: "file" }
 import vueHtmlHighlights from "../../assets/grammars/vue/html_tags.scm" with { type: "file" }
 import vueHighlights from "../../assets/grammars/vue/highlights.scm" with { type: "file" }
 import vueInjections from "../../assets/grammars/vue/injections.scm" with { type: "file" }
+import svelteWasm from "../../assets/grammars/svelte/tree-sitter-svelte.wasm" with { type: "file" }
+import svelteHighlights from "../../assets/grammars/svelte/highlights.scm" with { type: "file" }
+import svelteInjections from "../../assets/grammars/svelte/injections.scm" with { type: "file" }
+import astroWasm from "../../assets/grammars/astro/tree-sitter-astro.wasm" with { type: "file" }
+import astroHighlights from "../../assets/grammars/astro/highlights.scm" with { type: "file" }
+import astroInjections from "../../assets/grammars/astro/injections.scm" with { type: "file" }
+import nginxWasm from "../../assets/grammars/nginx/tree-sitter-nginx.wasm" with { type: "file" }
+import nginxHighlights from "../../assets/grammars/nginx/highlights.scm" with { type: "file" }
 import dockerfileWasm from "../../assets/grammars/dockerfile/tree-sitter-dockerfile.wasm" with { type: "file" }
 import dockerfileHighlights from "../../assets/grammars/dockerfile/highlights.scm" with { type: "file" }
 import sqlWasm from "../../assets/grammars/sql/tree-sitter-sql.wasm" with { type: "file" }
@@ -46,16 +59,14 @@ export const EXTRA_GRAMMARS = [
   { filetype: "go", wasm: goWasm, queries: { highlights: [goHighlights] } },
   { filetype: "c", wasm: cWasm, queries: { highlights: [cHighlights] } },
   { filetype: "cpp", wasm: cppWasm, queries: { highlights: [cHighlights, cppHighlights] } },
-  { filetype: "html", wasm: htmlWasm, queries: { highlights: [htmlHighlights] } },
+  { filetype: "html", wasm: htmlWasm, queries: { highlights: [htmlHighlights], injections: [htmlInjections] } },
   { filetype: "css", wasm: cssWasm, queries: { highlights: [cssHighlights] } },
   { filetype: "json", aliases: ["jsonc"], wasm: jsonWasm, queries: { highlights: [jsonHighlights] } },
-  {
-    filetype: "vue",
-    wasm: vueWasm,
-    queries: { highlights: [vueHtmlHighlights, vueHighlights], injections: [vueInjections] },
-    // By the captured node's type (assets/grammars/vue/injections.scm).
-    injectionMapping: { nodeTypes: { raw_text: "typescript", attribute_value: "typescript", style_element: "css" } },
-  },
+  { filetype: "scss", wasm: scssWasm, queries: { highlights: [cssHighlights, scssHighlights] } },
+  { filetype: "vue", wasm: vueWasm, queries: { highlights: [vueHtmlHighlights, vueHighlights], injections: [vueInjections] } },
+  { filetype: "svelte", wasm: svelteWasm, queries: { highlights: [htmlHighlights, svelteHighlights], injections: [svelteInjections] } },
+  { filetype: "astro", wasm: astroWasm, queries: { highlights: [htmlHighlights, astroHighlights], injections: [astroInjections] } },
+  { filetype: "nginx", wasm: nginxWasm, queries: { highlights: [nginxHighlights] } },
   { filetype: "dockerfile", wasm: dockerfileWasm, queries: { highlights: [dockerfileHighlights] } },
   { filetype: "sql", wasm: sqlWasm, queries: { highlights: [sqlHighlights] } },
 ]
@@ -76,5 +87,14 @@ export function filetypeOf(path: string): string | undefined {
   if (/(^|\/)\.env(\.[\w.-]+)?$|\.env$/i.test(path)) return "bash"
   // Dockerfile.dev, api.Dockerfile
   if (/(^|\/)(dockerfile(\.[\w-]+)?|[\w.-]+\.dockerfile)$/i.test(path)) return "dockerfile"
+  if (isNginx(path)) return "nginx"
   return pathToFiletype(path)
+}
+
+/** nginx.conf, *.nginx, and .conf or extensionless files in an nginx folder (conf.d/site.conf, sites-available/default). */
+function isNginx(path: string): boolean {
+  if (/(^|[\\/])nginx\.conf$|\.nginx$/i.test(path)) return true
+  if (!/(^|[\\/])nginx[\\/]/i.test(path)) return false
+  const base = path.split(/[\\/]/).pop()!
+  return /\.conf$/i.test(base) || (!base.includes(".") && !/^(dockerfile|makefile|license|readme)$/i.test(base))
 }

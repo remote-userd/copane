@@ -1,0 +1,2 @@
+https://github.com/tree-sitter-grammars/tree-sitter-svelte at ae5199db47757f785e43a14b332118a5474de1a2
+Built with tree-sitter-cli 0.25.10: `tree-sitter build --wasm`. The .scm queries here are ours (adapted from the repo's).

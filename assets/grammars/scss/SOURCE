@@ -1,0 +1,2 @@
+https://github.com/tree-sitter-grammars/tree-sitter-scss at 5da5ba71a558b007b352c505bfcd9095ae337022
+Built with tree-sitter-cli 0.25.10: `tree-sitter build --wasm`. The .scm queries here are ours (adapted from the repo's).
