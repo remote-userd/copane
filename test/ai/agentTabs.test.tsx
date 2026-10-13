@@ -1,5 +1,5 @@
 import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
-import { existsSync, writeFileSync } from "node:fs"
+import { existsSync, realpathSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { TerminalPane, worktreeFor, type AiConfig } from "../../src/ai/TerminalPane"
 import type { MenuItem } from "../../src/app/state"
@@ -262,7 +262,10 @@ test("a worktree agent whose tab closed can be resumed from the + menu", async (
   await until(() => ws.ui.get().modal?.kind === "menu")
   await h!.step(() => menuItem(ws, "Resume second ⎇ copane/second-1").run())
   await until(() => h!.frame().includes("SECOND ⎇ SECOND-1") && h!.frame().includes("second-agent-ready"))
-  expect(ws.agents!.session(ws.agents!.activeId())).toMatchObject({ cwd: wt.cwd, branch: "copane/second-1" })
+  const resumed = ws.agents!.session(ws.agents!.activeId())!
+  expect(resumed.branch).toBe("copane/second-1")
+  // git names the folder by its real path (macOS: /var is /private/var).
+  expect(realpathSync(resumed.cwd)).toBe(realpathSync(wt.cwd))
   // Open again: no longer offered.
   await h!.step(() => ws.agents!.openMenu())
   await until(() => ws.ui.get().modal?.kind === "menu")
