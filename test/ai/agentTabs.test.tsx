@@ -279,7 +279,7 @@ test("git worktree list --porcelain: each folder and its branch", () => {
   ])
 })
 
-test("many tabs clip, but + stays visible at the right of the header", async () => {
+test("many tabs clip, but + and the maximize button stay visible at the right of the header", async () => {
   const root = await fixture({ "a.txt": "a" })
   const ws = await pane(root)
   for (let i = 0; i < 8; i++) {
@@ -287,5 +287,5 @@ test("many tabs clip, but + stays visible at the right of the header", async () 
     await h!.step(() => menuItem(ws, "New second").run())
   }
   await until(() => (h!.frame().match(/SECOND/g) ?? []).length >= 3)
-  expect(h!.lines()[0]!.trimEnd()).toMatch(/\+$/)
+  expect(h!.lines()[0]!.trimEnd()).toMatch(/\+\s+⤢$/)
 })

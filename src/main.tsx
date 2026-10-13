@@ -96,9 +96,20 @@ installPerfLog(renderer)
 renderer.setTerminalTitle(basename(args.root))
 onShutdown(() => renderer.setTerminalTitle(""))
 
+const layout = await loadLayout()
+// With the AI pane starting hidden, "maximize AI" would only hide the tree.
+if (config.ai.startHidden) {
+  delete layout.aiMaximized
+  delete layout.treeVisible
+}
 const ws = createWorkspace(
   args.root,
-  { focus: args.file ? "editor" : "tree", aiVisible: !config.ai.startHidden, wordWrap: config.editor.wordWrap, ...(await loadLayout()) },
+  {
+    focus: args.file ? "editor" : layout.aiMaximized ? "ai" : "tree",
+    aiVisible: !config.ai.startHidden,
+    wordWrap: config.editor.wordWrap,
+    ...layout,
+  },
   config,
   createClipboard({ osc52: (text) => renderer.copyToClipboardOSC52(text) }),
 )

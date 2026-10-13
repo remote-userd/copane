@@ -91,6 +91,8 @@ export interface UiState {
   fileBlame: boolean
   /** Pane visibility before "maximize editor", restored by toggling it again. */
   maximized: { tree: boolean; ai: boolean } | null
+  /** "Maximize AI": the AI pane fills the window while no file is open; `tree` is the tree's visibility to restore. */
+  aiMaximized: { tree: boolean } | null
   /** Show a live preview beside Markdown files (Ctrl+K V). */
   mdSide: boolean
   /** The AI finished or is waiting for you while you weren't looking; cleared when its pane gets focus. */
@@ -110,6 +112,7 @@ export function createUiStore(initial?: Partial<UiState>): Store<UiState> {
     updateReady: false,
     updateAvailable: null,
     maximized: null,
+    aiMaximized: null,
     mdSide: false,
     aiAttention: null,
     wordWrap: false,

@@ -548,7 +548,9 @@ export const commands = {
     run(ws) {
       const ui = ws.ui.get()
       const show = !ui.aiVisible
-      ws.ui.set({ aiVisible: show, maximized: null, focus: show ? ui.focus : ui.focus === "ai" ? "editor" : ui.focus })
+      // Hiding the AI pane ends "maximize AI" too, bringing back the tree it hid.
+      const tree = !show && ui.aiMaximized ? { treeVisible: ui.aiMaximized.tree, aiMaximized: null } : {}
+      ws.ui.set({ aiVisible: show, maximized: null, ...tree, focus: show ? ui.focus : ui.focus === "ai" ? "editor" : ui.focus })
       if (show && ui.focus === "ai") ws.ai?.focus()
     },
   },
@@ -559,8 +561,20 @@ export const commands = {
       if (ui.maximized) {
         ws.ui.set({ treeVisible: ui.maximized.tree, aiVisible: ui.maximized.ai, maximized: null })
       } else {
-        ws.ui.set({ maximized: { tree: ui.treeVisible, ai: ui.aiVisible }, treeVisible: false, aiVisible: false, focus: "editor" })
+        // From "maximize AI", restoring later brings back the tree as it was before that.
+        const tree = ui.aiMaximized ? ui.aiMaximized.tree : ui.treeVisible
+        ws.ui.set({ maximized: { tree, ai: ui.aiVisible }, aiMaximized: null, treeVisible: false, aiVisible: false, focus: "editor" })
       }
+    },
+  },
+  "view.maximizeAi": {
+    title: "Maximize AI pane (the editor shows only while a file is open) / restore",
+    run(ws) {
+      const ui = ws.ui.get()
+      if (ui.aiMaximized) return ws.ui.set({ treeVisible: ui.aiMaximized.tree, aiMaximized: null })
+      const tree = ui.maximized ? ui.maximized.tree : ui.treeVisible
+      ws.ui.set({ aiMaximized: { tree }, maximized: null, treeVisible: false, aiVisible: true, focus: "ai" })
+      ws.ai?.focus()
     },
   },
   "file.revealInOS": {

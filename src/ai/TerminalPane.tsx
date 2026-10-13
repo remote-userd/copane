@@ -155,6 +155,7 @@ function tabLabel(s: Session): string {
 /** The header: a tab per agent (with its state), and + to start another. */
 function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: () => void; onClose: (id: number) => void }) {
   const ws = useWorkspace()
+  const ui = useUi()
   const t = useSyncExternalStore(tabs.subscribe, tabs.get)
   const [frame, setFrame] = useState(0)
   const busy = isBusy
@@ -251,6 +252,12 @@ function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: () => 
       <HoverBox onPress={() => onNew()}>
         <text selectable={false} fg={colors.headerFg}>
           {one ? "+ new" : "+"}
+        </text>
+      </HoverBox>
+      {/* Maximize AI (Ctrl+Alt+X): the editor shows only while a file is open. */}
+      <HoverBox onPress={() => void runCommand(ws, "view.maximizeAi")}>
+        <text selectable={false} fg={ui.aiMaximized ? colors.accent : colors.headerFg}>
+          {ui.aiMaximized ? "⤡" : "⤢"}
         </text>
       </HoverBox>
 

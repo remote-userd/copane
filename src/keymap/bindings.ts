@@ -23,6 +23,7 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "ctrl+alt+r": "app.restart",
     "ctrl+alt+j": "view.toggleAi",
     "ctrl+alt+m": "view.maximizeEditor",
+    "ctrl+alt+x": "view.maximizeAi",
     "ctrl+f": "find.open",
     "ctrl+shift+h": "find.replace",
     "ctrl+g": "edit.gotoLine",
@@ -136,6 +137,7 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     f1: "app.palette",
     "ctrl+alt+r": "app.restart",
     "ctrl+alt+j": "view.toggleAi",
+    "ctrl+alt+x": "view.maximizeAi",
     "ctrl+alt+d": "git.changes",
     "ctrl+alt+z": "ai.turns",
     // Only in the AI pane: Ctrl+W there belongs to the CLI.

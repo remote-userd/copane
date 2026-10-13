@@ -131,3 +131,29 @@ test("AI actions send the context plus a request and submit it", async () => {
   expect(submitted).toBe(1)
   expect(ws.ui.get().focus).toBe("ai")
 })
+
+test("maximize AI: the AI pane fills the window until a file opens, and again when it closes", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "ce-maxai-"))
+  await writeFile(join(dir, "a.ts"), "const a = 1\n")
+  const ws = createWorkspace(dir, { aiMaximized: { tree: true }, treeVisible: false, focus: "ai" })
+  const setup = await render(ws, 120, 30)
+  const aiColumn = () => setup.captureCharFrame().split("\n").find((l) => l.includes("AI-SLOT"))!.indexOf("AI-SLOT")
+  expect(setup.captureCharFrame()).not.toContain("No file open")
+  expect(aiColumn()).toBe(0)
+
+  let id = 0
+  await act(async () => {
+    id = (await ws.buffers.open("a.ts")).id
+  })
+  await setup.renderOnce()
+  expect(setup.captureCharFrame()).toContain("const a = 1")
+  expect(aiColumn()).toBeGreaterThan(30)
+
+  act(() => {
+    ws.ui.set({ focus: "editor" })
+    ws.buffers.close(id)
+  })
+  await setup.renderOnce()
+  expect(aiColumn()).toBe(0)
+  expect(ws.ui.get().focus).toBe("ai")
+})

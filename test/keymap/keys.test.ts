@@ -45,6 +45,12 @@ const GLOBAL: [string, string, CommandId][] = [
   ["Alt+` (ESC `)", "\x1b`", "ai.newTerminal"],
 ]
 
+test("Ctrl+Alt+X maximizes the AI pane, from the AI pane too", () => {
+  const key = keyToString(parseKeypress("\x1b\x18")!)
+  expect(buildBindings().global.get(key)).toBe("view.maximizeAi")
+  expect(buildBindings().ai.get(key)).toBe("view.maximizeAi")
+})
+
 test.each(GLOBAL)("%s reaches its global command", (_name, bytes, command) => {
   expect(buildBindings().global.get(keyToString(parseKeypress(bytes)!))).toBe(command)
 })

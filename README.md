@@ -295,6 +295,7 @@ Press **F1** for the command palette: every command, searchable, with its shortc
 | Ctrl+J | Focus the AI pane, or back to the editor from it |
 | Ctrl+Alt+J | Show or hide the AI pane |
 | Ctrl+Alt+M | Maximize the editor, and press again to restore |
+| Ctrl+Alt+X | Maximize the AI pane (or **⤢** in its header): it fills the window while no file is open, and the editor comes back beside it when you open one. Press again to restore |
 | Ctrl+L | Send the current file, or the selected lines, to the AI prompt |
 | Ctrl+K F | Send errors and warnings to the AI ("fix these") |
 | Ctrl+K D | Send your git changes to the AI ("review these") |
@@ -328,7 +329,7 @@ Press **F1** for the command palette: every command, searchable, with its shortc
 
 While the AI pane has focus, every key goes to the CLI except Ctrl+Q, Ctrl+B, Ctrl+E, Ctrl+J, Ctrl+P, F1, Ctrl+Alt+J, Ctrl+Alt+D and Ctrl+Alt+R. Esc, Ctrl+C and Shift+Tab therefore work in Claude Code as usual.
 
-Dragged pane widths are remembered in `~/.local/state/copane/layout.json`.
+Dragged pane widths, and whether the AI pane is maximized, are remembered in `~/.local/state/copane/layout.json`.
 
 ## File tree
 

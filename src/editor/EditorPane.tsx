@@ -89,6 +89,7 @@ const WELCOME: [string, string][] = [
   ["Ctrl+B", "File tree"],
   ["Ctrl+J", "Ask the AI"],
   ["Ctrl+L", "Send file to the AI"],
+  ["Ctrl+Alt+X", "Maximize the AI pane"],
   ["F1", "All commands"],
 ]
 
@@ -524,7 +525,7 @@ export function EditorPane() {
             </box>
             {WELCOME.map(([k, label]) => (
               <box key={k} height={1} flexDirection="row">
-                <box width={9} flexShrink={0}>
+                <box width={12} flexShrink={0}>
                   <text selectable={false} fg={colors.accent}>
                     {k}
                   </text>
