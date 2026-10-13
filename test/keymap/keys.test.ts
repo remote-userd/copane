@@ -42,6 +42,7 @@ const GLOBAL: [string, string, CommandId][] = [
   ["Ctrl+Alt+PageUp", "\x1b[5;7~", "ai.prevAgent"],
   ["Alt+N (ESC n)", "\x1bn", "ai.nextChange"],
   ["Alt+P (ESC p)", "\x1bp", "ai.prevChange"],
+  ["Alt+` (ESC `)", "\x1b`", "ai.newTerminal"],
 ]
 
 test.each(GLOBAL)("%s reaches its global command", (_name, bytes, command) => {
@@ -74,6 +75,7 @@ test("chords: Ctrl+K then a second key", () => {
   expect(b.global.get(`${k} ${keyToString(parseKeypress("v")!)}`)).toBe("markdown.togglePreviewSide")
   expect(b.global.get(`${k} ${keyToString(parseKeypress("f")!)}`)).toBe("ai.fixProblems")
   expect(b.global.get(`${k} ${keyToString(parseKeypress("d")!)}`)).toBe("ai.reviewChanges")
+  expect(b.global.get(`${k} ${keyToString(parseKeypress("e")!)}`)).toBe("ai.fixTerminalError")
 })
 
 test.each(LEGACY)("%s reaches its editor command", (_name, bytes, command) => {

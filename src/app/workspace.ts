@@ -48,6 +48,12 @@ export interface AgentTabs {
   stop(id: number): Promise<void>
   /** Recount what a worktree agent changed (shown on its tab). */
   recount(id: number): void
+  /** Show the project's dev servers to run in terminal tabs, marking the running ones. */
+  openRun(x?: number, y?: number): void
+  /** Open a terminal tab (your shell) in the project. */
+  newTerminal(): void
+  /** A terminal's error (the visible one's, else the newest), typed into the AI's prompt (not submitted). False when there is none. */
+  sendTerminalError(): boolean
 }
 
 export interface AiHandle {

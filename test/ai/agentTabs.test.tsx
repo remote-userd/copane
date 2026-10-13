@@ -146,11 +146,11 @@ const gitOut = (cwd: string, ...args: string[]) => Bun.spawnSync(["git", ...args
 test("review & merge a worktree agent: its files and diffs, merge, then clean up", async () => {
   const { root, ws, wt } = await worktreeAgent()
   ws.agents!.recount(ws.agents!.activeId())
-  await until(() => h!.frame().includes("COPANE/SECOND-1 · 3"))
-  expect(h!.frame()).toContain("COPANE/SECOND-1 · 3") // the tab counts its changed files
+  // The tab counts its changed files, after its mark; a click on the count opens Review & merge.
+  await until(() => /COPANE\/SECOND-1 \S · 3/.test(h!.frame()))
 
-  const { runCommand } = await import("../../src/keymap/commands")
-  await h!.step(() => runCommand(ws, "ai.mergeAgent"))
+  const count = h!.find("· 3")
+  await h!.step(() => h!.mouse.click(count.x + 2, count.y))
   await until(() => h!.frame().includes("new.txt") && h!.frame().includes("+a by agent"))
   const f = h!.frame()
   expect(f).toContain("Review & merge second (copane/second-1) into main")

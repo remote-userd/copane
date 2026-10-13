@@ -61,6 +61,9 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "ctrl+k s": "file.saveAll",
     "ctrl+k v": "markdown.togglePreviewSide",
     "ctrl+k f": "ai.fixProblems",
+    "ctrl+k e": "ai.fixTerminalError",
+    // VS Code's Ctrl+` arrives as Ctrl+Space (NUL) in most terminals.
+    "alt+`": "ai.newTerminal",
     "ctrl+k d": "ai.reviewChanges",
     "alt+shift+v": "markdown.openPreview",
     "alt+left": "nav.back",
