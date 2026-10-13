@@ -5,6 +5,8 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-10-14
+
 ### Fixed
 - A language server's slow answer about an older version of a file no longer brings back problems you already fixed (on a busy machine, the status bar could stay at ✖ 1 after a quick fix).
 
@@ -169,7 +171,8 @@ First public release.
 - VS Code keys and settings import.
 - Release binaries for Linux and macOS (x64 and arm64), and a one-line installer.
 
-[Unreleased]: https://github.com/sevheng/copane/compare/v0.9.3...HEAD
+[Unreleased]: https://github.com/sevheng/copane/compare/v0.9.4...HEAD
+[0.9.4]: https://github.com/sevheng/copane/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/sevheng/copane/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/sevheng/copane/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/sevheng/copane/compare/v0.9.0...v0.9.1
