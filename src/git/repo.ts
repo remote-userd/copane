@@ -205,7 +205,7 @@ export interface Branch {
 export const NOT_COMMITTED = "0000000000000000000000000000000000000000"
 
 /** git commands that write the index, HEAD or refs (push only reads them). */
-const WRITES = new Set(["add", "rm", "restore", "update-index", "hash-object", "commit", "merge", "pull", "switch", "branch", "stash", "worktree"])
+const WRITES = new Set(["add", "apply", "rm", "restore", "update-index", "hash-object", "commit", "merge", "pull", "switch", "branch", "stash", "worktree"])
 /** Per repo top: the end of the chain of queued writes. */
 const writeQueue = new Map<string, Promise<void>>()
 
@@ -248,6 +248,40 @@ export class GitRepo {
     const hasHead = (await this.run(["rev-parse", "--verify", "-q", "HEAD"])).ok
     const args = hasHead ? ["restore", "--staged", "--"] : ["rm", "--cached", "-q", "--"]
     const r = await this.run([...args, ...paths.map((p) => this.rel(p))])
+    return r.ok ? null : firstError(r.err)
+  }
+
+  /** Unstage everything (on a repo with no commits yet, take everything out of the index). */
+  async unstageAll(): Promise<string | null> {
+    const hasHead = (await this.run(["rev-parse", "--verify", "-q", "HEAD"])).ok
+    const r = await this.run(hasHead ? ["restore", "--staged", "--", "."] : ["rm", "--cached", "-r", "-q", "--", "."])
+    return r.ok ? null : firstError(r.err)
+  }
+
+  /** Lines added and removed per file (absolute path): staged (index vs HEAD) or unstaged. Binary files are left out. */
+  async numstat(staged: boolean): Promise<Map<string, { add: number; del: number }>> {
+    const r = await this.run([...READ_ONLY, "diff", "--numstat", "-z", "--no-color", "--no-ext-diff", ...(staged ? ["--cached"] : [])])
+    const out = new Map<string, { add: number; del: number }>()
+    const parts = r.ok ? r.out.split("\0") : []
+    for (let i = 0; i < parts.length; i++) {
+      const m = /^(\d+|-)\t(\d+|-)\t(.*)$/.exec(parts[i]!)
+      if (!m) continue
+      // A rename has an empty path here, then the old and the new path as their own fields.
+      const rel = m[3] ? m[3] : parts[(i += 2)]
+      if (rel && m[1] !== "-") out.set(join(this.top, rel), { add: Number(m[1]), del: Number(m[2]) })
+    }
+    return out
+  }
+
+  /**
+   * Apply one hunk of a file's diff (as `diff()` returns it, starting at its @@ line): to the index
+   * (stage it), reversed from the index (unstage it), or reversed in the folder (discard it).
+   */
+  async applyHunk(path: string, hunk: string, mode: "stage" | "unstage" | "discard"): Promise<string | null> {
+    const rel = this.rel(path)
+    const patch = `diff --git a/${rel} b/${rel}\n--- a/${rel}\n+++ b/${rel}\n${hunk.replace(/\n?$/, "\n")}`
+    const flags = mode === "stage" ? ["--cached"] : mode === "unstage" ? ["--cached", "--reverse"] : ["--reverse"]
+    const r = await this.run(["apply", ...flags, "--whitespace=nowarn", "-"], { stdin: patch })
     return r.ok ? null : firstError(r.err)
   }
 

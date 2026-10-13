@@ -1,24 +1,30 @@
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react"
-import { basename } from "node:path"
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react"
+import { basename, dirname } from "node:path"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
+import type { TextareaRenderable } from "@opentui/core"
 import { HoverBox, Modal } from "../app/Modal"
 import { useWorkspace, type Workspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import { openAt } from "../app/navHistory"
 import type { StatusEntry } from "./repo"
 import { sendChangesForReview } from "../ai/askAi"
+import { aiMarks } from "../ai/review"
 
 /**
  * Source control (Ctrl+Alt+D): conflicts, staged and unstaged files with a diff of the
  * selection, a commit message, commit / amend / AI message, push / pull, branch switch.
+ * In the diff, single changes (hunks) can be staged, unstaged or discarded.
  */
 
 const none = { subscribe: () => () => {}, getSnapshot: () => 0 }
 /** The message being written survives closing the panel. */
 let draft = ""
-/** Tests: no message left over from another test. */
+/** So does the selected file (a right-click menu closes the panel and opens it again). */
+let lastCursor: Cursor | null = null
+/** Tests: no message or selection left over from another test. */
 export function resetCommitDraft(): void {
   draft = ""
+  lastCursor = null
 }
 
 type Section = "conflict" | "staged" | "changes"
@@ -26,6 +32,16 @@ interface Row {
   section: Section
   entry: StatusEntry
 }
+/** The selection: a file in a section, and where it was, for when the file moves away. */
+interface Cursor {
+  key: string
+  section: Section
+  pos: number
+  idx: number
+}
+type Focus = "list" | "message" | "diff"
+
+const keyOf = (r: Row) => `${r.section}:${r.entry.path}`
 
 const LETTER = (e: StatusEntry, section: Section) => {
   if (section === "conflict") return "!"
@@ -34,6 +50,7 @@ const LETTER = (e: StatusEntry, section: Section) => {
   return c === "?" ? "U" : c
 }
 const letterColor = (l: string) => (l === "M" ? colors.warn : l === "D" || l === "!" ? colors.error : colors.ok)
+const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
 export interface DiffLine {
   text: string
@@ -55,6 +72,23 @@ export function colorDiff(raw: string): DiffLine[] {
     else out.push({ text: l, color: colors.dim, line: l ? n++ : null })
   }
   while (out.length && !out.at(-1)!.text) out.pop()
+  return out
+}
+
+/** The hunks of a diff: their text (for `git apply`) and the row of their @@ line in `colorDiff`. */
+export function diffHunks(raw: string): { text: string; row: number }[] {
+  const out: { text: string; row: number }[] = []
+  let row = 0
+  let cur: string[] | null = null
+  for (const l of raw.split("\n")) {
+    if (l.startsWith("@@")) {
+      if (cur) out.at(-1)!.text = cur.join("\n")
+      cur = [l]
+      out.push({ text: "", row })
+    } else if (cur) cur.push(l)
+    if (!l.startsWith("\\")) row++
+  }
+  if (cur) out.at(-1)!.text = cur.join("\n").replace(/\n+$/, "")
   return out
 }
 
@@ -80,12 +114,28 @@ export async function aiCommitMessage(ws: Workspace): Promise<string | { error: 
   }
 }
 
+/** How many rows a row of buttons (label plus padding, one apart) wraps to in `width`. */
+function wrappedRows(labels: string[], width: number): number {
+  let rows = 1
+  let x = 0
+  for (const l of labels) {
+    const w = l.length + 2
+    if (x > 0 && x + 1 + w > width) {
+      rows++
+      x = w
+    } else x += (x > 0 ? 1 : 0) + w
+  }
+  return rows
+}
+
 export function SourceControlPanel() {
   const ws = useWorkspace()
   const git = ws.git
   const repo = git?.repo ?? null
   const dims = useTerminalDimensions()
-  useSyncExternalStore(git?.subscribe ?? none.subscribe, git?.getSnapshot ?? none.getSnapshot)
+  const snap = useSyncExternalStore(git?.subscribe ?? none.subscribe, git?.getSnapshot ?? none.getSnapshot)
+  useSyncExternalStore(ws.review?.store.subscribe ?? none.subscribe, ws.review ? () => ws.review!.store.get().version : none.getSnapshot)
+  const ai = aiMarks(ws)
   const entries = git?.entries ?? []
   const rows: Row[] = [
     ...entries.filter((e) => e.conflict).map((entry) => ({ section: "conflict" as const, entry })),
@@ -95,31 +145,93 @@ export function SourceControlPanel() {
   const counts = { conflict: 0, staged: 0, changes: 0 }
   for (const r of rows) counts[r.section]++
 
-  const [sel, setSel] = useState(0)
-  const [focus, setFocus] = useState<"list" | "message">(rows.some((r) => r.section === "staged") ? "message" : "list")
+  const [cursor, setCursor] = useState<Cursor | null>(lastCursor)
+  const [focus, setFocus] = useState<Focus>(rows.some((r) => r.section === "staged") ? "message" : "list")
   const [message, setMessage] = useState(draft)
   const [inputKey, setInputKey] = useState(0)
   const [status, setStatus] = useState<{ text: string; kind: "info" | "error" | "busy" } | null>(null)
   const [confirm, setConfirm] = useState<{ text: string; yes: () => void } | null>(null)
-  const [diff, setDiff] = useState<DiffLine[]>([])
+  const [rawDiff, setRawDiff] = useState("")
   const [top, setTop] = useState(0)
-  const row = rows[Math.min(sel, rows.length - 1)]
+  const [hunkSel, setHunkSel] = useState(0)
+  const [stats, setStats] = useState<{ staged: Map<string, { add: number; del: number }>; changes: Map<string, { add: number; del: number }> }>({
+    staged: new Map(),
+    changes: new Map(),
+  })
+  const [lastCommit, setLastCommit] = useState("")
+  const [frame, setFrame] = useState(0)
+  const msgRef = useRef<TextareaRenderable | null>(null)
+
+  // The selected row: the same file if it is still in its section, otherwise the file that took
+  // its place there (the next one, or the last), as VS Code does after staging.
+  let sel = 0
+  if (cursor && rows.length) {
+    const at = rows.findIndex((r) => keyOf(r) === cursor.key)
+    if (at >= 0) sel = at
+    else {
+      const same = rows.map((r, i) => [r, i] as const).filter(([r]) => r.section === cursor.section)
+      sel = same.length ? same[Math.min(cursor.pos, same.length - 1)]![1] : Math.min(cursor.idx, rows.length - 1)
+    }
+  }
+  const row = rows[sel]
+  const select = (i: number) => {
+    const r = rows[i]
+    if (!r) return
+    const c = { key: keyOf(r), section: r.section, pos: rows.slice(0, i).filter((x) => x.section === r.section).length, idx: i }
+    lastCursor = c
+    setCursor(c)
+  }
 
   useEffect(() => {
     draft = message
   }, [message])
 
+  // Info clears after a few seconds; errors stay until the next key; busy spins.
+  useEffect(() => {
+    if (status?.kind === "info") {
+      const t = setTimeout(() => setStatus((s) => (s?.kind === "info" ? null : s)), 4000)
+      return () => clearTimeout(t)
+    }
+    if (status?.kind === "busy") {
+      const t = setInterval(() => setFrame((f) => f + 1), 100)
+      return () => clearInterval(t)
+    }
+  }, [status])
+
   // Diff of the selected entry.
   useEffect(() => {
     let live = true
     setTop(0)
-    if (!row || !repo) return setDiff([])
+    setHunkSel(0)
+    if (!row || !repo) return setRawDiff("")
     const staged = row.section === "staged"
-    void repo.diff(row.entry.path, staged, row.entry.untracked && !staged).then((d) => live && setDiff(colorDiff(d)))
+    void repo
+      .diff(row.entry.path, staged, row.entry.untracked && !staged)
+      .then((d) => live && setRawDiff(d))
+      .catch(() => live && setRawDiff(""))
     return () => {
       live = false
     }
-  }, [row?.entry.path, row?.section, git?.getSnapshot(), repo])
+  }, [row?.entry.path, row?.section, snap, repo])
+
+  // Lines added and removed per file, and the last commit for the clean state.
+  useEffect(() => {
+    let live = true
+    if (!repo) return
+    void Promise.all([repo.numstat(true), repo.numstat(false), repo.lastMessage()])
+      .then(([staged, changes, last]) => {
+        if (!live) return
+        setStats({ staged, changes })
+        setLastCommit(last.split("\n")[0] ?? "")
+      })
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [snap, repo])
+
+  const diff = colorDiff(rawDiff)
+  const hunks = diffHunks(rawDiff)
 
   const close = () => ws.ui.set({ modal: null })
   const setMsg = (m: string) => {
@@ -138,6 +250,35 @@ export function SourceControlPanel() {
     const err = r.section === "staged" ? await repo.unstage([r.entry.path]) : await repo.stage([r.entry.path])
     if (err) return fail(err)
     await done(`${r.section === "staged" ? "Unstaged" : "Staged"} ${r.entry.rel}`)
+  }
+  const stageAll = async () => {
+    if (!repo) return
+    const err = await repo.stageAll()
+    if (err) return fail(err)
+    await done("Staged all changes")
+  }
+  const unstageAll = async () => {
+    if (!repo || !counts.staged) return
+    const err = await repo.unstageAll()
+    if (err) return fail(err)
+    await done("Unstaged all changes")
+  }
+  const discardAll = () => {
+    if (!git || !counts.changes) return
+    const list = rows.filter((r) => r.section === "changes")
+    const fresh = list.filter((r) => r.entry.untracked).length
+    const files = (n: number) => `${n} file${n === 1 ? "" : "s"}`
+    setConfirm({
+      text: `Discard all changes in ${files(list.length)}${fresh ? ` (deletes ${fresh} new)` : ""}? (y/n)`,
+      yes: async () => {
+        busy("Discarding…")
+        for (const r of list) {
+          const err = await git.revert(r.entry.path)
+          if (err) return fail(err)
+        }
+        await done(`Discarded changes in ${files(list.length)}`)
+      },
+    })
   }
 
   const commit = async (amend = false) => {
@@ -221,9 +362,112 @@ export function SourceControlPanel() {
     void openAt(ws, r.entry.path, first, 0, 0)
   }
 
-  const listH = Math.max(4, dims.height - 12)
-  const viewH = Math.max(4, dims.height - 8)
+  // One hunk of the diff: stage or unstage it, or discard it from the file.
+  const hunkAction = async (mode: "stage" | "discard") => {
+    const h = hunks[hunkSel]
+    if (!row || !repo || !h) return
+    // A new or deleted file is one hunk with nothing around it: act on the whole file.
+    if (row.entry.untracked || (row.section === "staged" ? row.entry.x : row.entry.y) === "D" || row.entry.x === "A") {
+      return mode === "stage" ? toggleStage(row) : revert(row)
+    }
+    if (mode === "discard") {
+      if (row.section !== "changes") return fail("Discard works on unstaged changes: unstage this one first (Space)")
+      return setConfirm({
+        text: `Discard this change in ${row.entry.rel}? (y/n)`,
+        yes: async () => {
+          const err = await repo.applyHunk(row.entry.path, h.text, "discard")
+          if (err) fail(err)
+          else await done(`Discarded a change in ${row.entry.rel}`)
+        },
+      })
+    }
+    const unstage = row.section === "staged"
+    const err = await repo.applyHunk(row.entry.path, h.text, unstage ? "unstage" : "stage")
+    if (err) return fail(err)
+    await done(`${unstage ? "Unstaged" : "Staged"} a change in ${row.entry.rel}`)
+  }
+
+  // Right-click on a file: a menu. It replaces this panel, so each item opens the panel again.
+  const rowMenu = (r: Row, x: number, y: number) => {
+    const g = git
+    const rp = repo
+    if (!g || !rp) return
+    const reopen = () => ws.ui.set({ modal: { kind: "scm" } })
+    const staged = r.section === "staged"
+    ws.ui.set({
+      modal: {
+        kind: "menu",
+        x,
+        y,
+        items: [
+          { label: "Open file", hint: "Enter", run: () => void openAt(ws, r.entry.path, 0, 0, 0) },
+          {
+            label: staged ? "Unstage" : "Stage",
+            hint: "Space",
+            disabled: r.section === "conflict",
+            run: async () => {
+              const err = staged ? await rp.unstage([r.entry.path]) : await rp.stage([r.entry.path])
+              if (err) ws.notify(err, "error")
+              await g.afterChange()
+              reopen()
+            },
+          },
+          {
+            label: "Discard changes…",
+            hint: "r",
+            run: () =>
+              ws.ui.set({
+                modal: {
+                  kind: "confirm",
+                  title: "Discard changes",
+                  body: `Discard all changes to ${r.entry.rel}?${r.entry.untracked ? " This deletes the new file." : ""}`,
+                  options: [
+                    {
+                      key: "d",
+                      label: "Discard",
+                      run: async () => {
+                        const err = await g.revert(r.entry.path)
+                        if (err) ws.notify(err, "error")
+                        reopen()
+                      },
+                    },
+                    { key: "c", label: "Cancel", run: reopen },
+                  ],
+                },
+              }),
+          },
+          { label: "File history", run: () => ws.ui.set({ modal: { kind: "history", path: r.entry.path } }) },
+          { label: "Review all changes with AI", hint: "v", run: () => sendChangesForReview(ws) },
+        ],
+      },
+    })
+  }
+
+  // Layout: the dialog's inner height (border and padding), less the status line.
+  const w = Math.min(dims.width - 4, 170)
+  const leftW = Math.min(52, Math.max(30, Math.floor(w * 0.36)))
+  const innerH = Math.max(6, dims.height - 2 - 4 - 1)
+  const msgLines = Math.min(6, Math.max(1, message.split("\n").length))
+  const b = git?.branch ?? null
+  const buttons = [
+    "Commit ⏎",
+    "Amend",
+    "AI message (m)",
+    "AI review (v)",
+    `Push${b?.ahead ? ` ↑${b.ahead}` : ""} (P)`,
+    `Pull${b?.behind ? ` ↓${b.behind}` : ""} (U)`,
+    "Branch (b)",
+  ]
+  const listH = Math.max(3, innerH - (1 + msgLines + 1 + wrappedRows(buttons, leftW) + 1))
+  const viewH = Math.max(3, innerH - 1)
   const maxTop = Math.max(0, diff.length - viewH)
+
+  const gotoHunk = (d: 1 | -1) => {
+    if (!hunks.length) return
+    const i = Math.max(0, Math.min(hunks.length - 1, hunkSel + d))
+    setHunkSel(i)
+    setTop(Math.max(0, Math.min(maxTop, hunks[i]!.row - 1)))
+  }
 
   useKeyboard((key) => {
     if (ws.ui.get().modal?.kind !== "scm") return
@@ -231,7 +475,7 @@ export function SourceControlPanel() {
       key.preventDefault()
       key.stopPropagation()
     }
-    // In the message box, plain typing must reach the input: only take the panel's own keys.
+    // In the message box, typing (and Ctrl+J for a new line) must reach the textarea: only take the panel's own keys.
     const messageKey = focus === "message" && !confirm && !(key.name === "return" || key.name === "escape" || key.name === "tab")
     if (messageKey) return
     stop()
@@ -241,35 +485,75 @@ export function SourceControlPanel() {
       if (key.name === "y") void c.yes()
       return
     }
+    // An error stays until you do something else.
+    if (status?.kind === "error") setStatus(null)
     if (key.name === "return" && key.meta) return void commit()
     if (key.name === "escape") {
-      if (focus === "message") setFocus("list")
+      if (focus !== "list") setFocus("list")
       else close()
       return
     }
-    if (key.name === "tab") return setFocus((f) => (f === "list" ? "message" : "list"))
+    if (key.name === "tab") {
+      const order: Focus[] = hunks.length ? ["list", "message", "diff"] : ["list", "message"]
+      const i = order.indexOf(focus)
+      return setFocus(order[(i + (key.shift ? order.length - 1 : 1)) % order.length]!)
+    }
     if (focus === "message") {
       if (key.name === "return") void commit()
+      return
+    }
+    if (focus === "diff") {
+      switch (key.name) {
+        case "left":
+        case "h":
+          return setFocus("list")
+        case "down":
+        case "j":
+        case "]":
+          return gotoHunk(1)
+        case "up":
+        case "k":
+        case "[":
+          return gotoHunk(-1)
+        case "space":
+        case "s":
+          return void hunkAction("stage")
+        case "r":
+          return void hunkAction("discard")
+        case "return":
+          return open(row)
+        case "pagedown":
+          return setTop((t) => Math.min(maxTop, t + viewH - 2))
+        case "pageup":
+          return setTop((t) => Math.max(0, t - viewH + 2))
+      }
       return
     }
     switch (key.name) {
       case "down":
       case "j":
-        setSel((s) => Math.min(rows.length - 1, s + 1))
+        select(Math.min(rows.length - 1, sel + 1))
         break
       case "up":
       case "k":
-        setSel((s) => Math.max(0, s - 1))
+        select(Math.max(0, sel - 1))
+        break
+      case "right":
+      case "l":
+      case "]":
+        if (hunks.length) setFocus("diff")
         break
       case "space":
       case "s":
         void toggleStage(row)
         break
       case "a":
-        void repo?.stageAll().then((e) => (e ? fail(e) : done("Staged all changes")))
+        if (key.shift) void unstageAll()
+        else void stageAll()
         break
       case "r":
-        revert(row)
+        if (key.shift) discardAll()
+        else revert(row)
         break
       case "return":
         open(row)
@@ -309,11 +593,7 @@ export function SourceControlPanel() {
     )
   }
 
-  const w = Math.min(dims.width - 4, 170)
-  const leftW = Math.min(52, Math.max(30, Math.floor(w * 0.36)))
-  const b = git.branch
   const header = b ? `⎇ ${b.name}${b.ahead ? ` ↑${b.ahead}` : ""}${b.behind ? ` ↓${b.behind}` : ""}` : ""
-  const listTop = Math.max(0, Math.min(sel - listH + 1, rows.length - listH))
   const btn = (label: string, run: () => void, strong = false) => (
     <HoverBox onPress={run} paddingX={1} bg={strong ? colors.accentDim : colors.segmentBg}>
       <text selectable={false} fg={colors.text}>
@@ -321,38 +601,47 @@ export function SourceControlPanel() {
       </text>
     </HoverBox>
   )
-  const sectionTitle = (s: Section) => (s === "conflict" ? `Merge conflicts (${counts.conflict})` : s === "staged" ? `Staged (${counts.staged})` : `Changes (${counts.changes})`)
-
-  // Render rows with a heading before each section.
-  const visibleRows = rows.slice(listTop, listTop + listH)
-  const body: ReactNode[] = []
-  let lastSection: Section | null = listTop > 0 ? rows[listTop - 1]!.section : null
-  visibleRows.forEach((r, i) => {
-    const idx = listTop + i
-    if (r.section !== lastSection) {
-      body.push(
-        <box key={`h-${r.section}`} height={1}>
-          <text selectable={false} fg={colors.headerFg}>
-            {sectionTitle(r.section)}
-          </text>
-        </box>,
-      )
-      lastSection = r.section
-    }
+  const small = (label: string, run: () => void) => (
+    <HoverBox onPress={run} paddingX={1}>
+      <text selectable={false} fg={colors.dim}>
+        {label}
+      </text>
+    </HoverBox>
+  )
+  const sectionTitle = (s: Section) =>
+    s === "conflict" ? `Merge conflicts (${counts.conflict})` : s === "staged" ? `Staged (${counts.staged})` : `Changes (${counts.changes})`
+  const sectionHeading = (s: Section) => (
+    <box key={`h-${s}`} height={1} flexDirection="row" overflow="hidden">
+      <box flexGrow={1} overflow="hidden">
+        <text selectable={false} fg={colors.headerFg} wrapMode="none">
+          {sectionTitle(s)}
+        </text>
+      </box>
+      {s === "staged" ? small("− all", () => void unstageAll()) : null}
+      {s === "changes" ? small("+ all", () => void stageAll()) : null}
+      {s === "changes" ? small("discard all", discardAll) : null}
+    </box>
+  )
+  const fileRow = (r: Row, idx: number) => {
     const letter = LETTER(r.entry, r.section)
-    body.push(
+    const dir = dirname(r.entry.rel)
+    const st = r.section === "conflict" ? undefined : (r.section === "staged" ? stats.staged : stats.changes).get(r.entry.path)
+    const mark = ai.file(r.entry.path)
+    const on = idx === sel
+    return (
       <box
-        key={`${r.section}:${r.entry.path}`}
+        key={keyOf(r)}
         height={1}
         flexDirection="row"
         overflow="hidden"
-        backgroundColor={idx === sel && focus === "list" ? colors.selectionBg : idx === sel ? colors.segmentBg : undefined}
+        backgroundColor={on && focus === "list" ? colors.selectionBg : on ? colors.segmentBg : undefined}
         onMouseDown={(e) => {
           e.preventDefault()
           e.stopPropagation()
+          if (e.button === 2) return rowMenu(r, e.x, e.y)
           setFocus("list")
-          if (idx === sel) open(r)
-          else setSel(idx)
+          if (on) open(r)
+          else select(idx)
         }}
       >
         <box width={3} flexShrink={0}>
@@ -360,78 +649,171 @@ export function SourceControlPanel() {
             {" " + letter}
           </text>
         </box>
-        <box flexGrow={1} overflow="hidden">
-          <text selectable={false} wrapMode="none" truncate fg={idx === sel ? colors.text : colors.dim}>
-            {r.entry.rel}
+        <box flexGrow={1} flexShrink={1} overflow="hidden">
+          <text selectable={false} wrapMode="none" truncate fg={on ? colors.text : colors.dim}>
+            {basename(r.entry.rel)}
+            {dir !== "." ? <span fg={colors.dim}>{`  ${dir}`}</span> : null}
           </text>
         </box>
-        <HoverBox onPress={() => void toggleStage(r)}>
-          <text selectable={false} fg={colors.dim}>
-            {r.section === "staged" ? " − " : " + "}
-          </text>
-        </HoverBox>
-      </box>,
+        {mark ? (
+          <box flexShrink={0}>
+            <text selectable={false} fg={colors.accent}>
+              {" " + mark}
+            </text>
+          </box>
+        ) : null}
+        {st ? (
+          <box flexShrink={0}>
+            <text selectable={false} wrapMode="none">
+              <span fg={colors.gitAdd}>{` +${st.add}`}</span>
+              <span fg={colors.gitDel}>{` −${st.del}`}</span>
+            </text>
+          </box>
+        ) : null}
+        {/* Stage / unstage button, on the selected row only (VS Code shows it on hover). */}
+        <box width={3} flexShrink={0}>
+          {on && r.section !== "conflict" ? (
+            <HoverBox onPress={() => void toggleStage(r)}>
+              <text selectable={false} fg={colors.accent}>
+                {r.section === "staged" ? " − " : " + "}
+              </text>
+            </HoverBox>
+          ) : null}
+        </box>
+      </box>
     )
+  }
+
+  // The list with a heading before each section, scrolled so the selected row is in view.
+  const items: { node: () => ReactNode; row: number | null }[] = []
+  let lastSection: Section | null = null
+  rows.forEach((r, i) => {
+    if (r.section !== lastSection) {
+      const s = r.section
+      items.push({ node: () => sectionHeading(s), row: null })
+      lastSection = s
+    }
+    items.push({ node: () => fileRow(r, i), row: i })
   })
+  const selItem = Math.max(0, items.findIndex((it) => it.row === sel))
+  // The first file of a section brings its heading into view with it.
+  const want = items[selItem - 1]?.row === null ? selItem - 1 : selItem
+  const start = Math.max(0, Math.min(want, items.length - listH), selItem - listH + 1)
+  const body = items.slice(start, start + listH).map((it) => it.node())
+
+  const diffStat = row && row.section !== "conflict" ? (row.section === "staged" ? stats.staged : stats.changes).get(row.entry.path) : undefined
+  const summaryLen = message.split("\n")[0]!.length
+  const hint =
+    focus === "diff"
+      ? "↑↓ change · Space stage/unstage it · r discard it · ⏎ open · ← files · Esc back"
+      : "Space stage · a/A all · r/R discard · → changes · ⏎ open · Alt+⏎ commit · P/U push/pull · m AI message · Esc"
 
   return (
     <Modal title={`Source control  ${header}`} width={w} height={dims.height - 2} onClose={close}>
       <box flexDirection="row" flexGrow={1} gap={2}>
         <box width={leftW} flexShrink={0} flexDirection="column">
-          <box height={1}>
-            <text selectable={false} fg={colors.headerFg}>
-              Message {focus === "message" ? "(Enter commits, Tab to files)" : "(c or Tab to write)"}
-            </text>
+          <box height={1} flexDirection="row">
+            <box flexGrow={1} overflow="hidden">
+              <text selectable={false} fg={colors.headerFg} wrapMode="none">
+                {`Message ${focus === "message" ? "(Enter commits, ^J new line)" : "(c or Tab to write)"}`}
+              </text>
+            </box>
+            {summaryLen ? (
+              <text selectable={false} fg={summaryLen > 72 ? colors.warn : colors.dim}>
+                {String(summaryLen)}
+              </text>
+            ) : null}
           </box>
-          <box border={["left"]} borderColor={focus === "message" ? colors.accent : colors.divider} height={1} onMouseDown={() => setFocus("message")}>
-            <input
+          <box
+            border={["left"]}
+            borderColor={focus === "message" ? colors.accent : colors.divider}
+            height={msgLines}
+            flexShrink={0}
+            onMouseDown={() => setFocus("message")}
+          >
+            <textarea
               key={inputKey}
-              value={message}
+              ref={msgRef}
+              initialValue={message}
               focused={focus === "message" && !confirm}
               placeholder="Commit message"
               backgroundColor={colors.bg}
               focusedBackgroundColor={colors.bg}
               textColor={colors.text}
-              onInput={(v: string) => setMessage(v)}
+              focusedTextColor={colors.text}
+              onContentChange={() => setMessage(msgRef.current?.plainText ?? "")}
             />
           </box>
           <box height={1} />
-          <box flexDirection="row" flexWrap="wrap" gap={1}>
-            {btn("Commit ⏎", () => void commit(), true)}
-            {btn("Amend", () => void commit(true))}
-            {btn("AI message (m)", () => void aiMessage())}
-            {btn("AI review (v)", () => void sendChangesForReview(ws))}
-            {btn(`Push${b?.ahead ? ` ↑${b.ahead}` : ""} (P)`, () => void push())}
-            {btn(`Pull${b?.behind ? ` ↓${b.behind}` : ""} (U)`, () => void pull())}
-            {btn("Branch (b)", () => ws.ui.set({ modal: { kind: "branches" } }))}
+          <box flexDirection="row" flexWrap="wrap" columnGap={1} rowGap={0} flexShrink={0}>
+            {btn(buttons[0]!, () => void commit(), true)}
+            {btn(buttons[1]!, () => void commit(true))}
+            {btn(buttons[2]!, () => void aiMessage())}
+            {btn(buttons[3]!, () => void sendChangesForReview(ws))}
+            {btn(buttons[4]!, () => void push())}
+            {btn(buttons[5]!, () => void pull())}
+            {btn(buttons[6]!, () => ws.ui.set({ modal: { kind: "branches" } }))}
           </box>
           <box height={1} />
           {rows.length === 0 ? (
-            <text selectable={false} fg={colors.dim}>
-              No changes. Working tree clean.
-            </text>
+            <box flexDirection="column">
+              <text selectable={false} fg={colors.dim}>
+                {`Working tree clean${b?.ahead ? ` · ↑${b.ahead} to push (P)` : ""}`}
+              </text>
+              {lastCommit ? (
+                <text selectable={false} fg={colors.dim} wrapMode="none" truncate>
+                  {`Last commit: ${lastCommit}`}
+                </text>
+              ) : null}
+            </box>
           ) : (
             body
           )}
         </box>
-        <box flexGrow={1} flexDirection="column" overflow="hidden" onMouseScroll={(e) => {
-          e.stopPropagation()
-          setTop((t) => Math.max(0, Math.min(maxTop, t + (e.scroll?.direction === "up" ? -3 : 3))))
-        }}>
-          {diff.slice(top, top + viewH).map((d, i) => (
-            <box key={top + i} height={1} overflow="hidden">
-              <text selectable={false} wrapMode="none" fg={d.color}>
-                {d.text || " "}
+        <box
+          flexGrow={1}
+          flexDirection="column"
+          overflow="hidden"
+          onMouseDown={() => hunks.length && setFocus("diff")}
+          onMouseScroll={(e) => {
+            e.stopPropagation()
+            setTop((t) => Math.max(0, Math.min(maxTop, t + (e.scroll?.direction === "up" ? -3 : 3))))
+          }}
+        >
+          <box height={1} flexShrink={0} overflow="hidden">
+            {row ? (
+              <text selectable={false} wrapMode="none" truncate fg={focus === "diff" ? colors.accent : colors.headerFg}>
+                {row.entry.rel}
+                <span fg={colors.dim}>{`  ${row.section === "staged" ? "staged" : row.section === "conflict" ? "conflict" : "unstaged"}`}</span>
+                {diffStat ? <span fg={colors.gitAdd}>{`  +${diffStat.add}`}</span> : null}
+                {diffStat ? <span fg={colors.gitDel}>{` −${diffStat.del}`}</span> : null}
+                {hunks.length > 1 ? <span fg={colors.dim}>{`  change ${hunkSel + 1}/${hunks.length}`}</span> : null}
               </text>
-            </box>
-          ))}
+            ) : null}
+          </box>
+          {diff.slice(top, top + viewH).map((d, i) => {
+            const at = top + i
+            const h = hunks[hunkSel]
+            const next = hunks[hunkSel + 1]
+            const inHunk = focus === "diff" && h !== undefined && at >= h.row && (next === undefined || at < next.row)
+            return (
+              <box key={at} height={1} overflow="hidden" backgroundColor={inHunk ? colors.segmentBg : undefined}>
+                <text selectable={false} wrapMode="none" fg={d.color}>
+                  {d.text || " "}
+                </text>
+              </box>
+            )
+          })}
         </box>
       </box>
       <box height={1} flexDirection="row" overflow="hidden">
-        <text selectable={false} fg={confirm ? colors.warn : status?.kind === "error" ? colors.error : status?.kind === "busy" ? colors.warn : colors.dim}>
-          {confirm?.text ??
-            status?.text ??
-            "Space stage/unstage · a stage all · r revert · Enter open · Alt+Enter commit · P push · U pull · m AI message · v AI review · Esc close"}
+        <text
+          selectable={false}
+          wrapMode="none"
+          truncate
+          fg={confirm ? colors.warn : status?.kind === "error" ? colors.error : status?.kind === "busy" ? colors.warn : colors.dim}
+        >
+          {confirm?.text ?? (status ? `${status.kind === "busy" ? SPINNER[frame % SPINNER.length] + " " : ""}${status.text}` : hint)}
         </text>
       </box>
     </Modal>

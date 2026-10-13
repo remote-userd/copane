@@ -7,12 +7,20 @@ All notable changes to copane are listed here. The format follows
 
 ### Added
 - The project's folder name shows in the sidebar's tab row and as the terminal tab's title.
+- Source control:
+  - stage, unstage or discard a single change from the diff (→, then ↑↓ and Space / `r`)
+  - each file shows `+N −M` and a `✦` for unreviewed AI changes, with its name first and its folder dimmed
+  - `A` unstages everything, `R` discards all unstaged changes, and section headings have buttons for both
+  - right-click a file for a menu
+  - the commit message takes several lines (Ctrl+J) and shows the summary's length
+  - a clean tree shows what's left to push and the last commit
 
 ### Fixed
 - Push, pull and commit can no longer hang the editor or draw over it: git runs without the terminal, so an ssh or gpg passphrase prompt or a hook fails with a message instead of waiting, and a timeout now ends git together with the ssh or hook it started. Commit and merge get a timeout too.
 - Staging one hunk in a repo with `core.autocrlf` or `.gitattributes` line endings (or LFS) staged the whole file as changed; it now goes through git's filters like `git add`.
 - Staging files quickly in Source control could fail with "index.lock exists": git writes now run one at a time.
 - Source control and the tree could show the old status for a moment right after stage, commit or revert.
+- Source control: after staging, the selection jumped to an unrelated file; it now stays in the section, on the next file. With many files the selected one could be below the bottom of the list. A multi-line AI commit message no longer gets squashed into one line. Errors stay until the next key, and other messages clear after a few seconds.
 - Push while HEAD is detached says to switch to a branch, instead of trying to publish a branch named "detached".
 
 ## [0.8.0] - 2026-10-11

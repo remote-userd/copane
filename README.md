@@ -152,9 +152,10 @@ With `"ai": { "notify": "desktop" }` you also get a system notification: a Windo
 
 ## Git
 
-- **Source control (Ctrl+Alt+D,** or click the branch in the status bar**):** merge conflicts, staged files and changed files, with the diff of the selected one.
-  - **Staging:** Space stages or unstages, `a` stages everything, and `r` reverts (after a confirmation).
-  - **Committing:** write a message and press Enter (or Alt+Enter from anywhere in the panel) to commit. With nothing staged, it offers to stage everything. **Amend** rewrites the last commit.
+- **Source control (Ctrl+Alt+D,** or click the branch in the status bar**):** merge conflicts, staged files and changed files, with the diff of the selected one. Each file shows its folder, lines added and removed (`+12 −3`), and `✦` when it has AI changes you haven't reviewed. Right-click a file for Open, Stage, Discard, File history and AI review.
+  - **Staging:** Space stages or unstages (the selection stays in its section, on the next file), `a` / `A` stage or unstage everything, `r` discards a file's changes and `R` all unstaged changes (both ask first).
+  - **Single changes:** → (or Tab) moves into the diff. ↑↓ pick a change, Space stages it (or unstages it in a staged file), and `r` discards it. ← goes back to the files.
+  - **Committing:** write a message and press Enter (or Alt+Enter from anywhere in the panel) to commit. Ctrl+J adds a line, for a message with a body. The summary's length shows, in yellow past 72. With nothing staged, it offers to stage everything. **Amend** rewrites the last commit.
   - **AI message (`m`):** asks `claude -p` to write a message from the staged diff. You review it before committing. Turn it off with `git.aiCommitMessage: false`.
   - **Push and pull (`P` / `U`):** show progress. A branch without an upstream gets offered "publish". With no remote, it says so.
 - **Changes in the editor:**

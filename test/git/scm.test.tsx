@@ -1,7 +1,9 @@
 import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
+import { MouseButtons } from "@opentui/core/testing"
 import { GitStatus } from "../../src/files/gitStatus"
+import { Store } from "../../src/app/store"
 import { createWorkspace, fixture, renderApp, type Harness, waitUntil, GIT_ENV } from "../helpers"
 
 // Several waits on the UI and git per test: more room than the default 5 s.
@@ -72,8 +74,8 @@ test("commit with nothing staged offers to stage all; y commits everything", asy
   await h!.step(() => h!.keys.pressKey("y"))
   await until(() => sh(root, "status", "--porcelain") === "")
   expect(sh(root, "status", "--porcelain")).toBe("")
-  await until(() => h!.frame().includes("No changes"))
-  expect(h!.frame()).toContain("No changes")
+  await until(() => h!.frame().includes("Working tree clean"))
+  expect(h!.frame()).toContain("Working tree clean")
   expect(h!.frame()).toContain("Committed")
 })
 
@@ -114,4 +116,144 @@ test("AI message: asks the configured claude with the staged diff and fills the 
   const other = createWorkspace(root, {}, configSchema.parse({ ai: { command: "codex" } }))
   other.git = ws.git
   expect(await aiCommitMessage(other)).toEqual({ error: "AI messages need claude as ai.command (now codex)" })
+})
+
+/** A committed repo with `files`, then `changes` written on top, and the panel open. */
+async function panel(
+  files: Record<string, string>,
+  changes: Record<string, string>,
+  opts: { size?: { width: number; height: number }; ws?: (ws: ReturnType<typeof createWorkspace>) => void; before?: (root: string) => void } = {},
+) {
+  const root = await fixture(files)
+  sh(root, "init", "-q", "-b", "main")
+  sh(root, "add", ".")
+  sh(root, "commit", "-qm", "init")
+  opts.before?.(root)
+  for (const [f, text] of Object.entries(changes)) writeFileSync(join(root, f), text)
+  Object.assign(process.env, ENV)
+  const ws = createWorkspace(root)
+  opts.ws?.(ws)
+  git = new GitStatus(root)
+  await git.start(50)
+  ws.git = git
+  h = await renderApp(ws, { tree: <text>TREE</text> }, opts.size)
+  await h.step(() => h!.keys.pressKey("d", { ctrl: true, meta: true }))
+  await until(() => h!.frame().includes("Source control"))
+  return { ws, root }
+}
+const press = (k: string, mods?: { shift?: boolean }) => h!.step(() => h!.keys.pressKey(k, mods))
+const lines30 = Array.from({ length: 30 }, (_, i) => `line ${i}`).join("\n") + "\n"
+
+test("after staging, the selection moves to the next file in the same section, not an unrelated one", async () => {
+  await panel({ "c1.ts": "1\n", "c2.ts": "2\n", "c3.ts": "3\n" }, { "c1.ts": "x\n", "c2.ts": "y\n", "c3.ts": "z\n" })
+  await until(() => h!.frame().includes("Changes (3)"))
+  await press("j") // c2
+  await until(() => h!.frame().includes("c2.ts  unstaged"))
+  await press(" ")
+  await until(() => h!.frame().includes("Staged (1)"))
+  await until(() => h!.frame().includes("c3.ts  unstaged"))
+  expect(h!.frame()).toContain("c3.ts  unstaged")
+})
+
+test("rows show name, folder, +/− counts and the AI mark", async () => {
+  await panel({ "src/deep/a.ts": "one\ntwo\n" }, { "src/deep/a.ts": "one\nTWO\nthree\n" }, {
+    ws: (ws) => {
+      const path = join(ws.root, "src/deep/a.ts")
+      ws.review = { store: new Store({ version: 1 }), files: () => [path] } as never
+    },
+  })
+  await until(() => h!.frame().includes("+2 −1"))
+  const row = h!.lines().find((l) => l.includes("a.ts  src/deep"))
+  expect(row).toBeDefined()
+  expect(row).toContain("✦")
+  expect(row).toContain("+2 −1")
+})
+
+test("a stages all, A unstages all", async () => {
+  await panel({ "a.ts": "a\n", "b.ts": "b\n" }, { "a.ts": "A\n", "b.ts": "B\n" })
+  await press("a")
+  await until(() => h!.frame().includes("Staged (2)"))
+  await press("a", { shift: true })
+  await until(() => !h!.frame().includes("Staged (") && h!.frame().includes("Changes (2)"))
+  expect(h!.frame()).toContain("Changes (2)")
+})
+
+test("a multi-line AI message is kept whole in the commit", async () => {
+  const { configSchema } = await import("../../src/config/schema")
+  const { root } = await panel({ "a.ts": "a\n" }, { "a.ts": "b\n" }, {
+    before: (root) => {
+      const bin = join(root, ".bin")
+      Bun.spawnSync(["mkdir", "-p", bin])
+      writeFileSync(join(bin, "claude"), '#!/bin/sh\ncat >/dev/null\nprintf "Change a to b\\n\\nBecause b is better.\\n"\n')
+      Bun.spawnSync(["chmod", "+x", join(bin, "claude")])
+      writeFileSync(join(root, ".git/info/exclude"), ".bin\n")
+    },
+    ws: (ws) => Object.assign(ws, { config: configSchema.parse({ ai: { command: join(ws.root, ".bin/claude") } }) }),
+  })
+  await press(" ")
+  await until(() => h!.frame().includes("Staged (1)"))
+  await press("m")
+  await until(() => h!.frame().includes("Because b is better."))
+  await h!.step(() => h!.keys.pressEnter())
+  await until(() => sh(root, "log", "-1", "--format=%s") === "Change a to b\n")
+  expect(sh(root, "log", "-1", "--format=%B").trim()).toBe("Change a to b\n\nBecause b is better.")
+})
+
+test("in the diff, ] picks the next change and Space stages only that one", async () => {
+  const changed = lines30.replace("line 1\n", "LINE 1\n").replace("line 25\n", "LINE 25\n")
+  const { root } = await panel({ "a.txt": lines30 }, { "a.txt": changed })
+  await until(() => h!.frame().includes("change 1/2"))
+  await press("l") // into the diff, first change
+  await press("]")
+  await until(() => h!.frame().includes("change 2/2"))
+  await press(" ")
+  await until(() => sh(root, "diff", "--cached").includes("+LINE 25"))
+  const staged = sh(root, "diff", "--cached")
+  expect(staged).toContain("+LINE 25")
+  expect(staged).not.toContain("+LINE 1\n")
+  expect(sh(root, "diff")).toContain("+LINE 1")
+})
+
+test("right-click on a file opens a menu; Stage stages it and the panel comes back", async () => {
+  const { root } = await panel({ "a.ts": "a\n" }, { "a.ts": "b\n" })
+  await until(() => h!.frame().includes("Changes (1)"))
+  const at = h!.find(" M a.ts")
+  await h!.step(() => h!.mouse.click(at.x + 3, at.y, MouseButtons.RIGHT))
+  await until(() => h!.frame().includes("Discard changes…"))
+  await h!.step(() => h!.mouse.click(h!.find("Stage").x, h!.find("Stage").y))
+  await until(() => sh(root, "diff", "--cached", "--name-only").trim() === "a.ts")
+  await until(() => h!.frame().includes("Staged (1)"))
+  expect(h!.frame()).toContain("Source control")
+})
+
+test("a clean tree says so, with commits to push and the last commit", async () => {
+  await panel({ "a.ts": "a\n" }, {}, {
+    before: (root) => {
+      const remote = join(root, "..", `${root.split("/").pop()}-remote.git`)
+      sh(root, "init", "-q", "--bare", remote)
+      sh(root, "remote", "add", "origin", remote)
+      sh(root, "push", "-q", "-u", "origin", "main")
+      writeFileSync(join(root, "a.ts"), "b\n")
+      sh(root, "commit", "-qam", "Local only")
+    },
+  })
+  await until(() => h!.frame().includes("↑1 to push"))
+  expect(h!.frame()).toContain("Working tree clean · ↑1 to push (P)")
+  expect(h!.frame()).toContain("Last commit: Local only")
+})
+
+test("with more files than fit, the selected row stays on screen", async () => {
+  const files: Record<string, string> = {}
+  const changes: Record<string, string> = {}
+  for (let i = 0; i < 30; i++) {
+    const name = `f${String(i).padStart(2, "0")}.ts`
+    files[name] = `${i}\n`
+    changes[name] = `changed ${i}\n`
+  }
+  await panel(files, changes, { size: { width: 120, height: 24 } })
+  await until(() => h!.frame().includes("Changes (30)"))
+  for (let i = 0; i < 29; i++) await press("j")
+  await until(() => h!.frame().includes("f29.ts  unstaged"))
+  // In the list (with its counts), not just the diff's header.
+  expect(h!.lines().some((l) => /f29\.ts\s+\+1 −1/.test(l))).toBe(true)
 })
