@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from "bun:test"
 import { testRender } from "@opentui/react/test-utils"
 import { decodeEntities, extractFootnotes, MarkdownView } from "../../src/preview/MarkdownView"
+import { captureFrame } from "../helpers"
 
 let destroy: (() => void) | null = null
 afterEach(() => destroy?.())
@@ -9,7 +10,7 @@ async function render(md: string, width = 80): Promise<string> {
   const setup = await testRender(<MarkdownView text={md} path="/tmp/x.md" width={width} protocol="blocks" animate={false} />, { width, height: 60 })
   destroy = () => setup.renderer.destroy()
   for (let i = 0; i < 5; i++) await setup.renderOnce()
-  return setup.captureCharFrame()
+  return captureFrame(setup)
 }
 
 test("headings, emphasis and code lose their markers", async () => {

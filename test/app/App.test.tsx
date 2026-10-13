@@ -8,6 +8,7 @@ import { App } from "../../src/app/App"
 import { runCommand } from "../../src/keymap/commands"
 import { configSchema } from "../../src/config/schema"
 import { createWorkspace, WorkspaceContext, type Workspace } from "../../src/app/workspace"
+import { captureFrame } from "../helpers"
 
 let cleanup: (() => void) | null = null
 afterEach(() => {
@@ -29,7 +30,7 @@ async function render(ws: Workspace, width: number, height: number) {
 
 test("shell shows tree, editor placeholder, AI pane and status hints at 120x30", async () => {
   const ws = createWorkspace(process.cwd())
-  const frame = (await render(ws, 120, 30)).captureCharFrame()
+  const frame = captureFrame(await render(ws, 120, 30))
   expect(frame).toContain("TREE-SLOT")
   expect(frame).toContain("AI-SLOT")
   expect(frame).toContain("No file open")
@@ -38,14 +39,14 @@ test("shell shows tree, editor placeholder, AI pane and status hints at 120x30",
 
 test("narrow terminals hide the tree but keep the AI pane", async () => {
   const ws = createWorkspace(process.cwd())
-  const frame = (await render(ws, 80, 24)).captureCharFrame()
+  const frame = captureFrame(await render(ws, 80, 24))
   expect(frame).not.toContain("TREE-SLOT")
   expect(frame).toContain("AI-SLOT")
 })
 
 test("too-small terminals show a warning instead of the layout", async () => {
   const ws = createWorkspace(process.cwd())
-  const frame = (await render(ws, 50, 10)).captureCharFrame()
+  const frame = captureFrame(await render(ws, 50, 10))
   expect(frame).toContain("Terminal too small")
 })
 
@@ -57,7 +58,7 @@ test("opened file shows its tab, gutter, contents and cursor position", async ()
   const setup = await render(ws, 120, 20)
   await Bun.sleep(50)
   await setup.renderOnce()
-  const frame = setup.captureCharFrame()
+  const frame = captureFrame(setup)
   expect(frame).toContain("hello.ts")
   expect(frame).toMatch(/1 const x = 1/)
   expect(frame).toMatch(/2 const y = 2/)
@@ -81,7 +82,7 @@ test("conflict bar and dirty-quit modal render", async () => {
     await ws.buffers.handleDiskChange(join(dir, "a.ts"))
   })
   await setup.renderOnce()
-  const f = setup.captureCharFrame()
+  const f = captureFrame(setup)
   expect(f).toContain("Changed on disk")
   expect(f).toContain("Compare")
   expect(f).toContain("Keep mine")
@@ -92,7 +93,7 @@ test("conflict bar and dirty-quit modal render", async () => {
     await runCommand(ws, "app.quit")
   })
   await setup.renderOnce()
-  const frame = setup.captureCharFrame()
+  const frame = captureFrame(setup)
   expect(frame).toContain("Unsaved changes")
   expect(frame).toContain("Save all and quit")
 })
@@ -141,7 +142,7 @@ test("maximize AI: the editor stays hidden when files open, until you show it", 
   const ws = createWorkspace(dir, { focus: "editor" })
   await ws.buffers.open("a.ts")
   const setup = await render(ws, 120, 30)
-  const aiColumn = () => setup.captureCharFrame().split("\n").find((l) => l.includes("AI-SLOT"))!.indexOf("AI-SLOT")
+  const aiColumn = () => captureFrame(setup).split("\n").find((l) => l.includes("AI-SLOT"))!.indexOf("AI-SLOT")
   const step = async (fn: () => unknown) => {
     await act(async () => void (await fn()))
     await setup.renderOnce()
@@ -151,7 +152,7 @@ test("maximize AI: the editor stays hidden when files open, until you show it", 
   // A tab is open, yet the editor goes away.
   await step(() => runCommand(ws, "view.maximizeAi"))
   expect(aiColumn()).toBe(0)
-  expect(setup.captureCharFrame()).not.toContain("const a = 1")
+  expect(captureFrame(setup)).not.toContain("const a = 1")
 
   // Opening a file (as a tree click does) keeps it hidden, and says how to show it.
   await step(async () => {
@@ -164,15 +165,15 @@ test("maximize AI: the editor stays hidden when files open, until you show it", 
 
   // Ctrl+E shows it beside the AI pane; Ctrl+Alt+X hides it again; once more restores the layout.
   await step(() => runCommand(ws, "focus.editor"))
-  expect(setup.captureCharFrame()).toContain("const b = 2")
+  expect(captureFrame(setup)).toContain("const b = 2")
   expect(aiColumn()).toBeGreaterThan(30)
   await step(() => runCommand(ws, "view.maximizeAi"))
   expect(aiColumn()).toBe(0)
   expect(ws.ui.get().aiMaximized).toEqual({ tree: true, editor: false })
   await step(() => runCommand(ws, "view.maximizeAi"))
   expect(ws.ui.get()).toMatchObject({ aiMaximized: null, treeVisible: true })
-  expect(setup.captureCharFrame()).toContain("TREE-SLOT")
-  expect(setup.captureCharFrame()).toContain("const b = 2")
+  expect(captureFrame(setup)).toContain("TREE-SLOT")
+  expect(captureFrame(setup)).toContain("const b = 2")
 
   // Closing the last tab hides a shown editor and hands the keyboard to the AI.
   await step(() => runCommand(ws, "view.maximizeAi"))

@@ -9,7 +9,7 @@ import { testRender } from "@opentui/react/test-utils"
 import { App } from "../../src/app/App"
 import { TerminalPane } from "../../src/ai/TerminalPane"
 import { createWorkspace, WorkspaceContext } from "../../src/app/workspace"
-import { fixture } from "../helpers"
+import { fixture, captureFrame } from "../helpers"
 
 let cleanup: (() => void) | null = null
 afterEach(() => {
@@ -66,7 +66,7 @@ test("cursor moves and typing in a big file, with a Markdown preview open", asyn
   await settle()
   const arrows = { ...stats }
   // The status bar follows the cursor.
-  expect(setup.captureCharFrame()).toContain("Ln 51, Col 1")
+  expect(captureFrame(setup)).toContain("Ln 51, Col 1")
 
   reset()
   for (let i = 0; i < 50; i++) {

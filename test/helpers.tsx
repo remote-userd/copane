@@ -53,6 +53,21 @@ export async function waitUntil(cond: () => boolean | Promise<boolean>, ms = 400
   }
 }
 
+/**
+ * The screen as text. A render the app asked for itself (a notice, a timer) may still be writing
+ * its output on a slow machine: the capture is refused then (OutputBusy), so try again shortly.
+ */
+export function captureFrame(setup: { captureCharFrame(): string }): string {
+  for (let tries = 0; ; tries++) {
+    try {
+      return setup.captureCharFrame()
+    } catch (err) {
+      if (tries >= 200 || !String((err as Error).message).includes("OutputBusy")) throw err
+      Bun.sleepSync(5)
+    }
+  }
+}
+
 export type Harness = Awaited<ReturnType<typeof renderApp>>
 
 /**
@@ -82,7 +97,7 @@ export async function renderApp(ws: Workspace, slots: AppSlots = {}, size = { wi
   )
   await Bun.sleep(30)
   await setup.renderOnce()
-  const frame = () => setup.captureCharFrame()
+  const frame = () => captureFrame(setup)
   const lines = () => frame().split("\n")
   /** Screen position of the first occurrence of text. */
   const find = (text: string) => {

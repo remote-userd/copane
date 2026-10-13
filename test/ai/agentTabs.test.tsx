@@ -47,6 +47,7 @@ const menuItem = (ws: ReturnType<typeof createWorkspace>, label: string) => {
 test("a second agent opens in its own tab; text goes to the visible tab; tabs switch and close", async () => {
   const ws = await pane(await fixture({ "a.txt": "a" }))
   await h!.step(() => ws.agents!.openMenu())
+  await until(() => ws.ui.get().modal?.kind === "menu")
   expect(menuItem(ws, "New second in a git worktree").disabled).toBe(true) // not a git repo
   await h!.step(() => menuItem(ws, "New second").run())
   await until(() => h!.frame().includes("second-agent-ready"))
@@ -76,6 +77,7 @@ test("an agent in a git worktree works on its own branch; closing can remove the
   await git.start(60_000)
   ws.git = git
   await h!.step(() => ws.agents!.openMenu())
+  await until(() => ws.ui.get().modal?.kind === "menu")
   await h!.step(() => menuItem(ws, "New second in a git worktree").run())
   const wt = worktreeFor(root, "second", 1)
   await until(() => h!.frame().includes("second-agent-ready"))
@@ -108,6 +110,7 @@ test("× on a tab closes it, and so does a middle-click; a single tab has neithe
   const ws = await pane(await fixture({ "a.txt": "a" }))
   expect(h!.frame()).not.toContain("×")
   await h!.step(() => ws.agents!.openMenu())
+  await until(() => ws.ui.get().modal?.kind === "menu")
   await h!.step(() => menuItem(ws, "New second").run())
   await until(() => h!.frame().includes("second-agent-ready"))
   const x = h!.findAt("×", 60) // the first tab's ×, in the AI pane's header
@@ -116,6 +119,7 @@ test("× on a tab closes it, and so does a middle-click; a single tab has neithe
   expect(h!.frame()).not.toContain("SH ") // the first tab (/bin/sh) is gone
   expect(h!.frame()).toContain("SECOND")
   await h!.step(() => ws.agents!.openMenu())
+  await until(() => ws.ui.get().modal?.kind === "menu")
   await h!.step(() => menuItem(ws, "New second").run())
   await until(() => h!.frame().includes("SECOND 2"))
   const tab = h!.find("SECOND 2")
@@ -132,6 +136,7 @@ async function worktreeAgent() {
   await git.start(60_000)
   ws.git = git
   await h!.step(() => ws.agents!.openMenu())
+  await until(() => ws.ui.get().modal?.kind === "menu")
   await h!.step(() => menuItem(ws, "New second in a git worktree").run())
   const wt = worktreeFor(root, "second", 1)
   await until(() => h!.frame().includes("second-agent-ready"))
@@ -230,6 +235,7 @@ test("a new worktree agent skips a number whose branch was kept after its worktr
   await git.start(60_000)
   ws.git = git
   await h!.step(() => ws.agents!.openMenu())
+  await until(() => ws.ui.get().modal?.kind === "menu")
   await h!.step(() => menuItem(ws, "New second in a git worktree").run())
   await until(() => h!.frame().includes("second-agent-ready"))
   expect(h!.frame()).toContain("⎇ SECOND-2")
@@ -287,6 +293,7 @@ test("many tabs clip, but + and the maximize button stay visible at the right of
   const ws = await pane(root)
   for (let i = 0; i < 8; i++) {
     await h!.step(() => ws.agents!.openMenu())
+    await until(() => ws.ui.get().modal?.kind === "menu")
     await h!.step(() => menuItem(ws, "New second").run())
   }
   await until(() => (h!.frame().match(/SECOND/g) ?? []).length >= 3)

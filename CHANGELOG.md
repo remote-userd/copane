@@ -5,6 +5,9 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- A language server's slow answer about an older version of a file no longer brings back problems you already fixed (on a busy machine, the status bar could stay at ✖ 1 after a quick fix).
+
 ## [0.9.3] - 2026-10-14
 
 ### Added

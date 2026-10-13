@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test"
 import type { CodeEditorRenderable } from "../../src/editor/CodeEditorRenderable"
-import { createWorkspace, fixture, renderApp, type Harness } from "../helpers"
+import { createWorkspace, fixture, renderApp, type Harness, waitUntil } from "../helpers"
 
 let h: Harness | null = null
 afterEach(() => {
@@ -83,9 +83,20 @@ test("PageDown/PageUp move the cursor a screen", async () => {
   const h = await open(Array.from({ length: 300 }, (_, i) => `line ${i}`).join("\n"))
   const ta = h.ws.buffers.active!.textarea!
   ta.setCursor(0, 0)
+  // Smooth scrolling glides a few lines per frame: wait until the cursor stops moving.
+  const settled = () => {
+    let last = -1
+    return waitUntil(() => {
+      const row = ta.logicalCursor.row
+      const still = row === last
+      last = row
+      return still
+    }, 4000, () => h.setup.renderOnce())
+  }
   await h.step(() => h.keys.pressKey("\x1b[6~"))
-  const row = ta.logicalCursor.row
-  expect(row).toBeGreaterThan(5)
+  await settled()
+  expect(ta.logicalCursor.row).toBeGreaterThan(5)
   await h.step(() => h.keys.pressKey("\x1b[5~"))
+  await waitUntil(() => ta.logicalCursor.row === 0, 4000, () => h.setup.renderOnce())
   expect(ta.logicalCursor.row).toBe(0)
 })

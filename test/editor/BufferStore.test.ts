@@ -270,17 +270,16 @@ describe("highlighting", () => {
     ta.type("a")
     store.onContentChange(buf.id)
     // The text is read for the write; a key arrives right after, while the file is written.
-    let text = ta.plainText
+    // (Through save's own read: the highlighter reads the editor's text in the background too.)
+    const textOf = store.textOf.bind(store)
     let reads = 0
-    Object.defineProperty(ta, "plainText", {
-      get: () => {
-        const now = text
-        if (++reads === 1) text = "b" + text
-        return now
-      },
-      set: (v: string) => (text = v),
-    })
+    store.textOf = (b) => {
+      const now = textOf(b)
+      if (b === buf && ++reads === 1) ta.setText("b" + now)
+      return now
+    }
     await store.save(buf.id)
+    store.textOf = textOf
     expect(await readFile(join(dir, "a.ts"), "utf8")).toBe("av1\n")
     expect(buf.dirty).toBe(true)
   })

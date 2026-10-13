@@ -170,3 +170,38 @@ test("a language server that dies is started again; one that keeps dying is left
   expect(await count()).toBe(3)
   lsp.stop()
 }, 15_000)
+
+test("a slow answer to an older diagnostics request doesn't overwrite a newer one", async () => {
+  const root = await fixture({ "a.ts": "export const n: number = 'x'\n" })
+  const buffers = new BufferStore({ root, highlightDelayMs: 0 })
+  const lsp = new LspManager(root, {}, (ft) => (ft === "typescript" ? spec : null))
+  lsp.attach(buffers)
+  const buf = await buffers.open("a.ts")
+  const ta = new Ta()
+  buffers.attach(buf.id, ta as unknown as TextareaRenderable)
+  await until(() => lsp.diagnostics(buf.path).length === 1)
+
+  // The next request is answered late, with what was true before the fix.
+  type Request = (m: string, p: unknown) => Promise<unknown>
+  const rpc = (lsp as unknown as { docs: Map<string, { client: { rpc: { request: Request } } }> }).docs.get(buf.path)!.client.rpc
+  const request = rpc.request.bind(rpc)
+  const stale = Promise.withResolvers<void>()
+  let late: Promise<unknown> | null = null
+  rpc.request = (m, p) => {
+    if (m !== "textDocument/diagnostic" || late) return request(m, p)
+    late = stale.promise.then(() => ({ kind: "full", items: [{ message: "stale", severity: 1, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } }] }))
+    return late
+  }
+  ta.plainText = "export const n: number = 1\n"
+  buffers.onContentChange(buf.id)
+  await until(() => late !== null) // the first request is out
+  ta.plainText = "export const n: number = 2\n"
+  buffers.onContentChange(buf.id)
+  await until(() => lsp.diagnostics(buf.path).length === 0)
+  stale.resolve()
+  await late
+  await Promise.resolve() // the manager's handler of the late answer has run
+  expect(lsp.diagnostics(buf.path)).toEqual([])
+  rpc.request = request
+  lsp.stop()
+})

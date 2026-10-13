@@ -102,7 +102,7 @@ class Client {
   constructor(
     readonly spec: ServerSpec,
     root: string,
-    onDiagnostics: (path: string, diags: Diagnostic[]) => void,
+    onDiagnostics: (path: string, diags: Diagnostic[], version?: number) => void,
     onState: () => void,
     private onApplyEdit: (files: Map<string, TextEdit[]>) => void = () => {},
     /** The server went away on its own (crashed, or closed its output). */
@@ -122,7 +122,7 @@ class Client {
     )
   }
 
-  private async start(root: string, onDiagnostics: (path: string, diags: Diagnostic[]) => void): Promise<boolean> {
+  private async start(root: string, onDiagnostics: (path: string, diags: Diagnostic[], version?: number) => void): Promise<boolean> {
     let proc
     try {
       proc = Bun.spawn(this.spec.command, { cwd: root, stdin: "pipe", stdout: "pipe", stderr: "ignore" })
@@ -154,8 +154,8 @@ class Client {
     }
     this.rpc = rpc
     rpc.on("textDocument/publishDiagnostics", (p) => {
-      const { uri, diagnostics } = p as { uri: string; diagnostics: Diagnostic[] }
-      onDiagnostics(pathOf(uri), diagnostics ?? [])
+      const { uri, diagnostics, version } = p as { uri: string; diagnostics: Diagnostic[]; version?: number }
+      onDiagnostics(pathOf(uri), diagnostics ?? [], version)
     })
     const rootUri = uriOf(root)
     const init = await rpc.request<{ capabilities: Record<string, unknown> }>(
@@ -338,7 +338,11 @@ export class LspManager {
       client = new Client(
         spec,
         spec.root ?? this.root,
-        (p, d) => this.setDiagnostics(p, d),
+        (p, d, version) => {
+          // Diagnostics for a version the editor has since changed are stale: newer ones follow.
+          const doc = this.docs.get(p)
+          if (version === undefined || !doc || version >= doc.version) this.setDiagnostics(p, d)
+        },
         () => this.emit(),
         (files) => this.onApplyEdit?.(files),
         () => this.died(key, created),
@@ -409,6 +413,7 @@ export class LspManager {
     if (!doc) return
     if (doc.changeTimer) clearTimeout(doc.changeTimer)
     this.docs.delete(path)
+    this.pulls.delete(path)
     if (this.diags.delete(path)) this.emit()
     void doc.client.ready.then((ok) => ok && doc.client.rpc!.notify("textDocument/didClose", { textDocument: { uri: uriOf(path) } }))
     if (![...this.docs.values()].some((d) => d.client === doc.client)) this.stopWhenIdle(doc.client)
@@ -454,11 +459,19 @@ export class LspManager {
     }, wait)
   }
 
+  /** The latest diagnostics request per path: a slow answer to an older one must not overwrite it. */
+  private pulls = new Map<string, number>()
+  private pullSeq = 0
+
   private pull(client: Client, path: string): void {
     if (!this.docs.has(path)) return
+    const seq = ++this.pullSeq
+    this.pulls.set(path, seq)
     void client
       .rpc!.request<{ kind?: string; items?: Diagnostic[] }>("textDocument/diagnostic", { textDocument: { uri: uriOf(path) } })
       .then((r) => {
+        if (this.pulls.get(path) !== seq) return
+        this.pulls.delete(path)
         if (r?.kind === "full" && this.docs.has(path)) this.setDiagnostics(path, r.items ?? [])
       })
       .catch(() => null)

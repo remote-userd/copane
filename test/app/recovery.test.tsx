@@ -6,7 +6,7 @@ import { App } from "../../src/app/App"
 import { ErrorBoundary } from "../../src/app/ErrorBoundary"
 import { restoreRecovery, saveRecovery } from "../../src/app/recovery"
 import { useUi, WorkspaceContext } from "../../src/app/workspace"
-import { createWorkspace, fixture, renderApp, type Harness, waitUntil } from "../helpers"
+import { createWorkspace, fixture, renderApp, type Harness, waitUntil, captureFrame } from "../helpers"
 
 // Several waits on the UI and git per test: more room than the default 5 s.
 setDefaultTimeout(15_000)
@@ -92,16 +92,16 @@ test("a render error shows the crash screen; Ctrl+R draws the app again with uns
   console.error = () => {} // React logs the caught error
   try {
     ws.ui.set({ findQuery: "boom" })
-    await until(() => setup.captureCharFrame().includes("stopped rendering"), render, "the crash screen")
+    await until(() => captureFrame(setup).includes("stopped rendering"), render, "the crash screen")
   } finally {
     console.error = quiet
   }
-  expect(setup.captureCharFrame()).toContain("render went wrong")
+  expect(captureFrame(setup)).toContain("render went wrong")
   expect(ws.buffers.textOf(a)).toBe("typed, not saved\n") // kept while the editor is gone
 
   ws.ui.set({ findQuery: "" })
   setup.mockInput.pressKey("r", { ctrl: true })
-  await until(() => !!ws.buffers.byId(a.id)?.textarea && setup.captureCharFrame().includes("typed, not saved"), render, "the editor again")
+  await until(() => !!ws.buffers.byId(a.id)?.textarea && captureFrame(setup).includes("typed, not saved"), render, "the editor again")
   expect(ws.buffers.textOf(a)).toBe("typed, not saved\n")
   expect(a.dirty).toBe(true)
 })
