@@ -85,6 +85,8 @@ export interface UiState {
   searchSeed: { n: number; replace: boolean; text: string } | null
   /** Wrap long lines in the editor (Alt+Z). */
   wordWrap: boolean
+  /** CPU / memory in the status bar, toggled for this session; null follows `statusBar.resources`. */
+  resources: boolean | null
   /** Who last changed each line, in a column beside the editor (Alt+B, as GitLens' file blame). */
   fileBlame: boolean
   /** Pane visibility before "maximize editor", restored by toggling it again. */
@@ -112,6 +114,7 @@ export function createUiStore(initial?: Partial<UiState>): Store<UiState> {
     aiAttention: null,
     wordWrap: false,
     fileBlame: false,
+    resources: null,
     sidebar: "files",
     searchSeed: null,
     revealPath: null,

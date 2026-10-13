@@ -534,6 +534,15 @@ export const commands = {
       ws.notify(on ? "Word wrap on" : "Word wrap off")
     },
   },
+  "view.toggleResources": {
+    title: "Toggle resource usage (CPU / memory) in the status bar",
+    run(ws) {
+      const on = !(ws.ui.get().resources ?? ws.config.statusBar.resources)
+      ws.ui.set({ resources: on })
+      const keep = on === ws.config.statusBar.resources ? "" : ` for this session (statusBar.resources: ${on} keeps it)`
+      ws.notify(`Resource usage ${on ? "on" : "off"}${keep}`)
+    },
+  },
   "view.toggleAi": {
     title: "Show / hide the AI pane",
     run(ws) {

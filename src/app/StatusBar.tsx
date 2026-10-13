@@ -8,6 +8,7 @@ import { describeDiagnostic, diagnosticsAtCursor } from "../lsp/lspActions"
 import { useMultiEditState } from "../editor/MultiEdit"
 import { describeBlame, useLineBlame } from "../git/blame"
 import { useGitActivity, useSpinner } from "../git/activity"
+import { describeUsage, formatBytes, useResourceUsage } from "./resources"
 
 const none = { subscribe: () => () => {}, getSnapshot: () => 0 }
 
@@ -25,8 +26,8 @@ const aiHints: [string, CommandId][] = [
 
 /** Status-bar glyphs: Nerd Font icons when the tree uses them, plain characters otherwise. */
 export const STATUS_GLYPHS = {
-  nerd: { branch: "", error: "", warning: "", ai: "" },
-  plain: { branch: "⎇", error: "✖", warning: "⚠", ai: "●" },
+  nerd: { branch: "", error: "", warning: "", ai: "", cpu: "" },
+  plain: { branch: "⎇", error: "✖", warning: "⚠", ai: "●", cpu: "▤" },
 }
 
 const LANG: Record<string, string> = {
@@ -56,7 +57,7 @@ function Segment({ children, bg, onPress }: { children: string; bg: string; onPr
 
 /**
  * Bottom bar, left to right: [branch] [problems] message-or-hints … [Ln/Col (selection)]
- * [language] [EOL] [language servers] [AI]. Hints are dropped whole when space is short.
+ * [language] [EOL] [language servers] [CPU / memory] [AI]. Hints are dropped whole when space is short.
  */
 export function StatusBar({ aiStatus }: { aiStatus: string }) {
   const ws = useWorkspace()
@@ -71,6 +72,10 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
   const blame = describeBlame(useLineBlame(ws))
   const buf = buffers.active
   const g = ws.config.tree.icons === "nerd" ? STATUS_GLYPHS.nerd : STATUS_GLYPHS.plain
+
+  // copane plus the language servers, agents and terminals it started; click for each one's share.
+  const usage = useResourceUsage(ui.resources ?? ws.config.statusBar.resources)
+  const usageText = usage ? `${g.cpu} ${formatBytes(usage.total.rss)} ${Math.round(usage.total.cpu)}%` : ""
 
   const branch = ws.git?.branch
   // A push, pull or commit from Source control keeps running when the panel closes: show it here.
@@ -119,6 +124,7 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
     seg(lang, 0) -
     seg(eol, 0) -
     seg(lspStatus, 0) -
+    seg(usageText, 0) -
     seg(aiText) -
     (ui.updateReady ? 30 : ui.updateAvailable ? 26 : 0)
   const hints: [string, CommandId][] = []
@@ -216,6 +222,15 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
           <text selectable={false} fg={lspStatus.includes("✗") ? colors.error : colors.headerFg}>
             {lspStatus}
           </text>
+        ) : null}
+        {usage ? (
+          <HoverBox
+            onPress={() => ws.ui.set({ modal: { kind: "info", x: dims.width - 40, y: dims.height - 1, text: describeUsage(usage) } })}
+          >
+            <text selectable={false} fg={colors.headerFg}>
+              {usageText}
+            </text>
+          </HoverBox>
         ) : null}
       </box>
       {aiText ? (

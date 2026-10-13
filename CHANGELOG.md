@@ -17,6 +17,7 @@ All notable changes to copane are listed here. The format follows
 - The AI pane needs no right-click menu: **+** opens agents, terminals and dev servers, **↻** restarts a dev server, a worktree agent's `· N` opens Review & merge, and right-click copies the selection or pastes (as VS Code's terminal on Windows).
 - Ctrl+click (or Alt+click) a `file:line` or a URL in an AI pane tab to open it.
 - **+ › Resume claude ⎇ copane/…** reopens an agent worktree whose tab closed (or from before a restart), with its change count and Review & merge; Claude continues its last conversation.
+- Resource usage in the status bar (`▤ 1.2G 15%`): memory and CPU of copane and everything it started. Click it to see what each language server, agent and terminal uses. Turn it off with **Toggle resource usage** (F1) or `statusBar.resources: false`.
 
 ### Changed
 - The AI pane header no longer repeats "✦ N to review" (the status bar has it), and worktree tabs drop the `copane/` prefix (`CLAUDE ⎇ CLAUDE-1`).

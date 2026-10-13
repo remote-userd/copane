@@ -151,6 +151,7 @@ With `"ai": { "notify": "desktop" }` you also get a system notification: a Windo
   - **A message or hints.**
   - **Position and selection size.** Click it to go to a line.
   - **Language, line endings and language servers.**
+  - **Resource usage,** such as `▤ 1.2G 15%`: memory and CPU of copane plus everything it started (language servers, agents, terminals). CPU is a percentage of one core, so it can pass 100% on several cores. Click it to see what each one uses. **Toggle resource usage** (F1) hides or shows it for the session; `"statusBar": { "resources": false }` turns it off for good.
   - **The AI.** Click it to switch focus.
 - **In the editor:**
   - The cursor's line has a slightly lighter background.
@@ -397,6 +398,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
   "editor": { "highlightMaxBytes": 1000000, "copyOnSelect": false, "saveBeforeAi": true, "autocomplete": true, "wordWrap": false, "highlightCursor": true, "indentGuides": true, "autoIndent": true, "autoClosingBrackets": true, "formatter": "auto", "formatOnSave": false, "smoothScrolling": true },
   "lsp": { "python": { "command": ["pylsp"] } },
   "tree": { "icons": "simple" },
+  "statusBar": { "resources": true },
   "preview": { "imageProtocol": "auto" },
   "update": "auto",
   "keys": { "global": { "ctrl+o": "file.picker", "ctrl+l": null } }

@@ -81,6 +81,12 @@ export const configSchema = z
         icons: z.enum(["nerd", "simple", "none"]).default("simple"),
       })
       .prefault({}),
+    statusBar: z
+      .object({
+        /** CPU and memory of copane and what it started (language servers, agents, terminals). Click it for each one's share. */
+        resources: z.boolean().default(true),
+      })
+      .prefault({}),
     preview: z
       .object({
         /**
