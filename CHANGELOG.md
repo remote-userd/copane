@@ -10,6 +10,9 @@ All notable changes to copane are listed here. The format follows
 
 ### Fixed
 - Push, pull and commit can no longer hang the editor or draw over it: git runs without the terminal, so an ssh or gpg passphrase prompt or a hook fails with a message instead of waiting, and a timeout now ends git together with the ssh or hook it started. Commit and merge get a timeout too.
+- Staging one hunk in a repo with `core.autocrlf` or `.gitattributes` line endings (or LFS) staged the whole file as changed; it now goes through git's filters like `git add`.
+- Staging files quickly in Source control could fail with "index.lock exists": git writes now run one at a time.
+- Source control and the tree could show the old status for a moment right after stage, commit or revert.
 - Push while HEAD is detached says to switch to a branch, instead of trying to publish a branch named "detached".
 
 ## [0.8.0] - 2026-10-11

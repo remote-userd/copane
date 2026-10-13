@@ -72,8 +72,9 @@ export class GitStatus {
   private snapshot = 0
   private top: string | null = null
   private gitDir: string | null = null
-  private running = false
-  private again = false
+  /** The status load in progress, and the one queued behind it (callers asking mid-load share it). */
+  private current: Promise<void> | null = null
+  private next: Promise<void> | null = null
   private debounce: ReturnType<typeof setTimeout> | null = null
   private poll: ReturnType<typeof setInterval> | null = null
   private stopped = false
@@ -229,37 +230,40 @@ export class GitStatus {
     return this.dirMarks.get(path) ?? null
   }
 
-  async load(): Promise<void> {
-    if (!this.top) return
-    if (this.running) {
-      this.again = true
-      return
+  /** Reload the status. Resolves once a load that started after this call has finished. */
+  load(): Promise<void> {
+    if (!this.top) return Promise.resolve()
+    if (this.current) {
+      this.next ??= this.current.then(() => {
+        this.next = null
+        return this.load()
+      })
+      return this.next
     }
-    this.running = true
-    try {
-      // Runs every few seconds in the background: never take the index lock (see READ_ONLY).
-      const out = await run(["git", ...READ_ONLY, "status", "--porcelain=v1", "-z", "-uall", "--branch"], this.root)
-      if (out === null || this.stopped || out === this.lastOut) return
-      this.lastOut = out
-      this.branch = out.startsWith("## ") ? parseBranch(out.slice(0, out.indexOf("\0") >>> 0)) : null
-      this.marks = parsePorcelain(out, this.top)
-      this.entries = parseEntries(out, this.top)
-      this.dirMarks = new Map()
-      for (const [path, mark] of this.marks) {
-        for (let d = parentOf(path); d && d.length >= this.top.length; d = parentOf(d)) {
-          const prev = this.dirMarks.get(d)
-          if (!prev || RANK[mark] > RANK[prev]) this.dirMarks.set(d, mark)
-        }
-      }
-      this.snapshot++
-      for (const l of this.listeners) l()
-    } finally {
-      this.running = false
-      if (this.again) {
-        this.again = false
-        void this.load()
+    this.current = this.loadOnce().finally(() => {
+      this.current = null
+    })
+    return this.current
+  }
+
+  private async loadOnce(): Promise<void> {
+    const top = this.top!
+    // Runs every few seconds in the background: never take the index lock (see READ_ONLY).
+    const out = await run(["git", ...READ_ONLY, "status", "--porcelain=v1", "-z", "-uall", "--branch"], this.root)
+    if (out === null || this.stopped || out === this.lastOut) return
+    this.lastOut = out
+    this.branch = out.startsWith("## ") ? parseBranch(out.slice(0, out.indexOf("\0") >>> 0)) : null
+    this.marks = parsePorcelain(out, top)
+    this.entries = parseEntries(out, top)
+    this.dirMarks = new Map()
+    for (const [path, mark] of this.marks) {
+      for (let d = parentOf(path); d && d.length >= top.length; d = parentOf(d)) {
+        const prev = this.dirMarks.get(d)
+        if (!prev || RANK[mark] > RANK[prev]) this.dirMarks.set(d, mark)
       }
     }
+    this.snapshot++
+    for (const l of this.listeners) l()
   }
 
   private async gitFingerprint(): Promise<string> {

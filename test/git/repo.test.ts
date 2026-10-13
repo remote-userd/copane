@@ -142,3 +142,23 @@ test("a commit hook that never finishes hits the timeout", async () => {
   expect(r.ok).toBe(false)
   expect(r.err).toContain("timed out")
 })
+
+test("staging a hunk applies autocrlf: only the changed line is staged, not every line ending", async () => {
+  const { root, repo } = await repoWith({ "a.txt": "one\ntwo\nthree\n" })
+  sh(root, "config", "core.autocrlf", "true")
+  // A Windows checkout: CRLF in the folder, LF in git.
+  writeFileSync(join(root, "a.txt"), "one\r\nTWO\r\nthree\r\n")
+  expect(await repo.setIndexText(join(root, "a.txt"), "one\r\nTWO\r\nthree\r\n")).toBeNull()
+  expect(await repo.indexText(join(root, "a.txt"))).toBe("one\nTWO\nthree\n")
+  expect(sh(root, "diff", "--cached", "--numstat").trim()).toBe("1\t1\ta.txt")
+})
+
+test("writes fired at once run one after another: no index.lock errors", async () => {
+  const files: Record<string, string> = {}
+  for (let i = 0; i < 12; i++) files[`f${i}.ts`] = `${i}\n`
+  const { root, repo } = await repoWith(files)
+  for (let i = 0; i < 12; i++) writeFileSync(join(root, `f${i}.ts`), `changed ${i}\n`)
+  const errors = await Promise.all(Object.keys(files).map((f, i) => (i % 3 === 2 ? repo.unstage([join(root, f)]) : repo.stage([join(root, f)]))))
+  expect(errors.filter(Boolean)).toEqual([])
+  expect((await repo.status()).filter((e) => e.staged).length).toBe(8)
+})

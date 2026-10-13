@@ -204,6 +204,11 @@ export interface Branch {
 
 export const NOT_COMMITTED = "0000000000000000000000000000000000000000"
 
+/** git commands that write the index, HEAD or refs (push only reads them). */
+const WRITES = new Set(["add", "rm", "restore", "update-index", "hash-object", "commit", "merge", "pull", "switch", "branch", "stash", "worktree"])
+/** Per repo top: the end of the chain of queued writes. */
+const writeQueue = new Map<string, Promise<void>>()
+
 export class GitRepo {
   constructor(readonly top: string) {}
 
@@ -212,7 +217,15 @@ export class GitRepo {
   }
 
   private run(args: string[], opts?: Parameters<typeof git>[2]) {
-    return git(this.top, args, opts)
+    // Commands that write the index or refs run one at a time per repo: two at once (a quick
+    // double Space in Source control) would fail on .git/index.lock.
+    if (!WRITES.has(args.find((a) => !a.startsWith("-")) ?? "")) return git(this.top, args, opts)
+    const prev = writeQueue.get(this.top) ?? Promise.resolve()
+    const next = prev.then(() => git(this.top, args, opts))
+    const tail = next.then(() => {})
+    writeQueue.set(this.top, tail)
+    void tail.then(() => writeQueue.get(this.top) === tail && writeQueue.delete(this.top))
+    return next
   }
 
   async status(): Promise<StatusEntry[]> {
@@ -247,7 +260,8 @@ export class GitRepo {
   /** Replace the staged contents of a file (used to stage a single hunk). */
   async setIndexText(path: string, text: string): Promise<string | null> {
     const rel = this.rel(path)
-    const hash = await this.run(["hash-object", "-w", "--stdin"], { stdin: text })
+    // --path: run the file's clean filters (autocrlf, .gitattributes eol, LFS) as `git add` would.
+    const hash = await this.run(["hash-object", "-w", `--path=${rel}`, "--stdin"], { stdin: text })
     if (!hash.ok) return firstError(hash.err)
     const ls = await this.run(["ls-files", "-s", "--", rel])
     const mode = /^(\d{6}) /.exec(ls.out)?.[1] ?? "100644"

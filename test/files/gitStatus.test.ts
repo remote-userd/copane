@@ -115,3 +115,18 @@ test("GitStatus keeps the opened path's spelling when it goes through a symlink"
   expect(gs.mark(join(link, "src/a.ts"))).toBe("M")
   gs.stop()
 })
+
+test("load() asked during a load waits for a fresh one, so afterChange sees the change", async () => {
+  const root = await fixture({ "a.ts": "a" })
+  git(root, "init", "-q")
+  git(root, "add", ".")
+  git(root, "commit", "-qm", "init")
+  const gs = new GitStatus(root)
+  await gs.start(60_000)
+  const first = gs.load() // in flight: it may already have read the clean status
+  writeFileSync(join(root, "a.ts"), "changed")
+  await gs.afterChange()
+  expect(gs.mark(join(root, "a.ts"))).toBe("M")
+  await first
+  gs.stop()
+})
