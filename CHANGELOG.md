@@ -5,6 +5,20 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Monorepos: each package gets its own language server, run in its folder with its own TypeScript. The status bar names them (`typescript:backend`).
+- TypeScript without a project install: `typescript-language-server` falls back to the TypeScript installed beside it, then to a global TypeScript 7 (`tsc --lsp`).
+- Vue: syntax colours (TypeScript in `<script>`, `{{ }}` and directives, CSS in `<style>`), and code intelligence through `typescript-language-server` with Vue's TypeScript plugin.
+- Syntax colours for SQL and Dockerfiles; `.env` files read as shell.
+- A language with no server installed says what to install, once.
+- Terminals in the AI pane: **New terminal** (**+**, or Alt+`) opens your shell in a tab beside the agents, and **▶ Run …** opens one running a package's dev server (each package's `dev` script, or `docker compose up`, detected; or your own with `ai.services`).
+- Terminal errors: a tab whose output shows an error (compile error, stack trace, crash) turns `✗`. **✗ Fix with AI** in the header, or **Ctrl+K E**, sends it with the file and line it points to into the agent's prompt. Text for the AI never goes to a terminal tab.
+- The AI pane needs no right-click menu: **+** opens agents, terminals and dev servers, **↻** restarts a dev server, a worktree agent's `· N` opens Review & merge, and right-click copies the selection or pastes (as VS Code's terminal on Windows).
+- Ctrl+click (or Alt+click) a `file:line` or a URL in an AI pane tab to open it.
+
+### Changed
+- File tree: long names are clipped at the pane's edge instead of cut with `...` in the middle. Shift+wheel (or a sideways swipe) scrolls the tree sideways to read them, and moving the selection onto one scrolls it into view. Narrow trees (under 30 columns) indent one column per level.
+
 ## [0.9.2] - 2026-10-13
 
 ### Added

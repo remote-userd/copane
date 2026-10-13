@@ -11,6 +11,10 @@ import { PaneHeader } from "../app/PaneHeader"
 import { aiMarks, openAtFirstAiChange } from "../ai/review"
 
 const RIGHT = 2
+/** Columns a wheel notch scrolls the tree sideways. */
+const SIDE_STEP = 4
+/** Columns kept for a row's mark (✎ ✦ M U •) at the right. */
+const MARK_W = 3
 const shorten = (s: string, max: number) => (s.length > max ? s.slice(0, max - 1) + "…" : s)
 const noGit = { subscribe: () => () => {}, getSnapshot: () => 0 }
 
@@ -66,6 +70,10 @@ export function FileTree({
   const [topState, setTop] = useState(0)
   const top = Math.min(topState, maxTop)
   const [hovered, setHovered] = useState<string | null>(null)
+  // The pane's width: narrow trees indent less, and long names scroll sideways instead of being cut with "…".
+  const [width, setWidth] = useState(40)
+  const indentW = width < 30 ? 1 : 2
+  const [leftState, setLeft] = useState(0)
 
   /** Keep the keyboard selection on screen. */
   const reveal = (idx: number) => {
@@ -78,11 +86,14 @@ export function FileTree({
     if (tree.selected === lastSelected.current) return
     lastSelected.current = tree.selected
     if (selectedIdx < top || selectedIdx >= top + viewH) setTop(Math.max(0, selectedIdx - Math.floor(viewH / 3)))
+    const row = rows[selectedIdx]
+    if (row) showName(row)
   })
 
   const moveBy = (delta: number) => {
     const next = tree.move(delta)
     if (next) reveal(tree.rows().findIndex((r) => r.entry.path === next.entry.path))
+    if (next) showName(next)
   }
 
   const openRow = async (idx: number) => {
@@ -170,12 +181,33 @@ export function FileTree({
   const visible = rows.slice(top, top + viewH)
   const activePath = ws.buffers.active?.path
 
+  // Sideways: the rows shift left together, as far as the longest one on screen needs.
+  const avail = Math.max(1, width - 1 - MARK_W)
+  const longest = Math.max(0, ...visible.map((r) => nameStart(r) + Bun.stringWidth(r.entry.name)))
+  const maxLeft = Math.max(0, longest - avail)
+  const left = Math.min(leftState, maxLeft)
+  /** Scroll sideways just enough that a row's name shows (all of it when it fits, else its start). */
+  function showName(r: (typeof rows)[number]) {
+    const start = nameStart(r)
+    const end = start + Bun.stringWidth(r.entry.name)
+    setLeft((l) => (start < l ? start : end > l + avail ? Math.min(start, end - avail) : l))
+  }
+  /** Where a row's name begins: its indent, arrow and icon come first. */
+  function nameStart(r: (typeof rows)[number]): number {
+    const icon = iconFor(r.entry.name, r.entry.isDir, r.expanded, icons)
+    const arrow = r.entry.isDir ? (icon ? 0 : 2) : icons === "none" ? 2 : 0
+    return r.depth * indentW + arrow + (icon ? Bun.stringWidth(icon.glyph) + 1 : 0)
+  }
+
   return (
     <box
       flexGrow={1}
       flexDirection="column"
       backgroundColor={colors.panelBg}
       overflow="hidden"
+      onSizeChange={function (this: { width: number }) {
+        setWidth(this.width)
+      }}
       onMouseDown={(e) => {
         ws.ui.set({ focus: "tree", sidebar: "files" })
         // Right-click on empty space: create at the project root.
@@ -183,14 +215,19 @@ export function FileTree({
       }}
       onMouseScroll={(e) => {
         e.stopPropagation()
-        const d = e.scroll?.direction === "up" ? -3 : e.scroll?.direction === "down" ? 3 : 0
+        const dir = e.scroll?.direction
+        // Sideways: a tilt wheel or touchpad swipe, or Shift+wheel.
+        const side = dir === "left" ? -1 : dir === "right" ? 1 : e.modifiers.shift ? (dir === "up" ? -1 : dir === "down" ? 1 : 0) : 0
+        if (side) return setLeft(Math.max(0, Math.min(maxLeft, left + side * SIDE_STEP)))
+        const d = dir === "up" ? -3 : dir === "down" ? 3 : 0
         setTop(Math.max(0, Math.min(maxTop, top + d)))
       }}
     >
       {header ? (
         <PaneHeader title="EXPLORER" focused={focused} bg={colors.panelBg}>
           <text selectable={false} fg={colors.headerFg}>
-            {shorten(basename(tree.root), 14)}
+            {/* What the header has left after " EXPLORER  " and its padding. */}
+            {shorten(basename(tree.root), Math.max(6, width - 13))}
           </text>
         </PaneHeader>
       ) : null}
@@ -227,9 +264,9 @@ export function FileTree({
             }}
           >
             <box flexGrow={1} flexShrink={1} overflow="hidden">
-              {/* One line, cut with … when the pane is narrow (wrapping hid long names entirely). */}
-              <text selectable={false} wrapMode="none" truncate fg={isSel && focused ? colors.text : (gitColor ?? fg)}>
-                {" ".repeat(r.depth * 2)}
+              {/* One line, clipped at the pane's edge (no "…"); scrolled sideways by `left`. */}
+              <text selectable={false} wrapMode="none" flexShrink={0} marginLeft={-left} fg={isSel && focused ? colors.text : (gitColor ?? fg)}>
+                {" ".repeat(r.depth * indentW)}
                 {arrow}
                 {icon ? <span fg={icon.color}>{icon.glyph} </span> : null}
                 {r.entry.name}

@@ -27,7 +27,7 @@ their work. Usually that means juggling two apps. copane puts both in one window
 - **👀 See every change.** Files the agent edits reload live, changed lines flash, the gutter marks
   what differs from git, and **Ctrl+Alt+D** reviews every change with a diff. **Ctrl+Z** undoes the agent's edit.
 - **🔀 No lost work.** Typing while the agent edits the same file? Merge both, compare, or pick a side.
-- **🧠 A real editor.** Language servers (TypeScript, Rust, Go, Python, Zig, C/C++), autocomplete,
+- **🧠 A real editor.** Language servers (TypeScript, Vue, Rust, Go, Python, Zig, C/C++), one per package in monorepos, autocomplete,
   go to definition, rename, multi-cursor, Tree-sitter highlighting, project search and replace, Prettier,
   a live Markdown preview, and images right in the terminal.
 - **🌿 Git built in.** Stage hunks, commit (with AI-written messages), push, blame, file history,
@@ -105,7 +105,16 @@ The editor is built around a loop: ask Claude, see what it changed, keep or undo
 
 Run commands from the AI pane with `!`, for example `! bun test`.
 
-**Several agents.** **Ctrl+Alt+N** (or **+ agent** in the AI pane's header) starts another CLI in a new tab, such as a second Claude for another task, or Codex beside Claude. Each tab keeps running while hidden, and its header shows whether it's working, done or waiting for you. **Ctrl+Alt+PageDown / PageUp** switch tabs, and Ctrl+L and the other "send to AI" keys go to the visible one. Close a tab with its **×**, a middle-click, **Ctrl+Alt+W** in the AI pane, or right-click › Close this agent. Pick **…in a git worktree** to give an agent its own checkout (`../<project>-<agent>-1` on branch `copane/<agent>-1`), so parallel agents never edit the same files. Its tab shows how many files it changed (`⎇ copane/claude-1 · 3`). When it's done, right-click › **Review & merge this agent** (or "AI: review & merge" in the palette) lists every file it changed, committed or not, with diffs: **m** merges it into your branch (its leftover edits are committed first; conflicts get the usual conflict bar), **d** throws the work away with its worktree and branch. Closing a worktree tab offers the same review first, or to remove the worktree while keeping its branch. List extra CLIs in the config: `"ai": { "agents": [{ "name": "codex", "command": "codex" }] }`.
+**Terminals and dev servers.** **+** in the AI pane's header opens a new tab: an agent, a terminal, or a dev server.
+- **New terminal** (**+**, or **Alt+`**): your shell in a tab beside the agents. `exit` closes it.
+- **▶ Run …:** each package's dev server, one click. **+** lists every package's dev script (`dev`, `start:dev`, `serve` or `watch`, run with npm, pnpm, yarn or bun by its lockfile) down to three folders deep, and `docker compose up` when there's a compose file. A monorepo with `packages/backend` and `packages/ui-admin` gets both with no setup. Running one opens a terminal in that package and types the command, so Ctrl+C stops it and ↑ Enter runs it again. List your own instead: `"ai": { "services": [{ "name": "api", "command": "uvicorn main:app --reload", "cwd": "backend" }] }`.
+- **Errors:** every terminal tab watches its output. A compile error, stack trace or crash turns its `●` into `✗`, and while you're elsewhere a notice says so. The header shows **✗ Fix with AI** (or press **Ctrl+K E** anywhere): the error, and the project file and line it points to (`@src/app.service.ts#L12`), go into the agent's prompt, unsent. A rebuild, a restart or your next command clears it.
+- **Text for the AI never reaches a terminal:** Ctrl+L and the other "send to AI" keys go to an agent tab even when a terminal is showing.
+- **Links:** Ctrl+click (or Alt+click) a `file:line` in any AI pane tab to open it at that line, or an `http://` address to open it in the browser.
+- **↻** on a dev server's tab restarts it (a fresh shell running its command again); Ctrl+C stops it. Terminals stop when `ce` quits.
+- **Right-click** in the AI pane copies the selection, or pastes when nothing is selected (as VS Code's terminal on Windows). There is no menu: every action has a button or a key.
+
+**Several agents.** **Ctrl+Alt+N** (or **+ new** in the AI pane's header) starts another CLI in a new tab, such as a second Claude for another task, or Codex beside Claude. Each tab keeps running while hidden, and its header shows whether it's working, done or waiting for you. **Ctrl+Alt+PageDown / PageUp** switch tabs, and Ctrl+L and the other "send to AI" keys go to the visible one. Close a tab with its **×**, a middle-click, or **Ctrl+Alt+W** in the AI pane. Pick **…in a git worktree** to give an agent its own checkout (`../<project>-<agent>-1` on branch `copane/<agent>-1`), so parallel agents never edit the same files. Its tab shows how many files it changed (`⎇ copane/claude-1 · 3`). When it's done, click that count on its tab (or "AI: review & merge" in the palette) lists every file it changed, committed or not, with diffs: **m** merges it into your branch (its leftover edits are committed first; conflicts get the usual conflict bar), **d** throws the work away with its worktree and branch. Closing a worktree tab offers the same review first, or to remove the worktree while keeping its branch. List extra CLIs in the config: `"ai": { "agents": [{ "name": "codex", "command": "codex" }] }`.
 
 **Look away while it works.** When the AI finishes, or stops to ask you something (an approval prompt), while you're in the editor or another window, copane tells you:
 - a notice ("claude finished" / "claude is waiting for your answer")
@@ -193,9 +202,15 @@ With `"ai": { "notify": "desktop" }` you also get a system notification: a Windo
 The editor talks to language servers for errors, autocomplete, type info and go-to-definition.
 
 **Servers:**
-- **TypeScript and JavaScript:** the project's own TypeScript 7 (`tsc --lsp`) when it's installed, otherwise `typescript-language-server`.
+- **TypeScript and JavaScript**, first one found:
+  1. The package's own TypeScript 7 (`tsc --lsp`).
+  2. `typescript-language-server`, with the package's own TypeScript (or the one installed beside it).
+  3. A global TypeScript 7 (`npm i -g typescript`).
+- **Vue:** `typescript-language-server` with Vue's TypeScript plugin, for the `<script>` of `.vue` files: `npm i -g typescript-language-server typescript@6 @vue/language-server` (the plugin needs TypeScript 6).
 - **Others:** `rust-analyzer`, `gopls`, `pyright-langserver` (or `pylsp`), `zls` and `clangd`, whenever they're on your PATH.
-- **When they run:** a server starts the first time you open a file of its language, and stops when you quit.
+- **Missing server:** the first file of a language with no server says what to install.
+- **Monorepos:** each package gets its own server, run in its folder (the nearest `package.json`, `go.mod`, `pyproject.toml` or `Cargo.toml` between the file and the folder you opened). The status bar names them, for example `typescript:backend typescript:ui-admin`.
+- **When they run:** a server starts the first time you open a file of its language (or package), and stops a minute after its last file closes.
 
 **Features:**
 - **Errors and warnings:** a ● before the line number, red for errors and yellow for warnings. The text is underlined.
@@ -231,7 +246,7 @@ Terminals can't send some Ctrl+Shift keys (they arrive as the plain Ctrl key), s
 | Ctrl+Shift+E / Ctrl+Shift+G | Ctrl+B / Ctrl+Alt+D | File tree / source control |
 | Ctrl+Shift+T (reopen tab) | Ctrl+Alt+T | Ctrl+T is "go to symbol in project", as in VS Code |
 | Ctrl+Tab | Ctrl+PageDown, Alt+1–9 | Terminals don't send Ctrl+Tab |
-| Ctrl+` (terminal) | Ctrl+J, then `!command` | The side pane is the AI CLI. Claude Code runs shell commands that start with `!` |
+| Ctrl+` (terminal) | Alt+` | A terminal tab in the AI pane. Ctrl+` arrives as Ctrl+Space in most terminals |
 | Ctrl+Alt+↑/↓ (add cursor) | Ctrl+D | Multi-cursor here is by occurrence. Ctrl+Alt+↑/↓ copy lines |
 | Alt+F5 (next change) | Alt+F5 | Same key. Alt+H shows the change |
 | Ctrl+Shift+V (Markdown preview) | Alt+Shift+V | Ctrl+Shift+V arrives as Ctrl+V (paste). Ctrl+K V opens it to the side, as in VS Code |
@@ -362,7 +377,7 @@ If icons show as boxes, your terminal isn't using a Nerd Font yet. On Windows, f
 - **Ctrl+click** (or Alt+click) a name to go to its definition.
 - **Right-click:** a menu with Go to definition, Find all references, Cut, Copy, Paste, Select all and Send to AI. In the AI pane it offers Copy, Paste and Restart.
 - **Panes:** clicking a pane focuses it. Drag the border between panes to resize them, and double-click it to reset that pane's width.
-- **Tree and picker:** the wheel scrolls, rows highlight on hover, and a click opens the file or toggles the folder. Right-click a tree row for file actions.
+- **Tree and picker:** the wheel scrolls, rows highlight on hover, and a click opens the file or toggles the folder. Right-click a tree row for file actions. In a narrow tree, long names are clipped at the edge: Shift+wheel (or a sideways swipe) scrolls the tree sideways.
 - **Tabs:** click to switch, click × or middle-click to close, wheel over the tab bar to cycle.
 - **Status bar:** the key hints are buttons, and clicking the AI status switches focus.
 - **Dialogs:** buttons are clickable, and clicking outside closes them.
@@ -378,7 +393,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
 
 ```json
 {
-  "ai": { "command": "claude", "args": [], "startHidden": false, "notify": "bell", "agents": [{ "name": "codex", "command": "codex" }] },
+  "ai": { "command": "claude", "args": [], "startHidden": false, "notify": "bell", "agents": [{ "name": "codex", "command": "codex" }], "services": [] },
   "editor": { "highlightMaxBytes": 1000000, "copyOnSelect": false, "saveBeforeAi": true, "autocomplete": true, "wordWrap": false, "highlightCursor": true, "indentGuides": true, "autoIndent": true, "autoClosingBrackets": true, "formatter": "auto", "formatOnSave": false, "smoothScrolling": true },
   "lsp": { "python": { "command": ["pylsp"] } },
   "tree": { "icons": "simple" },
@@ -392,7 +407,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
 
 ## Syntax highlighting
 
-Highlighting uses Tree-sitter through OpenTUI, for JavaScript, TypeScript, TSX, Python, Rust, Go, C, C++, Bash, HTML, CSS, JSON (and JSONC), YAML, TOML, Markdown and Zig. The same grammars colour fenced code blocks in the Markdown preview. The grammars are embedded in the binary, so nothing needs installing. To add a language, see `src/editor/grammars.ts`.
+Highlighting uses Tree-sitter through OpenTUI, for JavaScript, TypeScript, TSX, Vue, Python, Rust, Go, C, C++, Bash, HTML, CSS, JSON (and JSONC), YAML, TOML, SQL, Dockerfile, Markdown and Zig. In `.vue` files, `<script>`, `{{ }}` and directives (`:prop`, `@click`, `v-if`) get TypeScript colours and `<style>` gets CSS. `.env` files read as shell. The same grammars colour fenced code blocks in the Markdown preview. The grammars are embedded in the binary, so nothing needs installing. To add a language, see `src/editor/grammars.ts`.
 
 ## Development
 
