@@ -14,6 +14,10 @@ import { indentUnit } from "./decorations"
 import { indentString } from "./lineOps"
 import { PAIRS, deletesPair, enterText, homeIndex, isTypingPairChar, typeChar } from "./typing"
 
+/** Lines drawn around the screen right after a jump, and added to each side per frame after. */
+const SCREEN_MARGIN = 5
+const GROW_STEP = 3
+
 const LEFT = 0
 const RIGHT = 2
 
@@ -155,7 +159,9 @@ export class CodeEditorRenderable extends TextareaRenderable {
    * highlights per edit made big files lag for seconds.
    */
   private layers = new Map<number, Map<number, LayerHighlight[]>>()
+  /** The lines drawn now, and the window they are growing to (after a jump or scroll). */
   private window: { from: number; to: number } | null = null
+  private target: { from: number; to: number } | null = null
 
   setHighlightLayer(ref: number, highlights: readonly LayerHighlight[]): void {
     const byLine = new Map<number, LayerHighlight[]>()
@@ -173,6 +179,13 @@ export class CodeEditorRenderable extends TextareaRenderable {
   clearHighlightLayer(ref: number): void {
     this.layers.delete(ref)
     this.removeHighlightsByRef(ref)
+  }
+
+  /** The logical lines on screen, plus `margin` screens either side. */
+  visibleLines(margin = 0): { from: number; to: number } {
+    const vp = this.editorView.getViewport()
+    const top = this.wraps ? this.lineAtScreenY(this.y) : vp.offsetY
+    return { from: Math.max(0, top - vp.height * margin), to: top + vp.height * (1 + margin) }
   }
 
   /** Lines worth highlighting: the viewport plus two screens either side (adding highlights is slow natively). */
@@ -249,24 +262,44 @@ export class CodeEditorRenderable extends TextareaRenderable {
       return
     }
     this.drawn.set(ref, next)
-    // The native buffer clears a line for every ref at once, so put back the other layers too.
     for (const line of changed) {
+      // A line this layer never drew (it just came into the window): add to what is there.
+      if (!old!.has(line)) {
+        for (const h of next.get(line) ?? []) super.addHighlight(line, layerHl(h, ref))
+        continue
+      }
+      // The native buffer clears a line for every ref at once, so put back the other layers too.
       super.clearLineHighlights(line)
       for (const [r, lines] of this.drawn) for (const h of lines.get(line) ?? []) super.addHighlight(line, layerHl(h, r))
       for (const h of this.direct.get(line) ?? []) super.addHighlight(line, h)
     }
   }
 
-  /** Re-draw the layers when scrolling nears the edge of the drawn window. */
+  /**
+   * Keep the drawn window around the viewport. Each native highlight costs tens of microseconds,
+   * so a jump (Ctrl+End, go to definition) draws the screen first, and the margins follow a few
+   * lines per frame; a scroll only adds the lines coming into view.
+   */
   private followWindow(): void {
     if (!this.layers.size || !this.window) return
     const vp = this.editorView.getViewport()
     const top = this.wraps ? this.lineAtScreenY(this.y) : vp.offsetY
     const slack = Math.max(30, vp.height)
-    if (top - this.window.from >= slack && this.window.to - (top + vp.height) >= slack) return
-    if (this.window.from === 0 && top < slack && this.window.to - (top + vp.height) >= slack) return
-    this.window = this.windowAround()
-    for (const ref of this.layers.keys()) this.drawLayer(ref, this.window)
+    const w = this.target ?? this.window
+    const settled = (top - w.from >= slack || w.from === 0) && w.to - (top + vp.height) >= slack
+    if (!settled) this.target = this.windowAround()
+    const t = this.target
+    if (!t) return
+    const screen = { from: Math.max(t.from, top - SCREEN_MARGIN), to: Math.min(t.to, top + vp.height + SCREEN_MARGIN) }
+    const cur = this.window
+    const next =
+      cur.to < screen.from || cur.from > screen.to
+        ? screen // jumped: nothing drawn is on screen
+        : { from: Math.max(t.from, Math.min(cur.from, screen.from) - GROW_STEP), to: Math.min(t.to, Math.max(cur.to, screen.to) + GROW_STEP) }
+    this.window = next
+    for (const ref of this.layers.keys()) this.drawLayer(ref, next)
+    if (next.from === t.from && next.to === t.to) this.target = null
+    else this.requestRender() // another frame to grow in
   }
 
   override onUpdate(deltaTime: number): void {

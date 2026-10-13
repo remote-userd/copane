@@ -31,6 +31,7 @@ All notable changes to copane are listed here. The format follows
 - Git state changed outside the editor now shows up: a fetch, a push from the terminal or a `reset --soft` updates ahead/behind, the tree marks and blame (only the index and HEAD were watched).
 - `git init` (or a clone) in a folder that's already open is picked up when you come back to the window or save a file. If the repo is deleted, its marks go away.
 - An agent in its own worktree, started with `ce` opened in a subfolder of a repo: the worktree went inside the repo (and showed up as untracked files there); it now goes beside the repo, and the agent starts in the same subfolder.
+- Jumping far in a big file (Ctrl+End, go to definition, Ctrl+G) paused for about 200 ms while syntax colours were redrawn: the screen is now coloured first and the lines around it follow over the next frames. Fewer highlights are sent too: a range captured twice is drawn once, and other uses of the word under the cursor are marked near the screen only (a common word on every line cost tens of milliseconds per cursor move).
 - Push while HEAD is detached says to switch to a branch, instead of trying to publish a branch named "detached".
 
 ## [0.8.0] - 2026-10-11

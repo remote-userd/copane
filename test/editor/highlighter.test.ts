@@ -45,7 +45,7 @@ describe("mapHighlights", () => {
       const lineOf = (idx: number) => starts.findLastIndex((s) => s <= idx)
       const col = (line: number, idx: number) => Bun.stringWidth(text.slice(starts[line], idx))
       const end = (line: number) => starts[line]! + lines[line]!.length
-      const out = []
+      const out: { line: number; start: number; end: number; styleId: number }[] = []
       for (const [a, b, g] of hls) {
         const styleId = resolve(g)
         if (b <= a || styleId === null) continue
@@ -54,7 +54,12 @@ describe("mapHighlights", () => {
         for (let line = first; line <= last; line++) {
           const s = line === first ? a : starts[line]!
           const e = line === last ? Math.min(b, end(line)) : end(line)
-          if (e > s) out.push({ line, start: col(line, s), end: col(line, e), styleId })
+          if (e <= s) continue
+          // Same range as the previous highlight: the last one wins (it replaces it).
+          const h = { line, start: col(line, s), end: col(line, e), styleId }
+          const prev = out[out.length - 1]
+          if (prev && prev.line === h.line && prev.start === h.start && prev.end === h.end) prev.styleId = styleId
+          else out.push(h)
         }
       }
       return out
@@ -86,4 +91,13 @@ test("applyHighlights clears the previous syntax layer first", () => {
     [{ line: 2, start: 1, end: 4, styleId: 7 }],
   )
   expect(calls).toEqual([`clear:${SYNTAX_HL_REF}`, `add:2:1-4:7:${SYNTAX_HL_REF}`])
+})
+
+test("a range captured twice becomes one highlight with the last capture's style", () => {
+  const ids: Record<string, number> = { variable: 1, function: 2, punctuation: 3 }
+  const out = mapHighlights("fn(a)", [[0, 2, "variable"], [0, 2, "function"], [2, 3, "punctuation"], [2, 3, "punctuation"]], (g) => ids[g] ?? null)
+  expect(out).toEqual([
+    { line: 0, start: 0, end: 2, styleId: 2 },
+    { line: 0, start: 2, end: 3, styleId: 3 },
+  ])
 })

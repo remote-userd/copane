@@ -77,7 +77,13 @@ export function mapHighlights(
       const segStart = line === firstLine ? startIdx : lineStarts[line]!
       const segEnd = line === lastLine ? Math.min(endIdx, lineEnd(line)) : lineEnd(line)
       if (segEnd <= segStart) continue
-      out.push({ line, start: colOf(line, segStart), end: colOf(line, segEnd), styleId })
+      const start = colOf(line, segStart)
+      const end = colOf(line, segEnd)
+      // Tree-sitter often captures the same range twice (a name as variable, then function).
+      // The native buffer shows the last one, and each highlight costs a native call: keep one.
+      const prev = out[out.length - 1]
+      if (prev && prev.line === line && prev.start === start && prev.end === end) prev.styleId = styleId
+      else out.push({ line, start, end, styleId })
     }
     if (lastLine !== firstLine) hint = firstLine // keep stepping from where the next highlight starts
   }
