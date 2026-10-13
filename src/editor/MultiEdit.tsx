@@ -3,7 +3,7 @@ import { useKeyboard } from "@opentui/react"
 import { useWorkspace, type Workspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import { lineAt, type CodeEditorRenderable } from "./CodeEditorRenderable"
-import { getSyntaxStyle } from "./syntaxStyle"
+import { extraStyle } from "./syntaxStyle"
 import { colToIndex, indexToCol } from "../lsp/positions"
 
 /**
@@ -50,7 +50,6 @@ const store = {
 }
 
 const HL_REF = 0x3c11
-let styleId: number | null = null
 const editorOf = (ws: Workspace) => (ws.buffers.active?.textarea ?? null) as CodeEditorRenderable | null
 
 function paint(ws: Workspace): void {
@@ -58,7 +57,7 @@ function paint(ws: Workspace): void {
   if (!ed) return
   ed.removeHighlightsByRef(HL_REF)
   if (!state) return ed.requestRender()
-  styleId ??= getSyntaxStyle().registerStyle("multi.occurrence", { bg: colors.findCurrentBg })
+  const styleId = extraStyle("multi.occurrence", { bg: colors.findCurrentBg })
   const lines = ed.plainText.split("\n")
   for (const o of state.occs) {
     const line = lines[o.row] ?? ""

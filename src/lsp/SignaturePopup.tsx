@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useTerminalDimensions, useKeyboard } from "@opentui/react"
-import { useBuffers, useUi, useWorkspace, type Workspace } from "../app/workspace"
+import { useCursor, useUi, useWorkspace, type Workspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import { lineAt, type CodeEditorRenderable } from "../editor/CodeEditorRenderable"
 import type { SignatureInfo } from "./LspManager"
@@ -33,7 +33,7 @@ export function SignaturePopup() {
   const dims = useTerminalDimensions()
   const [sig, setSig] = useState<SignatureInfo | null>(null)
   const seq = useRef(0)
-  const cursor = useBuffers().active?.cursor
+  const cursor = useCursor() // re-renders on cursor moves (useBuffers does not)
 
   const refresh = async (open: boolean) => {
     const ed = editorOf(ws)

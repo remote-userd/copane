@@ -51,6 +51,9 @@ export async function shutdown(exitCode = 0, after?: () => Promise<number | void
   }
   try {
     renderer?.destroy()
+    // destroy() returns before the terminal is restored (OpenTUI 0.6): wait for it, briefly,
+    // so a restarted editor or the shell gets a clean terminal.
+    if (renderer) await Promise.race([renderer.closed, Bun.sleep(1500)])
   } catch {
     // ignore
   }

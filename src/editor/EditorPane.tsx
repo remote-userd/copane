@@ -12,7 +12,7 @@ import { lineAt, type CodeEditorRenderable, type LayerHighlight } from "./CodeEd
 import { useBuffers, useUi, useWorkspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import type { Buffer } from "./BufferStore"
-import { getSyntaxStyle } from "./syntaxStyle"
+import { extraStyle, useSyntaxStyle } from "./syntaxStyle"
 import { Tabs } from "./Tabs"
 import { ConflictBar } from "./ConflictBar"
 import { FindBar } from "./FindBar"
@@ -62,34 +62,24 @@ function openEditorMenu(ws: Workspace, x: number, y: number): void {
 }
 
 const DIAG_HL_REF = 0xd1a6
-let diagStyleIds: { error: number; warn: number; info: number } | null = null
 function diagnosticStyles() {
-  if (!diagStyleIds) {
-    const style = getSyntaxStyle()
-    diagStyleIds = {
-      error: style.registerStyle("diag.error", { fg: colors.error, underline: true }),
-      warn: style.registerStyle("diag.warn", { fg: colors.warn, underline: true }),
-      info: style.registerStyle("diag.info", { underline: true }),
-    }
+  return {
+    error: extraStyle("diag.error", { fg: colors.error, underline: true }),
+    warn: extraStyle("diag.warn", { fg: colors.warn, underline: true }),
+    info: extraStyle("diag.info", { underline: true }),
   }
-  return diagStyleIds
 }
 
 const DECOR_REF = 0xdec0
 const INDENT_REF = 0x1de7
 /** Lines either side of the cursor searched for its matching bracket and word. */
 const DECOR_RADIUS = 400
-let decorStyleIds: { bracket: number; word: number; indent: number } | null = null
 function decorStyles() {
-  if (!decorStyleIds) {
-    const style = getSyntaxStyle()
-    decorStyleIds = {
-      bracket: style.registerStyle("decor.bracket", { bg: colors.bracketMatchBg, bold: true }),
-      word: style.registerStyle("decor.word", { bg: colors.wordOccurrenceBg }),
-      indent: style.registerStyle("decor.indent", { bg: colors.indentGuideBg }),
-    }
+  return {
+    bracket: extraStyle("decor.bracket", { bg: colors.bracketMatchBg, bold: true }),
+    word: extraStyle("decor.word", { bg: colors.wordOccurrenceBg }),
+    indent: extraStyle("decor.indent", { bg: colors.indentGuideBg }),
   }
-  return decorStyleIds
 }
 
 const WELCOME: [string, string][] = [
@@ -113,6 +103,7 @@ const BufferView = memo(
 
 function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
   const ws = useWorkspace()
+  const syntaxStyle = useSyntaxStyle()
   const id = buf.id
   // Set below, once onContent exists; undo/redo are content changes too.
   const onContentRef = useRef(() => {})
@@ -473,7 +464,7 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
         wrapMode={wrap ? "word" : "none"}
         // Select exactly what the cursor passed over (VS Code style), not the cell under it.
         selectionOccupancy="boundary"
-        syntaxStyle={getSyntaxStyle()}
+        syntaxStyle={syntaxStyle}
         backgroundColor={colors.bg}
         focusedBackgroundColor={colors.bg}
         textColor={colors.text}

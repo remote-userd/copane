@@ -6,22 +6,18 @@ import { HoverBox } from "../app/Modal"
 import { ui as colors } from "../config/theme"
 import type { Workspace } from "../app/workspace"
 import type { CodeEditorRenderable } from "./CodeEditorRenderable"
-import { getSyntaxStyle } from "./syntaxStyle"
+import { extraStyle } from "./syntaxStyle"
 import { colToIndex } from "../lsp/positions"
 import { findAll, isCaseSensitive, nearestMatch, replaceMatches, type Match } from "./search"
 import { replaceSeed, selectAllSoon } from "../app/seededInput"
 
-const SEARCH_HL_REF = 0x5ea4c
-let styleIds: { match: number; current: number } | null = null
+// Highlight refs are 16-bit in the native buffer (OpenTUI 0.6).
+const SEARCH_HL_REF = 0x5ea4
 function searchStyles() {
-  if (!styleIds) {
-    const style = getSyntaxStyle()
-    styleIds = {
-      match: style.registerStyle("search.match", { bg: colors.findMatchBg }),
-      current: style.registerStyle("search.current", { bg: colors.findCurrentBg }),
-    }
+  return {
+    match: extraStyle("search.match", { bg: colors.findMatchBg }),
+    current: extraStyle("search.current", { bg: colors.findCurrentBg }),
   }
-  return styleIds
 }
 
 const editorOf = (ws: Workspace) => (ws.buffers.active?.textarea ?? null) as CodeEditorRenderable | null

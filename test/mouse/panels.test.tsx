@@ -102,7 +102,8 @@ test("picker: hover selects, wheel moves, click opens, click outside closes", as
   const two = h.findAt("two.txt", title.x - 3, title.y)
   // hover highlights a row; the wheel moves the highlight
   await h.step(() => h.mouse.moveTo(one.x, one.y))
-  const selBg = (y: number) => h.setup.renderer.currentRenderBuffer.buffers.bg.slice((y * 140 + one.x) * 4, (y * 140 + one.x) * 4 + 3).join()
+  const selBg = (y: number) =>
+    h.setup.renderer.currentRenderBuffer.withBuffers((c) => c.bg.slice((y * c.width + one.x) * 4, (y * c.width + one.x) * 4 + 3).join())
   const highlighted = selBg(one.y)
   expect(highlighted).not.toBe(selBg(two.y))
   await h.step(() => h.mouse.scroll(one.x, one.y, "down"))

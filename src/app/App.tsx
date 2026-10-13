@@ -1,5 +1,6 @@
 import { useRef, useState, useSyncExternalStore } from "react"
-import { useTerminalDimensions } from "@opentui/react"
+import { useRenderer, useTerminalDimensions } from "@opentui/react"
+import { setStyleOwner } from "../editor/syntaxStyle"
 import { EditorPane } from "../editor/EditorPane"
 import { useAppKeymap } from "../keymap/useAppKeymap"
 import { ui as colors } from "../config/theme"
@@ -96,6 +97,8 @@ export interface AppSlots {
 const noStatus = { subscribe: () => () => {}, get: () => "" }
 
 export function App({ slots = {} }: { slots?: AppSlots }) {
+  // Syntax colours are native resources of this renderer (a test makes a new one each time).
+  setStyleOwner(useRenderer().nativeScene)
   const ws = useWorkspace()
   const ui = useUi()
   const dims = useTerminalDimensions()

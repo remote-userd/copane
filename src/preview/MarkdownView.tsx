@@ -12,7 +12,7 @@ import { Lexer, type Token, type Tokens } from "marked"
 import { imageInfo, TextAttributes, type ImageRenderProtocol } from "@opentui/core"
 import { filetypeOf } from "../editor/grammars"
 import { ui as colors } from "../config/theme"
-import { getSyntaxStyle } from "../editor/syntaxStyle"
+import { useSyntaxStyle } from "../editor/syntaxStyle"
 import { AnimatedImage } from "./AnimatedImage"
 import { imageCells, localImagePath } from "./images"
 
@@ -321,6 +321,7 @@ function List({ token, ctx, depth, base }: { token: Tokens.List; ctx: MdContext;
 function CodeBlock({ token }: { token: Tokens.Code }) {
   const lang = token.lang?.split(/\s/)[0] ?? ""
   const filetype = lang ? (filetypeOf(`x.${lang}`) ?? lang) : undefined
+  const syntaxStyle = useSyntaxStyle()
   return (
     <box backgroundColor={colors.mdCodeBg} paddingLeft={1} paddingRight={1} flexDirection="column">
       {lang ? (
@@ -328,7 +329,7 @@ function CodeBlock({ token }: { token: Tokens.Code }) {
           <text fg={colors.dim}>{lang}</text>
         </box>
       ) : null}
-      <code content={token.text} filetype={filetype} syntaxStyle={getSyntaxStyle()} fg={colors.text} />
+      <code content={token.text} filetype={filetype} syntaxStyle={syntaxStyle} fg={colors.text} />
     </box>
   )
 }

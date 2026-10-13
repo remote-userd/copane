@@ -77,6 +77,7 @@ Main flows:
 - **A setting:** add it to `src/config/schema.ts` with a default and a comment, and to the README's config example.
 - **Errors:** a UI action must never take the editor down (other files may be unsaved). Run menu and dialog actions through `safely()` (`app/safely.ts`), open files from lists with `openFile`/`openAt` (`app/navHistory.ts`, they turn failures into notices), and catch in fire-and-forget (`void …`) calls. Anything uncaught still ends as a notice with a backup of unsaved work (`app/recovery.ts`), but it is a bug.
 - **UI:** OpenTUI React elements (`<box>`, `<text>`, `<span>`, `<scrollbox>`, `<image>`, `<code>`). Colours come from `src/config/theme.ts`, never literals in components.
+- **Syntax colours and highlights (OpenTUI 0.6):** native resources belong to a renderer. Components get the style with `useSyntaxStyle()`, extra highlight styles come from `extraStyle(name, def)` (`editor/syntaxStyle.ts`), and highlight refs (`hlRef`) must fit in 16 bits.
 
 ## Checking your work
 

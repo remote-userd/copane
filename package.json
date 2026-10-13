@@ -31,8 +31,8 @@
     "install:cli": "sh scripts/install.sh"
   },
   "dependencies": {
-    "@opentui/core": "0.5.17",
-    "@opentui/react": "0.5.17",
+    "@opentui/core": "0.6.2",
+    "@opentui/react": "0.6.2",
     "diff": "9.0.0",
     "gemoji": "8.1.0",
     "ignore": "^7.0.12",

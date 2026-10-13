@@ -4,7 +4,7 @@ import { filetypeOf } from "./grammars"
 import { ControlCharsError, DiskChangedError, hashText, loadFile, saveFile, type Eol, type LoadedFile } from "./fileio"
 import { mergeTexts } from "./merge"
 import { applyHighlights, computeHighlights, mapHighlights } from "./highlighter"
-import { getSyntaxStyle } from "./syntaxStyle"
+import { liveSyntaxStyle } from "./syntaxStyle"
 import { parseGif } from "../preview/gif"
 
 /** Images opened as a picture instead of text (formats OpenTUI decodes). */
@@ -97,7 +97,7 @@ export class BufferStore {
       highlightDelayMs: options.highlightDelayMs ?? 80,
       highlightMaxBytes: options.highlightMaxBytes ?? 1_000_000,
       highlight: options.highlight ?? computeHighlights,
-      resolveStyle: options.resolveStyle ?? ((g) => getSyntaxStyle().getStyleId(g)),
+      resolveStyle: options.resolveStyle ?? ((g) => liveSyntaxStyle()?.getStyleId(g) ?? null),
     }
   }
 

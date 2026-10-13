@@ -5,6 +5,9 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- OpenTUI 0.6 (from 0.5.17): its native side now owns the whole render tree, lays out and draws a frame in one step, and reads text at its exact size. Also upgraded: zod 4.6.7, diff 9, marked 18.
+
 ### Added
 - The project's folder name shows in the sidebar's tab row and as the terminal tab's title.
 - Source control:

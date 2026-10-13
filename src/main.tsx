@@ -21,6 +21,7 @@ import { FileTree } from "./files/FileTree"
 import { FilePicker } from "./files/FilePicker"
 import { SearchModal } from "./files/SearchModal"
 import { SearchPanel } from "./files/SearchPanel"
+import { setStyleOwner } from "./editor/syntaxStyle"
 import { Sidebar } from "./app/Sidebar"
 import { TreeModel } from "./files/TreeModel"
 import { GitStatus } from "./files/gitStatus"
@@ -84,6 +85,7 @@ installSignalHandlers()
 
 const renderer = await createCliRenderer({ exitOnCtrlC: false })
 registerRenderer(renderer)
+setStyleOwner(renderer.nativeScene)
 // Polling and animations pause while the terminal window is in the background.
 renderer.on("focus", () => windowFocus.set({ focused: true }))
 renderer.on("blur", () => windowFocus.set({ focused: false }))

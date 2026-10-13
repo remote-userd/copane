@@ -17,28 +17,20 @@ import { PAIRS, deletesPair, enterText, homeIndex, isTypingPairChar, typeChar } 
 const LEFT = 0
 const RIGHT = 2
 
-/** The native calls behind OpenTUI's text reads, which cap every read at 1 MB. */
+/**
+ * The native edit buffer's summary (OpenTUI 0.6): its size, and a counter every edit bumps.
+ * Read without copying the text; not part of the public API, so used only when present.
+ */
+type EditInfo = { contentEpoch: bigint; byteLength: number }
 type NativeEditBuffer = {
-  lib: {
-    textBufferGetByteSize(ptr: unknown): number
-    editBufferGetText(ptr: unknown, max: number): Uint8Array | null
-    editBufferGetTextRange(ptr: unknown, start: number, end: number, max: number): Uint8Array | null
-  }
-  bufferPtr: unknown
-  textBufferPtr: unknown
+  lib?: { contextEditBufferGetInfo?(context: unknown, handle: unknown): EditInfo }
+  native?: { handle: { context: unknown } }
 }
-const decoder = new TextDecoder()
 
 /** One line of an editor's text; cheap for a CodeEditorRenderable, a full read otherwise. */
 export function lineAt(ta: { plainText: string }, row: number): string {
   return ta instanceof CodeEditorRenderable ? ta.lineText(row) : (ta.plainText.split("\n")[row] ?? "")
 }
-type NativeEditorView = {
-  lib: { editorViewGetTextBufferView(view: unknown): unknown; textBufferViewGetLineSources(view: unknown, start: number, count: number): number[] }
-  viewPtr: unknown
-  _textBufferViewPtr?: unknown
-}
-
 type NativeHighlight = Parameters<TextareaRenderable["addHighlight"]>[1]
 const layerHl = (h: LayerHighlight, ref: number): NativeHighlight => ({ start: h.start, end: h.end, styleId: h.styleId, priority: h.priority, hlRef: ref })
 
@@ -115,50 +107,21 @@ export class CodeEditorRenderable extends TextareaRenderable {
     deliverCtrlClicks(ctx)
   }
 
-  /**
-   * The whole text. OpenTUI's `plainText` stops at 1 MB (saving a bigger file would cut it off)
-   * and allocates a 1 MB buffer per read, even for a small file; read at the real size instead.
-   */
-  override get plainText(): string {
-    const eb = this.native()
-    if (!eb) return super.plainText
-    const size = eb.lib.textBufferGetByteSize(eb.textBufferPtr)
-    const bytes = size > 0 ? eb.lib.editBufferGetText(eb.bufferPtr, size) : null
-    return bytes ? decoder.decode(bytes) : ""
-  }
-
   /** The text's size in UTF-8 bytes, without reading it (constant time). */
   get byteSize(): number {
-    const eb = this.native()
-    return eb ? eb.lib.textBufferGetByteSize(eb.textBufferPtr) : new TextEncoder().encode(super.plainText).length
+    return this.info()?.byteLength ?? new TextEncoder().encode(this.plainText).length
   }
 
-  /**
-   * The selected text, whole. OpenTUI's stops at 1 MB: Ctrl+A in a bigger file then typing "("
-   * (which wraps the selection) or Ctrl+X would cut the rest of the file.
-   */
-  override getSelectedText(): string {
-    const sel = this.native() ? this.getSelection() : null
-    if (!sel) return super.getSelectedText()
-    return this.textRange(Math.min(sel.start, sel.end), Math.max(sel.start, sel.end))
-  }
-
-  /** Text between two buffer offsets (end may run past the end), sized like plainText. */
+  /** Text between two buffer offsets; `end` may run past the end of the text. */
   private textRange(start: number, end: number): string {
-    const eb = this.native()
-    if (!eb) return this.getTextRange(start, end)
-    if (start >= end) return ""
-    const total = eb.lib.textBufferGetByteSize(eb.textBufferPtr)
-    // An offset unit is at most 4 bytes of UTF-8; a read that fills the guess is retried whole.
-    const guess = Math.min(total, (end - start) * 4 + 8)
-    let bytes = eb.lib.editBufferGetTextRange(eb.bufferPtr, start, end, Math.max(1, guess))
-    if (bytes && bytes.length >= guess && guess < total) bytes = eb.lib.editBufferGetTextRange(eb.bufferPtr, start, end, total)
-    return bytes ? decoder.decode(bytes) : ""
+    // Native offsets are u32: "to the end" must not pass that.
+    return start >= end ? "" : this.getTextRange(start, Math.min(end, 0xffff_ffff))
   }
 
-  private native(): NativeEditBuffer | null {
+  private info(): EditInfo | null {
     const eb = this.editBuffer as unknown as NativeEditBuffer
-    return typeof eb.lib?.textBufferGetByteSize === "function" && typeof eb.lib.editBufferGetTextRange === "function" ? eb : null
+    const get = eb.lib?.contextEditBufferGetInfo
+    return typeof get === "function" && eb.native ? get.call(eb.lib, eb.native.handle.context, eb.native.handle) : null
   }
 
   override undo(): boolean {
@@ -174,15 +137,17 @@ export class CodeEditorRenderable extends TextareaRenderable {
   }
 
   /**
-   * Source lines for screen rows, read by the line-number gutter every frame. Without this the
-   * gutter asks for the line info of the whole file and slices it: thousands of lines per frame.
+   * Source lines for screen rows, read by the line-number gutter every frame. OpenTUI only reads
+   * them for the whole file, so they are read once per text, width and wrap mode, then sliced.
    */
   getLineSources(startLine: number, lineCount: number): number[] {
-    const ev = this.editorView as unknown as NativeEditorView
-    if (typeof ev.lib?.textBufferViewGetLineSources !== "function") return this.lineInfo.lineSources.slice(startLine, startLine + lineCount)
-    ev._textBufferViewPtr ??= ev.lib.editorViewGetTextBufferView(ev.viewPtr)
-    return ev.lib.textBufferViewGetLineSources(ev._textBufferViewPtr, startLine, lineCount)
+    const epoch = this.info()?.contentEpoch
+    if (epoch === undefined) return this.lineInfo.lineSources.slice(startLine, startLine + lineCount)
+    const key = `${epoch}:${this.width}:${this.wrapMode}`
+    if (this.sources?.key !== key) this.sources = { key, lines: this.lineInfo.lineSources }
+    return this.sources.lines.slice(startLine, startLine + lineCount)
   }
+  private sources: { key: string; lines: number[] } | null = null
 
   /**
    * Highlight layers (syntax colours, indent guides): stored for the whole file, but only the
