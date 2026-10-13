@@ -22,6 +22,9 @@ All notable changes to copane are listed here. The format follows
 - The AI pane header no longer repeats "✦ N to review" (the status bar has it), and worktree tabs drop the `copane/` prefix (`CLAUDE ⎇ CLAUDE-1`).
 - File tree: long names are clipped at the pane's edge instead of cut with `...` in the middle. Shift+wheel (or a sideways swipe) scrolls the tree sideways to read them, and moving the selection onto one scrolls it into view. Narrow trees (under 30 columns) indent one column per level.
 
+### Fixed
+- Review & merge: when your own uncommitted edits touch files the agent also changed, merging said only "Your local changes … would be overwritten". It now names the files and offers **Commit mine & merge (c)** or **Source control (s)**.
+
 ## [0.9.2] - 2026-10-13
 
 ### Added

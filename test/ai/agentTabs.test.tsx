@@ -177,6 +177,30 @@ test("review & merge a worktree agent: its files and diffs, merge, then clean up
   expect(h!.frame()).not.toContain("SECOND ⎇")
 })
 
+test("merge blocked by your uncommitted edits: it names the files, and c commits them and merges", async () => {
+  const { root, ws } = await worktreeAgent()
+  // You edited b.txt too, without committing: git refuses to merge over it.
+  writeFileSync(join(root, "b.txt"), "b mine\n")
+  ws.agents!.recount(ws.agents!.activeId())
+  await until(() => /SECOND ⎇ SECOND-1 \S · 3/.test(h!.frame()))
+  const count = h!.find("· 3")
+  await h!.step(() => h!.mouse.click(count.x + 2, count.y))
+  await until(() => h!.frame().includes("A new.txt"))
+
+  await h!.step(() => h!.keys.pressKey("m"))
+  await until(() => h!.frame().includes("your uncommitted changes to b.txt would be overwritten"))
+  expect(h!.frame()).toContain("Commit mine & merge (c)")
+  expect(await Bun.file(join(root, "b.txt")).text()).toBe("b mine\n") // untouched
+
+  await h!.step(() => h!.keys.pressKey("c"))
+  await until(() => h!.frame().includes("Commit all 1 uncommitted file"))
+  await h!.step(() => h!.keys.pressKey("y"))
+  // Yours is committed, then the merge runs: b.txt changed on both sides, so it conflicts.
+  await until(() => ws.ui.get().modal === null)
+  expect(gitOut(root, "log", "--format=%s", "-1", "HEAD")).toContain("Your work before merging copane/second-1")
+  expect(await Bun.file(join(root, "b.txt")).text()).toContain("<<<<<<<")
+})
+
 test("discarding a worktree agent's work removes its worktree, branch and tab", async () => {
   const { root, ws, wt } = await worktreeAgent()
   await h!.step(() => ws.agents!.closeActive())
