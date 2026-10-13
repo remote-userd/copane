@@ -319,12 +319,17 @@ export class GitRepo {
   /** Unified diff of one file: staged (index vs HEAD) or unstaged (worktree vs index). */
   async diff(path: string, staged: boolean, untracked = false): Promise<string> {
     if (untracked) {
-      const text = await Bun.file(path).text().catch(() => "")
-      const lines = text.replace(/\n$/, "").split("\n")
+      // A new file is read whole to show it: not a binary, nor a huge log or build output.
+      const file = Bun.file(path)
+      const kb = Math.ceil(file.size / 1024)
+      if (file.size > MAX_DIFF) return `New file, ${kb} KB: too big to show`
+      const bytes = await file.bytes().catch(() => new Uint8Array())
+      if (bytes.subarray(0, 8000).includes(0)) return `New binary file, ${kb} KB`
+      const lines = new TextDecoder().decode(bytes).replace(/\n$/, "").split("\n")
       return [`@@ -0,0 +1,${lines.length} @@ new file`, ...lines.map((l) => "+" + l)].join("\n")
     }
     const r = await this.run(["diff", "--no-color", "--no-ext-diff", ...(staged ? ["--cached"] : []), "--", this.rel(path)])
-    return r.out.split("\n").filter((l) => !/^(diff --git|index |--- |\+\+\+ )/.test(l)).join("\n")
+    return capDiff(r.out.split("\n").filter((l) => !/^(diff --git|index |--- |\+\+\+ )/.test(l)).join("\n"))
   }
 
   /**
@@ -504,7 +509,8 @@ export class GitRepo {
   async blame(path: string, contents?: string): Promise<BlameLine[]> {
     // With --contents, blame what the editor holds (unsaved lines show as not committed).
     const args = ["blame", "--porcelain", ...(contents !== undefined ? ["--contents", "-"] : []), "--", this.rel(path)]
-    const r = await this.run(args, contents !== undefined ? { stdin: contents } : undefined)
+    // A huge file with a long history can take a while: give up rather than pile up.
+    const r = await this.run(args, { timeoutMs: 15_000, ...(contents !== undefined ? { stdin: contents } : {}) })
     return r.ok ? parseBlame(r.out) : []
   }
 
@@ -515,6 +521,17 @@ export class GitRepo {
 
   async show(sha: string, path?: string): Promise<string> {
     const r = await this.run(["show", "--no-color", "--stat", "--patch", "--format=commit %H%nAuthor: %an <%ae>%nDate:   %ad%n%n%w(0,4,4)%B", sha, ...(path ? ["--", this.rel(path)] : [])])
-    return r.ok ? r.out : firstError(r.err)
+    return r.ok ? capDiff(r.out) : firstError(r.err)
   }
+}
+
+/** Diffs bigger than this are cut: the panels hold every line in memory and lay them out. */
+const MAX_DIFF = 1_000_000
+
+/** Cut a diff that is too big at a hunk boundary (a cut hunk could not be staged on its own). */
+export function capDiff(diff: string, max = MAX_DIFF): string {
+  if (diff.length <= max) return diff
+  const at = diff.lastIndexOf("\n@@", max)
+  const cut = at > 0 ? at : diff.lastIndexOf("\n", max)
+  return `${diff.slice(0, cut)}\n… diff cut at ${Math.round(cut / 1024)} KB of ${Math.round(diff.length / 1024)} KB`
 }

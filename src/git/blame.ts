@@ -30,6 +30,9 @@ export function describeBlame(b: BlameLine | undefined): string | null {
 /** One blame per file and text: recomputed only when the buffer's text changes. */
 const cache = new Map<string, { key: string; lines: Promise<BlameLine[]> }>()
 
+/** The blame running per file: the next waits for it, so moving around after edits never stacks up git processes. */
+const running = new Map<string, Promise<unknown>>()
+
 /** Drop blames of files that are no longer open. */
 export function keepBlames(open: ReadonlySet<string>): void {
   for (const path of cache.keys()) if (!open.has(path)) cache.delete(path)
@@ -42,7 +45,11 @@ export function blameFor(ws: Workspace, path: string, text: string, textKey: str
   const key = `${textKey}:${ws.git!.contentsVersion}`
   const hit = cache.get(path)
   if (hit?.key === key) return hit.lines
-  const lines = repo.blame(path, text)
+  // Wait for the blame already running; by then a newer request may have taken this one's place.
+  const lines = (running.get(path) ?? Promise.resolve()).then(() => (cache.get(path)?.key === key ? repo.blame(path, text) : []))
+  const done = lines.catch(() => {})
+  running.set(path, done)
+  void done.then(() => running.get(path) === done && running.delete(path))
   cache.set(path, { key, lines })
   return lines
 }

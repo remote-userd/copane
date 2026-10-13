@@ -162,3 +162,23 @@ test("writes fired at once run one after another: no index.lock errors", async (
   expect(errors.filter(Boolean)).toEqual([])
   expect((await repo.status()).filter((e) => e.staged).length).toBe(8)
 })
+
+test("capDiff cuts a huge diff at a hunk boundary and says so", async () => {
+  const { capDiff } = await import("../../src/git/repo")
+  const hunk = (n: number) => `@@ -${n},1 +${n},1 @@\n-${"a".repeat(50)}\n+${"b".repeat(50)}`
+  const diff = Array.from({ length: 100 }, (_, i) => hunk(i + 1)).join("\n")
+  expect(capDiff(diff, 1e9)).toBe(diff)
+  const cut = capDiff(diff, 1000)
+  expect(cut.length).toBeLessThan(1100)
+  const body = cut.split("\n").slice(0, -1)
+  expect(body.at(-1)).toStartWith("+") // the last kept hunk is whole
+  expect(cut.split("\n").at(-1)).toMatch(/^… diff cut at \d+ KB of \d+ KB$/)
+})
+
+test("a new binary or huge file isn't read into the diff", async () => {
+  const { root, repo } = await repoWith({ "a.ts": "a\n" })
+  await Bun.write(join(root, "img.bin"), new Uint8Array([1, 2, 0, 3, 4]))
+  await Bun.write(join(root, "big.log"), "x".repeat(1_100_000))
+  expect(await repo.diff(join(root, "img.bin"), false, true)).toBe("New binary file, 1 KB")
+  expect(await repo.diff(join(root, "big.log"), false, true)).toMatch(/^New file, \d+ KB: too big to show$/)
+})

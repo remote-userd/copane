@@ -85,7 +85,12 @@ export function diffHunks(raw: string): { text: string; row: number }[] {
       if (cur) out.at(-1)!.text = cur.join("\n")
       cur = [l]
       out.push({ text: "", row })
-    } else if (cur) cur.push(l)
+    } else if (cur && /^([ +\-\\]|$)/.test(l)) cur.push(l)
+    else if (cur) {
+      // Not diff content (the "diff cut" note): the hunk ends here.
+      out.at(-1)!.text = cur.join("\n")
+      cur = null
+    }
     if (!l.startsWith("\\")) row++
   }
   if (cur) out.at(-1)!.text = cur.join("\n").replace(/\n+$/, "")

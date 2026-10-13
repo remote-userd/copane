@@ -75,3 +75,37 @@ test("status bar shows blame for the cursor line; history and commit views open"
   expect(f.indexOf("Shout line two")).toBeLessThan(f.indexOf("Start the file"))
   expect(f).toContain("+TWO")
 }, 20_000)
+
+test("blames of one file run one at a time; one replaced by a newer request is skipped", async () => {
+  const { blameFor } = await import("../../src/git/blame")
+  const { GitRepo } = await import("../../src/git/repo")
+  const root = await fixture({ "a.ts": "one\ntwo\n" })
+  sh(root, "init", "-q")
+  sh(root, "add", ".")
+  sh(root, "commit", "-qm", "init")
+  const repo = new GitRepo(root)
+  let active = 0
+  let most = 0
+  let calls = 0
+  const real = repo.blame.bind(repo)
+  repo.blame = async (p, c) => {
+    calls++
+    most = Math.max(most, ++active)
+    try {
+      return await real(p, c)
+    } finally {
+      active--
+    }
+  }
+  const ws = { git: { repo, contentsVersion: 0 } } as never
+  const path = join(root, "a.ts")
+  const first = blameFor(ws, path, "one\ntwo\n", "1:1")
+  await waitUntil(() => calls === 1, 2000) // running
+  const skipped = blameFor(ws, path, "one\nTWO\n", "1:2")
+  const last = blameFor(ws, path, "ONE\nTWO\n", "1:3")
+  expect(await first).toHaveLength(2)
+  expect(await skipped).toEqual([])
+  expect((await last).map((l) => l.sha)).toEqual(["0".repeat(40), "0".repeat(40)])
+  expect(most).toBe(1)
+  expect(calls).toBe(2)
+})

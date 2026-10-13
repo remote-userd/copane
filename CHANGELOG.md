@@ -21,6 +21,9 @@ All notable changes to copane are listed here. The format follows
 - Staging files quickly in Source control could fail with "index.lock exists": git writes now run one at a time.
 - Source control and the tree could show the old status for a moment right after stage, commit or revert.
 - Source control: after staging, the selection jumped to an unrelated file; it now stays in the section, on the next file. With many files the selected one could be below the bottom of the list. A multi-line AI commit message no longer gets squashed into one line. Errors stay until the next key, and other messages clear after a few seconds.
+- Faster git status in repos with thousands of untracked files (parsed once instead of twice).
+- Blame no longer starts a new git process on every cursor move after an edit while the last one is still running, and gives up after 15 s.
+- Opening a huge or binary new file, or a commit with a huge diff, in Source control or file history no longer freezes the editor: big diffs are cut (at a change boundary) and binary files are named, not shown.
 - Push while HEAD is detached says to switch to a branch, instead of trying to publish a branch named "detached".
 
 ## [0.8.0] - 2026-10-11

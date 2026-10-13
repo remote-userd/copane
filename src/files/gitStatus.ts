@@ -253,13 +253,19 @@ export class GitStatus {
     if (out === null || this.stopped || out === this.lastOut) return
     this.lastOut = out
     this.branch = out.startsWith("## ") ? parseBranch(out.slice(0, out.indexOf("\0") >>> 0)) : null
-    this.marks = parsePorcelain(out, top)
+    // Parsed once: the marks come from the entries (thousands of untracked files make this add up).
     this.entries = parseEntries(out, top)
+    this.marks = new Map()
     this.dirMarks = new Map()
-    for (const [path, mark] of this.marks) {
-      for (let d = parentOf(path); d && d.length >= top.length; d = parentOf(d)) {
+    for (const e of this.entries) {
+      const mark = markFor(e.x + e.y)
+      if (!mark) continue
+      this.marks.set(e.path, mark)
+      for (let d = parentOf(e.path); d && d.length >= top.length; d = parentOf(d)) {
         const prev = this.dirMarks.get(d)
-        if (!prev || RANK[mark] > RANK[prev]) this.dirMarks.set(d, mark)
+        // A parent already this strong means all of its parents are too.
+        if (prev && RANK[prev] >= RANK[mark]) break
+        this.dirMarks.set(d, mark)
       }
     }
     this.snapshot++
