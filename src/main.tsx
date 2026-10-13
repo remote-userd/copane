@@ -96,19 +96,15 @@ installPerfLog(renderer)
 renderer.setTerminalTitle(basename(args.root))
 onShutdown(() => renderer.setTerminalTitle(""))
 
-const layout = await loadLayout()
-// With the AI pane starting hidden, "maximize AI" would only hide the tree.
-if (config.ai.startHidden) {
-  delete layout.aiMaximized
-  delete layout.treeVisible
-}
 const ws = createWorkspace(
   args.root,
   {
-    focus: args.file ? "editor" : layout.aiMaximized ? "ai" : "tree",
+    focus: args.file ? "editor" : "tree",
     aiVisible: !config.ai.startHidden,
+    // Start with the tree and the AI pane only: the editor shows when a file opens (Ctrl+Alt+X too).
+    aiMaximized: config.editor.startHidden && !config.ai.startHidden ? { tree: true, editor: false } : null,
     wordWrap: config.editor.wordWrap,
-    ...layout,
+    ...(await loadLayout()),
   },
   config,
   createClipboard({ osc52: (text) => renderer.copyToClipboardOSC52(text) }),
@@ -215,13 +211,16 @@ const restored = await takeRestoreState()
 if (restored) {
   // Restarted (e.g. after an update): bring back the tabs, then the active one.
   void (async () => {
+    // In "maximize AI" the editor stays hidden until you open a file yourself.
+    const max = ws.ui.get().aiMaximized
     for (const path of restored.files) await ws.buffers.open(path).catch(() => null)
     const active = restored.active ? ws.buffers.byPath(restored.active) : null
     if (active) {
       ws.buffers.activate(active.id)
       void tree.reveal(active.source ?? active.path)
-      ws.ui.set({ focus: "editor" })
+      if (!max) ws.ui.set({ focus: "editor" })
     }
+    if (max) ws.ui.set({ aiMaximized: max })
     ws.notify("Restarted")
   })()
 } else if (args.file) {

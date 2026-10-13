@@ -113,9 +113,9 @@ export function App({ slots = {} }: { slots?: AppSlots }) {
   const showTree = ui.treeVisible && !!slots.tree && dims.width >= 100
   const showAi = ui.aiVisible && !!slots.ai
   const { treeWidth, aiWidth } = paneWidths(dims.width, ui, showTree, showAi)
-  // "Maximize AI": the editor only takes room while a file is open.
+  // "Maximize AI": the editor only takes room after you open a file, and until its last tab closes.
   const fileCount = useBufferSelector((b) => b.list().length)
-  const hideEditor = !!ui.aiMaximized && showAi && fileCount === 0
+  const hideEditor = !!ui.aiMaximized && showAi && (!ui.aiMaximized.editor || fileCount === 0)
   const fullAi = dims.width - (showTree ? treeWidth + 1 : 0)
   // The hidden editor can't hold the keyboard (the last tab just closed, Ctrl+E): the AI takes it.
   useEffect(() => {

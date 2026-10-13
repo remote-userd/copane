@@ -295,7 +295,7 @@ Press **F1** for the command palette: every command, searchable, with its shortc
 | Ctrl+J | Focus the AI pane, or back to the editor from it |
 | Ctrl+Alt+J | Show or hide the AI pane |
 | Ctrl+Alt+M | Maximize the editor, and press again to restore |
-| Ctrl+Alt+X | Maximize the AI pane (or **⤢** in its header): it fills the window while no file is open, and the editor comes back beside it when you open one. Press again to restore |
+| Ctrl+Alt+X | Maximize the AI pane (or **⤢** in its header): it fills the window, even with tabs open. Opening a file (or Ctrl+E with tabs open) brings the editor back beside it; pressing again hides it, and pressing once more restores the layout. `ce` starts with only the tree and the AI pane (`editor.startHidden: false` starts with the editor) |
 | Ctrl+L | Send the current file, or the selected lines, to the AI prompt |
 | Ctrl+K F | Send errors and warnings to the AI ("fix these") |
 | Ctrl+K D | Send your git changes to the AI ("review these") |
@@ -329,7 +329,7 @@ Press **F1** for the command palette: every command, searchable, with its shortc
 
 While the AI pane has focus, every key goes to the CLI except Ctrl+Q, Ctrl+B, Ctrl+E, Ctrl+J, Ctrl+P, F1, Ctrl+Alt+J, Ctrl+Alt+D and Ctrl+Alt+R. Esc, Ctrl+C and Shift+Tab therefore work in Claude Code as usual.
 
-Dragged pane widths, and whether the AI pane is maximized, are remembered in `~/.local/state/copane/layout.json`.
+Dragged pane widths are remembered in `~/.local/state/copane/layout.json`.
 
 ## File tree
 
@@ -396,7 +396,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
 ```json
 {
   "ai": { "command": "claude", "args": [], "startHidden": false, "notify": "bell", "agents": [{ "name": "codex", "command": "codex" }], "services": [] },
-  "editor": { "highlightMaxBytes": 1000000, "copyOnSelect": false, "saveBeforeAi": true, "autocomplete": true, "wordWrap": false, "highlightCursor": true, "indentGuides": true, "autoIndent": true, "autoClosingBrackets": true, "formatter": "auto", "formatOnSave": false, "smoothScrolling": true },
+  "editor": { "highlightMaxBytes": 1000000, "copyOnSelect": false, "saveBeforeAi": true, "autocomplete": true, "wordWrap": false, "startHidden": true, "highlightCursor": true, "indentGuides": true, "autoIndent": true, "autoClosingBrackets": true, "formatter": "auto", "formatOnSave": false, "smoothScrolling": true },
   "lsp": { "python": { "command": ["pylsp"] } },
   "tree": { "icons": "simple" },
   "statusBar": { "resources": true },

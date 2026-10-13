@@ -39,6 +39,8 @@ export const configSchema = z
         indentGuides: z.boolean().default(true),
         /** Start with long lines wrapped (toggle with Alt+Z). */
         wordWrap: z.boolean().default(false),
+        /** Start with only the file tree and the AI pane: the editor shows when you open a file. */
+        startHidden: z.boolean().default(true),
         /** Suggest completions while typing (after "." or two letters) when a language server runs. */
         autocomplete: z.boolean().default(true),
         /** Save unsaved files when focus moves to the AI pane, so the AI reads what you see. */

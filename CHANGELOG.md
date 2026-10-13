@@ -17,7 +17,8 @@ All notable changes to copane are listed here. The format follows
 - The AI pane needs no right-click menu: **+** opens agents, terminals and dev servers, **↻** restarts a dev server, a worktree agent's `· N` opens Review & merge, and right-click copies the selection or pastes (as VS Code's terminal on Windows).
 - Ctrl+click (or Alt+click) a `file:line` or a URL in an AI pane tab to open it.
 - **+ › Resume claude ⎇ copane/…** reopens an agent worktree whose tab closed (or from before a restart), with its change count and Review & merge; Claude continues its last conversation.
-- **Maximize AI pane** (Ctrl+Alt+X, or **⤢** in the AI pane header): the AI pane fills the window while no file is open. Opening a file brings the editor back beside it, and closing the last one hides it again. Press again to restore the tree. The mode is remembered across restarts.
+- **Maximize AI pane** (Ctrl+Alt+X, or **⤢** in the AI pane header): the AI pane fills the window, even with tabs open. Opening a file brings the editor back beside it; pressing again (or closing the last tab) hides it, and pressing once more restores the tree and editor. Ctrl+E brings back a hidden editor that has tabs.
+- `ce` starts with only the file tree and the AI pane; the editor shows when you open a file. `editor.startHidden: false` starts with the editor as before.
 - Resource usage in the status bar (`▤ 1.2G 15%`): memory and CPU of copane and everything it started. Click it to see what each language server, agent and terminal uses. Turn it off with **Toggle resource usage** (F1) or `statusBar.resources: false`.
 
 ### Changed

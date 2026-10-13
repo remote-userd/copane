@@ -2,7 +2,7 @@ import { basename, dirname, join, relative } from "node:path"
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useKeyboard, useRenderer } from "@opentui/react"
 import { EmbeddedTerminalRenderable, type BoxRenderable } from "@opentui/core"
-import { useUi, useWorkspace, type AiHandle, type Workspace } from "../app/workspace"
+import { useBufferSelector, useUi, useWorkspace, type AiHandle, type Workspace } from "../app/workspace"
 import type { MenuItem } from "../app/state"
 import { onShutdown } from "../app/shutdown"
 import { Store } from "../app/store"
@@ -156,6 +156,9 @@ function tabLabel(s: Session): string {
 function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: () => void; onClose: (id: number) => void }) {
   const ws = useWorkspace()
   const ui = useUi()
+  // The AI pane fills the window (⤡ restores); with the editor back for a file, ⤢ hides it again.
+  const files = useBufferSelector((b) => b.list().length)
+  const aiFull = !!ui.aiMaximized && !(ui.aiMaximized.editor && files)
   const t = useSyncExternalStore(tabs.subscribe, tabs.get)
   const [frame, setFrame] = useState(0)
   const busy = isBusy
@@ -254,10 +257,10 @@ function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: () => 
           {one ? "+ new" : "+"}
         </text>
       </HoverBox>
-      {/* Maximize AI (Ctrl+Alt+X): the editor shows only while a file is open. */}
+      {/* Maximize AI (Ctrl+Alt+X): the editor shows when you open a file; again hides it, then restores. */}
       <HoverBox onPress={() => void runCommand(ws, "view.maximizeAi")}>
-        <text selectable={false} fg={ui.aiMaximized ? colors.accent : colors.headerFg}>
-          {ui.aiMaximized ? "⤡" : "⤢"}
+        <text selectable={false} fg={aiFull ? colors.accent : colors.headerFg}>
+          {aiFull ? "⤡" : "⤢"}
         </text>
       </HoverBox>
 
