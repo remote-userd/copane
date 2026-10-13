@@ -1,8 +1,9 @@
 /**
  * Syntax highlighting beyond what OpenTUI bundles (JavaScript, TypeScript, Markdown, Zig): the
- * official Tree-sitter grammars and, for SCSS, Vue, Svelte, Astro and nginx, the community ones (all MIT; each
- * folder in assets/grammars has its LICENSE and the commit it was built from), embedded in the binary.
- * Queries build on each other: C++ on C, SCSS on CSS, Vue/Svelte/Astro on HTML.
+ * official Tree-sitter grammars and, for SCSS, Vue, Svelte, Astro, nginx, Dockerfile and SQL, community ones
+ * (all MIT; each folder in assets/grammars has its LICENSE), embedded in the binary. Those without release builds
+ * were built from their repositories with tree-sitter-cli 0.25.10 (OpenTUI's web-tree-sitter version).
+ * Queries build on each other: C++ on C, SCSS on CSS, Svelte/Astro on HTML.
  * Injections highlight the code inside (`<script>`, `<style>`, `{{ }}`...) with the language named by
  * `#set! injection.language`, which OpenTUI's parser worker learns from patches/@opentui%2Fcore@0.6.2.patch.
  */
@@ -33,6 +34,7 @@ import jsonHighlights from "../../assets/grammars/json/highlights.scm" with { ty
 import scssWasm from "../../assets/grammars/scss/tree-sitter-scss.wasm" with { type: "file" }
 import scssHighlights from "../../assets/grammars/scss/highlights.scm" with { type: "file" }
 import vueWasm from "../../assets/grammars/vue/tree-sitter-vue.wasm" with { type: "file" }
+import vueHtmlHighlights from "../../assets/grammars/vue/html_tags.scm" with { type: "file" }
 import vueHighlights from "../../assets/grammars/vue/highlights.scm" with { type: "file" }
 import vueInjections from "../../assets/grammars/vue/injections.scm" with { type: "file" }
 import svelteWasm from "../../assets/grammars/svelte/tree-sitter-svelte.wasm" with { type: "file" }
@@ -43,6 +45,10 @@ import astroHighlights from "../../assets/grammars/astro/highlights.scm" with { 
 import astroInjections from "../../assets/grammars/astro/injections.scm" with { type: "file" }
 import nginxWasm from "../../assets/grammars/nginx/tree-sitter-nginx.wasm" with { type: "file" }
 import nginxHighlights from "../../assets/grammars/nginx/highlights.scm" with { type: "file" }
+import dockerfileWasm from "../../assets/grammars/dockerfile/tree-sitter-dockerfile.wasm" with { type: "file" }
+import dockerfileHighlights from "../../assets/grammars/dockerfile/highlights.scm" with { type: "file" }
+import sqlWasm from "../../assets/grammars/sql/tree-sitter-sql.wasm" with { type: "file" }
+import sqlHighlights from "../../assets/grammars/sql/highlights.scm" with { type: "file" }
 
 export const EXTRA_GRAMMARS = [
   { filetype: "python", wasm: pythonWasm, queries: { highlights: [pythonHighlights] } },
@@ -57,10 +63,12 @@ export const EXTRA_GRAMMARS = [
   { filetype: "css", wasm: cssWasm, queries: { highlights: [cssHighlights] } },
   { filetype: "json", aliases: ["jsonc"], wasm: jsonWasm, queries: { highlights: [jsonHighlights] } },
   { filetype: "scss", wasm: scssWasm, queries: { highlights: [cssHighlights, scssHighlights] } },
-  { filetype: "vue", wasm: vueWasm, queries: { highlights: [htmlHighlights, vueHighlights], injections: [vueInjections] } },
+  { filetype: "vue", wasm: vueWasm, queries: { highlights: [vueHtmlHighlights, vueHighlights], injections: [vueInjections] } },
   { filetype: "svelte", wasm: svelteWasm, queries: { highlights: [htmlHighlights, svelteHighlights], injections: [svelteInjections] } },
   { filetype: "astro", wasm: astroWasm, queries: { highlights: [htmlHighlights, astroHighlights], injections: [astroInjections] } },
   { filetype: "nginx", wasm: nginxWasm, queries: { highlights: [nginxHighlights] } },
+  { filetype: "dockerfile", wasm: dockerfileWasm, queries: { highlights: [dockerfileHighlights] } },
+  { filetype: "sql", wasm: sqlWasm, queries: { highlights: [sqlHighlights] } },
 ]
 
 let registered = false
@@ -75,6 +83,10 @@ export function registerGrammars(): void {
 /** A path's filetype, as OpenTUI names it, plus the few it doesn't know. */
 export function filetypeOf(path: string): string | undefined {
   if (/\.jsonc$/i.test(path)) return "json"
+  // .env, .env.local, prod.env: KEY=value lines and # comments read well as shell.
+  if (/(^|\/)\.env(\.[\w.-]+)?$|\.env$/i.test(path)) return "bash"
+  // Dockerfile.dev, api.Dockerfile
+  if (/(^|\/)(dockerfile(\.[\w-]+)?|[\w.-]+\.dockerfile)$/i.test(path)) return "dockerfile"
   if (isNginx(path)) return "nginx"
   return pathToFiletype(path)
 }

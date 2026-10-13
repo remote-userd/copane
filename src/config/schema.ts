@@ -19,6 +19,13 @@ export const configSchema = z
         agents: z
           .array(z.object({ name: z.string().min(1), command: z.string().min(1), args: z.array(z.string()).default([]) }))
           .default([]),
+        /**
+         * Dev servers to run in AI pane tabs ("Start a service…"): e.g. [{ "name": "api", "command": "npm run dev", "cwd": "packages/api" }].
+         * Empty: each package's dev script, and `docker compose up` when there's a compose file.
+         */
+        services: z
+          .array(z.object({ name: z.string().min(1), command: z.string().min(1), cwd: z.string().optional() }))
+          .default([]),
       })
       .prefault({}),
     editor: z

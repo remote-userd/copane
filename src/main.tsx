@@ -121,6 +121,7 @@ ws.git = git
 const lsp = new LspManager(ws.root, config.lsp)
 ws.lsp = lsp
 lsp.onApplyEdit = (files) => applyFileEdits(ws, files)
+lsp.onMissing = (ft, hint) => ws.notify(`No ${ft} language server: install it with  ${hint}  (or set lsp.${ft} in the config)`, "warn")
 lsp.attach(ws.buffers)
 onShutdown(() => lsp.stop())
 void git.start()
@@ -260,6 +261,7 @@ const aiConfig = {
   maxScrollbackBytes: config.ai.maxScrollbackBytes,
   notify: config.ai.notify,
   agents: config.ai.agents,
+  services: config.ai.services,
 }
 
 createRoot(renderer).render(

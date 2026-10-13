@@ -19,6 +19,8 @@ const SAMPLES: Record<string, string> = {
   svelte: '{#if n > 0}<p on:click={() => n++}>{n}</p>{/if}\n',
   astro: '---\nconst t = "hi"\n---\n<h1 class={t}>{t}</h1>\n',
   nginx: 'server {\n  listen 80; # web\n  location /api/ { proxy_pass http://127.0.0.1:3000; }\n}\n',
+  dockerfile: 'FROM node:24-alpine AS build\n# deps\nRUN npm ci && npm run build\nCMD ["node", "dist/main.js"]\n',
+  sql: "-- users\nSELECT id, name FROM users WHERE id = 1 AND name = 'x';\n",
 }
 
 test.each(Object.entries(SAMPLES))("%s gets syntax colours", async (filetype, text) => {
@@ -53,4 +55,35 @@ test.each([
   const hl = await computeHighlights(text, filetype)
   const injected = new Set(hl!.map((h) => h[3]?.injectionLang).filter(Boolean))
   expect([...injected].sort()).toEqual([...langs].sort())
+})
+
+test("file types for full-stack files: .vue, Dockerfiles, SQL, and .env read as shell", () => {
+  const paths = ["a.vue", "Dockerfile", "api/Dockerfile.dev", "web.dockerfile", "q.sql", ".env", "packages/api/.env.local", "prod.env", "envs.ts"]
+  expect(paths.map(filetypeOf)).toEqual(["vue", "dockerfile", "dockerfile", "dockerfile", "sql", "bash", "bash", "bash", "typescript"])
+})
+
+test("Vue: TypeScript colours in <script>, {{ }} and directives; SCSS in <style>; tags as HTML", async () => {
+  const text = [
+    "<template>",
+    '  <div :class="isOn ? 1 : 2" @click="toggle()">{{ count + 1 }}</div>',
+    "</template>",
+    '<script setup lang="ts">',
+    "const count: number = 1",
+    "</script>",
+    "<style scoped>",
+    ".a { color: red; }",
+    "</style>",
+    "",
+  ].join("\n")
+  const hl = (await computeHighlights(text, "vue"))!
+  const at = (needle: string) => {
+    const i = text.indexOf(needle)
+    return hl.filter((h) => h[0] <= i && h[1] >= i + needle.length).map((h) => String(h[2]))
+  }
+  expect(at("const")).toContain("keyword")
+  expect(at("number")).toContain("type.builtin")
+  expect(at("div")).toContain("tag")
+  expect(at("color")).toContain("property")
+  // In the template's expressions too, not just plain text.
+  expect(at("toggle").some((g) => g.startsWith("function"))).toBe(true)
 })
