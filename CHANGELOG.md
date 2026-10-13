@@ -24,6 +24,7 @@ All notable changes to copane are listed here. The format follows
 
 ### Fixed
 - Review & merge: when your own uncommitted edits touch files the agent also changed, merging said only "Your local changes … would be overwritten". It now names the files and offers **Commit mine & merge (c)** or **Source control (s)**.
+- nginx config: `upstream backend {` (a block with arguments), addresses such as `127.0.0.1:8080`, and one-line blocks such as `events { worker_connections 1024; }` broke the colours of everything after them. A `.conf` file outside an `nginx` folder (`deploy/conf/conf.d/app.conf`) is recognised as nginx by its content (`server {`, `upstream app {`, …), and files in `sites-available` / `sites-enabled` by their folder.
 
 ## [0.9.2] - 2026-10-13
 

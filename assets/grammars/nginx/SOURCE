@@ -1,2 +1,4 @@
-https://github.com/opa-oz/tree-sitter-nginx at 7cdf006ed1addef698fc680ae31721950f85e5e9
-Built with tree-sitter-cli 0.25.10: `tree-sitter build --wasm`. The .scm queries here are ours (adapted from the repo's).
+https://github.com/opa-oz/tree-sitter-nginx at 7cdf006ed1addef698fc680ae31721950f85e5e9, with grammar.patch applied
+(blocks with arguments such as `upstream backend {`, values such as `127.0.0.1:8080`, and one-line blocks such as
+`events { worker_connections 1024; }` parsed as errors).
+Built with tree-sitter-cli 0.25.10: `tree-sitter generate && tree-sitter build --wasm`. The .scm queries here are ours (adapted from the repo's).

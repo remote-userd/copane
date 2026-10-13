@@ -32,16 +32,41 @@ test.each(Object.entries(SAMPLES))("%s gets syntax colours", async (filetype, te
 })
 
 test("file types for the new languages, and JSONC as JSON", () => {
-  expect(["a.py", "a.yml", "a.sh", "a.toml", "a.rs", "a.go", "a.h", "a.hpp", "a.html", "a.css", "a.json", "a.jsonc"].map(filetypeOf)).toEqual([
+  expect(["a.py", "a.yml", "a.sh", "a.toml", "a.rs", "a.go", "a.h", "a.hpp", "a.html", "a.css", "a.json", "a.jsonc"].map((p) => filetypeOf(p))).toEqual([
     "python", "yaml", "bash", "toml", "rust", "go", "c", "cpp", "html", "css", "json", "json",
   ])
-  expect(["a.scss", "a.vue", "a.svelte", "a.astro"].map(filetypeOf)).toEqual(["scss", "vue", "svelte", "astro"])
+  expect(["a.scss", "a.vue", "a.svelte", "a.astro"].map((p) => filetypeOf(p))).toEqual(["scss", "vue", "svelte", "astro"])
 })
 
 test("nginx config by name, extension or folder, but not every file in an nginx folder", () => {
   const nginx = ["nginx.conf", "/etc/nginx/nginx.conf", "site.nginx", "/etc/nginx/sites-available/default", "deploy/nginx/conf.d/app.conf"]
-  expect(nginx.map(filetypeOf)).toEqual(nginx.map(() => "nginx"))
-  expect(["deploy/nginx/Dockerfile", "deploy/nginx/README.md", "app.conf"].map(filetypeOf)).not.toContain("nginx")
+  expect(nginx.map((p) => filetypeOf(p))).toEqual(nginx.map(() => "nginx"))
+  expect(["deploy/nginx/Dockerfile", "deploy/nginx/README.md", "app.conf"].map((p) => filetypeOf(p))).not.toContain("nginx")
+})
+
+test("nginx: blocks with arguments, addresses and one-line blocks keep their colours", async () => {
+  const text = "events { worker_connections 1024; }\nupstream backend {\n  server 127.0.0.1:8080 weight=5;\n}\nserver {\n  listen 80;\n}\n"
+  const hl = (await computeHighlights(text, "nginx"))!
+  const groupsAt = (word: string, from = 0) => {
+    const i = text.indexOf(word, from)
+    return hl.filter((h) => h[0] === i && h[1] === i + word.length).map((h) => h[2])
+  }
+  expect(groupsAt("upstream")).toContain("keyword")
+  expect(groupsAt("server")).toContain("keyword")
+  expect(groupsAt("127.0.0.1:8080")).toEqual(["variable"])
+  expect(groupsAt("server", text.indexOf("}\nserver"))).toContain("keyword")
+  expect(groupsAt("80", text.indexOf("listen"))).toEqual(["number"])
+})
+
+test("nginx config in any .conf file by its content (deploy/conf/conf.d/app.conf), and in sites-* folders", () => {
+  const conf = "upstream app_admin {\n    server ui-admin:80;\n}\n# main\nserver {\n    listen 80;\n}\n"
+  expect(filetypeOf("packages/deploy/conf/conf.d/ui-admin.conf", conf)).toBe("nginx")
+  expect(filetypeOf("deploy/site.conf", "# proxy\n\nlocation /api/ {\n  proxy_pass http://app;\n}\n")).toBe("nginx")
+  expect(filetypeOf("/etc/sites-available/default")).toBe("nginx")
+  // Other .conf formats, and nginx-looking text in other file types, stay as they were.
+  expect(filetypeOf("supervisord.conf", "[program:app]\ncommand=node server.js\n")).not.toBe("nginx")
+  expect(filetypeOf("redis.conf", "port 6379\nsave 900 1\n")).not.toBe("nginx")
+  expect(filetypeOf("a.ts", "server {\n}\n")).toBe("typescript")
 })
 
 // Code inside markup gets its own language's colours, through `#set! injection.language`
@@ -59,7 +84,7 @@ test.each([
 
 test("file types for full-stack files: .vue, Dockerfiles, SQL, and .env read as shell", () => {
   const paths = ["a.vue", "Dockerfile", "api/Dockerfile.dev", "web.dockerfile", "q.sql", ".env", "packages/api/.env.local", "prod.env", "envs.ts"]
-  expect(paths.map(filetypeOf)).toEqual(["vue", "dockerfile", "dockerfile", "dockerfile", "sql", "bash", "bash", "bash", "typescript"])
+  expect(paths.map((p) => filetypeOf(p))).toEqual(["vue", "dockerfile", "dockerfile", "dockerfile", "sql", "bash", "bash", "bash", "typescript"])
 })
 
 test("Vue: TypeScript colours in <script>, {{ }} and directives; SCSS in <style>; tags as HTML", async () => {

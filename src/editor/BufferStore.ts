@@ -165,7 +165,7 @@ export class BufferStore {
       path: abs,
       relPath: relative(this.root, abs) || basename(abs),
       name: basename(abs),
-      filetype: filetypeOf(abs),
+      filetype: filetypeOf(abs, loaded.text),
       eol: loaded.eol,
       dirty: false,
       conflict: false,
@@ -247,7 +247,7 @@ export class BufferStore {
     const moved = this.under(oldPath)
     for (const b of moved) {
       const abs = newPath + b.path.slice(oldPath.length)
-      const filetype = filetypeOf(abs)
+      const filetype = filetypeOf(abs, b.kind === "text" ? this.textOf(b) : undefined)
       const retype = filetype !== b.filetype
       b.path = abs
       b.relPath = relative(this.root, abs) || basename(abs)

@@ -80,21 +80,29 @@ export function registerGrammars(): void {
   addDefaultParsers(EXTRA_GRAMMARS)
 }
 
-/** A path's filetype, as OpenTUI names it, plus the few it doesn't know. */
-export function filetypeOf(path: string): string | undefined {
+/**
+ * A path's filetype, as OpenTUI names it, plus the few it doesn't know. `text` (the file's
+ * content, when known) recognises nginx config in a `.conf` file anywhere (deploy/conf.d/app.conf).
+ */
+export function filetypeOf(path: string, text?: string): string | undefined {
   if (/\.jsonc$/i.test(path)) return "json"
   // .env, .env.local, prod.env: KEY=value lines and # comments read well as shell.
   if (/(^|\/)\.env(\.[\w.-]+)?$|\.env$/i.test(path)) return "bash"
   // Dockerfile.dev, api.Dockerfile
   if (/(^|\/)(dockerfile(\.[\w-]+)?|[\w.-]+\.dockerfile)$/i.test(path)) return "dockerfile"
-  if (isNginx(path)) return "nginx"
+  if (isNginx(path) || (text !== undefined && /\.conf$/i.test(path) && looksLikeNginx(text))) return "nginx"
   return pathToFiletype(path)
 }
 
-/** nginx.conf, *.nginx, and .conf or extensionless files in an nginx folder (conf.d/site.conf, sites-available/default). */
+/** A top-level nginx block (`server {`, `upstream app {`, `http {`, `events {`, `location / {`) near the start. */
+function looksLikeNginx(text: string): boolean {
+  return /^[ \t]*(server|http|events|stream|upstream[ \t]+[\w.-]+|location[ \t][^{\n]*)[ \t]*\{/m.test(text.slice(0, 64_000))
+}
+
+/** nginx.conf, *.nginx, and .conf or extensionless files in an nginx or sites-* folder (nginx/conf.d/site.conf, sites-available/default). */
 function isNginx(path: string): boolean {
   if (/(^|[\\/])nginx\.conf$|\.nginx$/i.test(path)) return true
-  if (!/(^|[\\/])nginx[\\/]/i.test(path)) return false
+  if (!/(^|[\\/])(nginx|sites-available|sites-enabled)[\\/]/i.test(path)) return false
   const base = path.split(/[\\/]/).pop()!
   return /\.conf$/i.test(base) || (!base.includes(".") && !/^(dockerfile|makefile|license|readme)$/i.test(base))
 }
