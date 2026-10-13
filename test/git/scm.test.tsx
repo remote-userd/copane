@@ -237,7 +237,8 @@ test("a clean tree says so, with commits to push and the last commit", async () 
       sh(root, "commit", "-qam", "Local only")
     },
   })
-  await until(() => h!.frame().includes("↑1 to push"))
+  // Ahead/behind and the last commit load separately: wait for both.
+  await until(() => h!.frame().includes("↑1 to push") && h!.frame().includes("Last commit: Local only"))
   expect(h!.frame()).toContain("Working tree clean · ↑1 to push (P)")
   expect(h!.frame()).toContain("Last commit: Local only")
 })
