@@ -94,7 +94,13 @@ test("an agent in a git worktree works on its own branch; closing can remove the
 })
 
 test("worktree paths sit beside the project, with a branch per agent", () => {
-  expect(worktreeFor("/work/app", "Claude Code", 2)).toEqual({ path: "/work/app-claude-code-2", branch: "copane/claude-code-2" })
+  expect(worktreeFor("/work/app", "Claude Code", 2)).toEqual({ path: "/work/app-claude-code-2", branch: "copane/claude-code-2", cwd: "/work/app-claude-code-2" })
+  // Opened in a subfolder of the repo: the worktree goes beside the repo, the agent starts in the same subfolder.
+  expect(worktreeFor("/work/mono/pkg/app", "claude", 1, "/work/mono")).toEqual({
+    path: "/work/mono-claude-1",
+    branch: "copane/claude-1",
+    cwd: "/work/mono-claude-1/pkg/app",
+  })
 })
 
 test("× on a tab closes it, and so does a middle-click; a single tab has neither", async () => {

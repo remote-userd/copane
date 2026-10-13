@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test"
-import { symlinkSync, writeFileSync } from "node:fs"
+import { rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { GitStatus, parsePorcelain } from "../../src/files/gitStatus"
-import { fixture } from "../helpers"
+import { fixture, waitUntil } from "../helpers"
 
 test("parsePorcelain maps XY codes to marks, skipping rename sources", () => {
   const out = [" M src/a.ts", "M  src/b.ts", "A  new.ts", "?? notes.md", " D gone.ts", "R  to.ts", "from.ts", "UU conflict.ts", "AA both.ts", ""].join("\0")
@@ -61,11 +61,11 @@ test("GitStatus outside a repo is disabled and quiet", async () => {
   gs.stop()
 })
 
-test("parseBranch reads name and ahead/behind", async () => {
+test("parseBranch reads name, upstream and ahead/behind", async () => {
   const { parseBranch } = await import("../../src/files/gitStatus")
   expect(parseBranch("## main")).toEqual({ name: "main", ahead: 0, behind: 0 })
-  expect(parseBranch("## main...origin/main [ahead 2, behind 1]")).toEqual({ name: "main", ahead: 2, behind: 1 })
-  expect(parseBranch("## feat/x...origin/feat/x [behind 3]")).toEqual({ name: "feat/x", ahead: 0, behind: 3 })
+  expect(parseBranch("## main...origin/main [ahead 2, behind 1]")).toEqual({ name: "main", ahead: 2, behind: 1, upstream: "origin/main" })
+  expect(parseBranch("## feat/x...origin/feat/x [behind 3]")).toEqual({ name: "feat/x", ahead: 0, behind: 3, upstream: "origin/feat/x" })
   expect(parseBranch("## No commits yet on master")).toEqual({ name: "master", ahead: 0, behind: 0 })
   expect(parseBranch("## HEAD (no branch)")).toEqual({ name: "detached", ahead: 0, behind: 0, detached: true })
 })
@@ -128,5 +128,48 @@ test("load() asked during a load waits for a fresh one, so afterChange sees the 
   await gs.afterChange()
   expect(gs.mark(join(root, "a.ts"))).toBe("M")
   await first
+  gs.stop()
+})
+
+test("git init after the editor started is picked up when the window gets focus back", async () => {
+  const { windowFocus } = await import("../../src/app/windowFocus")
+  const root = await fixture({ "a.ts": "a" })
+  const gs = new GitStatus(root)
+  await gs.start(50)
+  expect(gs.enabled).toBe(false)
+  git(root, "init", "-q")
+  windowFocus.set({ focused: false })
+  windowFocus.set({ focused: true })
+  await waitUntil(() => gs.enabled && gs.mark(join(root, "a.ts")) === "U", 3000)
+  expect(gs.repo).not.toBeNull()
+  gs.stop()
+})
+
+test("a deleted repo clears the marks instead of showing old ones", async () => {
+  const root = await fixture({ "a.ts": "a" })
+  git(root, "init", "-q")
+  const gs = new GitStatus(root)
+  await gs.start(60_000)
+  expect(gs.mark(join(root, "a.ts"))).toBe("U")
+  rmSync(join(root, ".git"), { recursive: true, force: true })
+  for (let i = 0; i < 3; i++) await gs.load()
+  expect(gs.enabled).toBe(false)
+  expect(gs.mark(join(root, "a.ts"))).toBeNull()
+  expect(gs.entries).toEqual([])
+  gs.stop()
+})
+
+test("a reset --soft from outside (index untouched) still updates the status", async () => {
+  const root = await fixture({ "a.ts": "a" })
+  git(root, "init", "-q")
+  git(root, "add", ".")
+  git(root, "commit", "-qm", "one")
+  writeFileSync(join(root, "a.ts"), "b")
+  git(root, "commit", "-qam", "two")
+  const gs = new GitStatus(root)
+  await gs.start(50)
+  expect(gs.entries).toEqual([])
+  git(root, "reset", "-q", "--soft", "HEAD~1")
+  await waitUntil(() => gs.entries.some((e) => e.rel === "a.ts" && e.staged), 3000)
   gs.stop()
 })

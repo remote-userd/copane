@@ -39,7 +39,7 @@ export interface AgentTabs {
   /** Close the visible tab (not the last one). */
   closeActive(): void
   /** A tab's folder and, for a worktree agent, its branch. */
-  session(id: number): { id: number; name: string; cwd: string; branch: string | null } | undefined
+  session(id: number): { id: number; name: string; cwd: string; branch: string | null; worktree?: string } | undefined
   /** The visible tab's id. */
   activeId(): number
   /** Close a tab right away (no questions; its worktree is the caller's business). The last tab is replaced by a fresh one in the project. */

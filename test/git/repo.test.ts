@@ -182,3 +182,18 @@ test("a new binary or huge file isn't read into the diff", async () => {
   expect(await repo.diff(join(root, "img.bin"), false, true)).toBe("New binary file, 1 KB")
   expect(await repo.diff(join(root, "big.log"), false, true)).toMatch(/^New file, \d+ KB: too big to show$/)
 })
+
+test("paths with spaces and non-ASCII names stage, unstage and stage a hunk", async () => {
+  const { root, repo } = await repoWith({ "my notes/résumé ünï.md": "one\ntwo\n" })
+  const path = join(root, "my notes/résumé ünï.md")
+  writeFileSync(path, "ONE\nTWO\n")
+  expect(await repo.stage([path])).toBeNull()
+  expect((await repo.status()).find((e) => e.path === path)).toMatchObject({ staged: true, unstaged: false })
+  expect(await repo.unstage([path])).toBeNull()
+  expect(await repo.setIndexText(path, "ONE\ntwo\n")).toBeNull()
+  expect(await repo.indexText(path)).toBe("ONE\ntwo\n")
+  expect((await repo.numstat(true)).get(path)).toEqual({ add: 1, del: 1 })
+  const hunk = (await repo.diff(path, false)).split("\n").filter((l) => !l.startsWith("\\")).join("\n")
+  expect(await repo.applyHunk(path, hunk, "stage")).toBeNull()
+  expect(await repo.indexText(path)).toBe("ONE\nTWO\n")
+})

@@ -24,6 +24,9 @@ All notable changes to copane are listed here. The format follows
 - Faster git status in repos with thousands of untracked files (parsed once instead of twice).
 - Blame no longer starts a new git process on every cursor move after an edit while the last one is still running, and gives up after 15 s.
 - Opening a huge or binary new file, or a commit with a huge diff, in Source control or file history no longer freezes the editor: big diffs are cut (at a change boundary) and binary files are named, not shown.
+- Git state changed outside the editor now shows up: a fetch, a push from the terminal or a `reset --soft` updates ahead/behind, the tree marks and blame (only the index and HEAD were watched).
+- `git init` (or a clone) in a folder that's already open is picked up when you come back to the window or save a file. If the repo is deleted, its marks go away.
+- An agent in its own worktree, started with `ce` opened in a subfolder of a repo: the worktree went inside the repo (and showed up as untracked files there); it now goes beside the repo, and the agent starts in the same subfolder.
 - Push while HEAD is detached says to switch to a branch, instead of trying to publish a branch named "detached".
 
 ## [0.8.0] - 2026-10-11

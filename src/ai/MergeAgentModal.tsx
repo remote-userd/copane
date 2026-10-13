@@ -7,6 +7,7 @@ import { useWorkspace, type Workspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import { GitRepo, type WorktreeChange } from "../git/repo"
 import { colorDiff, type DiffLine } from "../git/SourceControlPanel"
+import { worktreeOf } from "./TerminalPane"
 
 const LETTER_COLOR = { A: colors.ok, M: colors.warn, D: colors.error } as const
 
@@ -19,7 +20,7 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
   const dims = useTerminalDimensions()
   const session = ws.agents?.session(sessionId)
   const repo = ws.git?.repo ?? null
-  const agent = session ? new GitRepo(session.cwd) : null
+  const agent = session ? new GitRepo(worktreeOf(session)) : null
   const [base, setBase] = useState<string | null>(null)
   const [changes, setChanges] = useState<WorktreeChange[] | null>(null)
   const [sel, setSel] = useState(0)
@@ -72,7 +73,7 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
       close()
       return ws.notify(`Merge has conflicts in ${r.conflicts} file${r.conflicts === 1 ? "" : "s"}: resolve them with the bar in each file (Alt+1/2/3), then commit`, "warn")
     }
-    afterMerge(ws, sessionId, session.cwd, session.branch, changes?.length ?? 0)
+    afterMerge(ws, sessionId, worktreeOf(session), session.branch, changes?.length ?? 0)
   }
 
   const discard = () => {
@@ -82,7 +83,7 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
       text: `Throw away ${n} changed file${n === 1 ? "" : "s"}, the worktree and branch ${session.branch} for good? (y/n)`,
       yes: async () => {
         await ws.agents?.stop(sessionId)
-        const err = await repo.removeWorktree(session.cwd, true)
+        const err = await repo.removeWorktree(worktreeOf(session), true)
         if (err) return setStatus({ text: `Couldn't remove the worktree: ${err}`, kind: "error" })
         await repo.deleteBranch(session.branch!, true)
         ws.agents?.close(sessionId)
@@ -95,7 +96,7 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
   const open = () => {
     if (!change || !session || change.status === "D") return
     close()
-    void openFile(ws, join(session.cwd, change.rel))
+    void openFile(ws, join(worktreeOf(session), change.rel))
   }
 
   const viewH = dims.height - 8

@@ -7,6 +7,7 @@ Run in a real terminal, in plain mode and inside tmux.
 1b. Push to an ssh remote whose key needs a passphrase (not in an agent). Source control shows an error within a few seconds; the screen is not garbled and keys still work.
 1c. In a repo with `core.autocrlf=true`, change one line and stage just that hunk (gutter). Source control shows one line staged, not the whole file. Then press Space quickly on several files: no "index.lock" error.
 1d. Source control: stage the middle of three changed files; the selection moves to the next one. Press → on a file with two changes, ↓, Space: only that change is staged. Right-click a file: the menu works and the panel comes back. `m` with a multi-line AI message: Ctrl+J adds lines, and the commit keeps the body.
+1e. Open `ce` in a folder that is not a repo, run `git init` in another terminal, then come back to the window: the tree shows `U` marks. In a repo, run `git fetch` or `git reset --soft HEAD~1` in another terminal: the status bar and Source control update within a few seconds.
 2. Type, then press Ctrl+S. The dirty dot clears and the file on disk matches.
 3. Ctrl+Z after saving marks the tab dirty again.
 4. Ctrl+P, type part of a path, press Enter. The file opens in a new tab and is revealed in the tree.

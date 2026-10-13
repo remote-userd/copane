@@ -1,4 +1,4 @@
-import { basename, dirname, join } from "node:path"
+import { basename, dirname, join, relative } from "node:path"
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useKeyboard, useRenderer } from "@opentui/react"
 import { EmbeddedTerminalRenderable, type BoxRenderable } from "@opentui/core"
@@ -36,7 +36,15 @@ export interface Session {
   cwd: string
   /** The worktree's branch, when the agent runs in its own git worktree. */
   branch: string | null
+  /**
+   * The worktree's top folder, when it differs from `cwd`: the editor was opened in a subfolder
+   * of the repo, and the agent starts in the same subfolder of its worktree.
+   */
+  worktree?: string
 }
+
+/** The top folder of a worktree session's checkout (what git commands run in). */
+export const worktreeOf = (s: Pick<Session, "cwd" | "worktree">): string => s.worktree ?? s.cwd
 
 interface SessionState {
   status: string
@@ -426,10 +434,14 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
   return <box ref={boxRef} flexGrow={1} flexDirection="column" visible={active} />
 })
 
-/** Where a new worktree for `name` goes: beside the project, e.g. ../app-codex-2. */
-export function worktreeFor(root: string, name: string, n: number): { path: string; branch: string } {
+/**
+ * Where a new worktree for `name` goes: beside the repo, e.g. ../app-codex-2, and the folder in it
+ * matching `root` (the same as `path` unless the editor was opened in a subfolder of the repo `top`).
+ */
+export function worktreeFor(root: string, name: string, n: number, top = root): { path: string; branch: string; cwd: string } {
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "agent"
-  return { path: join(dirname(root), `${basename(root)}-${slug}-${n}`), branch: `copane/${slug}-${n}` }
+  const path = join(dirname(top), `${basename(top)}-${slug}-${n}`)
+  return { path, branch: `copane/${slug}-${n}`, cwd: join(path, relative(top, root)) }
 }
 
 /** The AI pane: one tab per agent CLI. ws.ai always points at the visible tab. */
@@ -581,13 +593,13 @@ function openAgentMenu(ws: Workspace, config: AiConfig, x: number | undefined, y
   const inWorktree = async (c: AgentChoice) => {
     if (!repo) return
     let n = count(c.name) + 1
-    let wt = worktreeFor(ws.root, c.name, n)
+    let wt = worktreeFor(ws.root, c.name, n, repo.top)
     // Skip numbers still taken: a worktree folder, or a branch kept after its worktree was removed.
-    while ((await Bun.file(join(wt.path, ".git")).exists()) || (await repo.branchExists(wt.branch))) wt = worktreeFor(ws.root, c.name, ++n)
+    while ((await Bun.file(join(wt.path, ".git")).exists()) || (await repo.branchExists(wt.branch))) wt = worktreeFor(ws.root, c.name, ++n, repo.top)
     ws.notify(`Creating worktree ${wt.path}…`)
     const err = await repo.addWorktree(wt.path, wt.branch)
     if (err) return ws.notify(`Could not create the worktree: ${err}`, "error")
-    add({ name: c.name, command: c.command, args: c.args, cwd: wt.path, branch: wt.branch })
+    add({ name: c.name, command: c.command, args: c.args, cwd: wt.cwd, branch: wt.branch, ...(wt.cwd !== wt.path ? { worktree: wt.path } : {}) })
     ws.notify(`${c.name} works in ${wt.path} on branch ${wt.branch}`)
   }
   ws.ui.set({
@@ -620,11 +632,16 @@ async function recount(ws: Workspace, id: number): Promise<void> {
   const session = tabs.get().sessions.find((s) => s.id === id)
   const repo = ws.git?.repo
   if (!session?.branch || !repo) return
+  // Counts can overlap (the agent goes quiet again before one finishes): only the latest one lands.
+  const seq = (recounts.get(id) ?? 0) + 1
+  recounts.set(id, seq)
   const base = await repo.mergeBase(session.branch)
   if (!base) return
-  const changes = (await new GitRepo(session.cwd).changesSince(base)).length
+  const changes = (await new GitRepo(worktreeOf(session)).changesSince(base)).length
+  if (recounts.get(id) !== seq) return
   if (tabs.get().state[id]?.changes !== changes) setState(id, { changes })
 }
+const recounts = new Map<number, number>()
 
 /** Close a tab (not the last). A worktree tab offers to merge its work first, or to remove its worktree. */
 function closeSession(ws: Workspace, id: number): void {
@@ -639,7 +656,7 @@ function closeSession(ws: Workspace, id: number): void {
     modal: {
       kind: "confirm",
       title: `Close ${tabLabel(session)}`,
-      body: `It works in ${session.cwd}. Review and merge its work into your branch first, or remove that worktree (its branch ${session.branch} stays, with any commits)?`,
+      body: `It works in ${worktreeOf(session)}. Review and merge its work into your branch first, or remove that worktree (its branch ${session.branch} stays, with any commits)?`,
       options: [
         { key: "m", label: "Review & merge first", run: () => ws.ui.set({ modal: { kind: "mergeAgent", sessionId: id } }) },
         {
@@ -648,8 +665,8 @@ function closeSession(ws: Workspace, id: number): void {
           run: async () => {
             ws.ui.set({ modal: null })
             close()
-            const err = await repo?.removeWorktree(session.cwd)
-            ws.notify(err ? `Worktree kept: ${err}` : `Removed ${session.cwd} (branch ${session.branch} kept)`, err ? "warn" : "info")
+            const err = await repo?.removeWorktree(worktreeOf(session))
+            ws.notify(err ? `Worktree kept: ${err}` : `Removed ${worktreeOf(session)} (branch ${session.branch} kept)`, err ? "warn" : "info")
           },
         },
         {

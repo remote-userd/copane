@@ -1,6 +1,6 @@
 import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { GitRepo, parseEntries, READ_ONLY, type StatusEntry } from "../git/repo"
-import { windowFocused } from "../app/windowFocus"
+import { windowFocus, windowFocused } from "../app/windowFocus"
 
 /** One-letter git status shown in the tree. */
 export type GitMark = "M" | "A" | "U" | "D" | "R" | "!"
@@ -26,6 +26,8 @@ export interface BranchInfo {
   behind: number
   /** HEAD is on a commit, not a branch: nothing to push or publish. */
   detached?: boolean
+  /** The upstream, e.g. "origin/main". */
+  upstream?: string
 }
 
 /** Parse the `## ...` header of `git status --branch`. */
@@ -35,11 +37,11 @@ export function parseBranch(header: string): BranchInfo | null {
   const initial = /^No commits yet on (.+)$/.exec(h)
   if (initial) return { name: initial[1]!, ahead: 0, behind: 0 }
   if (h.startsWith("HEAD (no branch)")) return { name: "detached", ahead: 0, behind: 0, detached: true }
-  const m = /^(.+?)(?:\.\.\.\S+)?(?: \[(.*)\])?$/.exec(h)
+  const m = /^(.+?)(?:\.\.\.(\S+))?(?: \[(.*)\])?$/.exec(h)
   if (!m) return null
-  const ahead = Number(/ahead (\d+)/.exec(m[2] ?? "")?.[1] ?? 0)
-  const behind = Number(/behind (\d+)/.exec(m[2] ?? "")?.[1] ?? 0)
-  return { name: m[1]!, ahead, behind }
+  const ahead = Number(/ahead (\d+)/.exec(m[3] ?? "")?.[1] ?? 0)
+  const behind = Number(/behind (\d+)/.exec(m[3] ?? "")?.[1] ?? 0)
+  return { name: m[1]!, ahead, behind, ...(m[2] ? { upstream: m[2] } : {}) }
 }
 
 /** Parse `git status --porcelain=v1 -z` output into absolute path -> mark. */
@@ -72,6 +74,13 @@ export class GitStatus {
   private snapshot = 0
   private top: string | null = null
   private gitDir: string | null = null
+  /** Where refs live (the main .git, also for a linked worktree). */
+  private commonDir: string | null = null
+  /** `git status` failures in a row: the repo may have been deleted. */
+  private failures = 0
+  /** Not a repo (yet): when detection was last tried, and the focus listener that retries it. */
+  private lastDetect = 0
+  private unwatchFocus: (() => void) | null = null
   /** The status load in progress, and the one queued behind it (callers asking mid-load share it). */
   private current: Promise<void> | null = null
   private next: Promise<void> | null = null
@@ -103,16 +112,33 @@ export class GitStatus {
 
   /** Find the repo and load the first status. Resolves even when there is no repo. */
   async start(pollMs = 2000): Promise<void> {
+    this.pollMs = pollMs
+    if (await this.detect()) return
+    // Not a repo: `git init` (or a clone) may come later. Look again when you come back to the
+    // window, and on file changes (see refresh).
+    this.unwatchFocus ??= windowFocus.subscribe(() => {
+      if (windowFocused()) void this.detect()
+    })
+  }
+  private pollMs = 2000
+
+  /** Find the repo; true when found (status loaded, polling started). */
+  private async detect(): Promise<boolean> {
+    if (this.top || this.stopped) return !!this.top
+    this.lastDetect = Date.now()
     // --show-toplevel resolves symlinks (macOS /var is /private/var), so its paths would not match
     // the ones the editor uses; the relative --show-cdup keeps the folder's own spelling.
-    const info = await run(["git", "rev-parse", "--show-cdup", "--git-dir"], this.root)
-    if (info === null || this.stopped) return
-    const [cdup, gitDir] = info.split("\n")
-    if (cdup === undefined || !gitDir) return
+    const info = await run(["git", "rev-parse", "--show-cdup", "--git-dir", "--git-common-dir"], this.root)
+    if (info === null || this.stopped || this.top) return !!this.top
+    const [cdup, gitDir, commonDir] = info.split("\n")
+    if (cdup === undefined || !gitDir) return false
     const top = resolve(this.root, cdup)
     this.top = top
     this.repo = new GitRepo(top)
     this.gitDir = isAbsolute(gitDir) ? gitDir : join(this.root, gitDir)
+    this.commonDir = commonDir ? (isAbsolute(commonDir) ? commonDir : join(this.root, commonDir)) : this.gitDir
+    this.unwatchFocus?.()
+    this.unwatchFocus = null
     await this.load()
     let last = await this.gitFingerprint()
     let busy = false
@@ -128,19 +154,45 @@ export class GitStatus {
         this.forgetContents()
         this.refresh()
       }
-    }, pollMs)
+    }, this.pollMs)
     this.poll.unref?.()
+    return true
+  }
+
+  /** The repo is gone (its folder deleted): show nothing, and look for one again as at start. */
+  private lost(): void {
+    if (this.poll) clearInterval(this.poll)
+    this.poll = null
+    this.top = null
+    this.repo = null
+    this.gitDir = this.commonDir = null
+    this.lastOut = null
+    this.failures = 0
+    this.branch = null
+    this.entries = []
+    this.marks = new Map()
+    this.dirMarks = new Map()
+    this.forgetContents()
+    this.snapshot++
+    for (const l of this.listeners) l()
+    void this.start(this.pollMs)
   }
 
   stop(): void {
     this.stopped = true
+    this.unwatchFocus?.()
     if (this.poll) clearInterval(this.poll)
     if (this.debounce) clearTimeout(this.debounce)
   }
 
   /** Re-read the status soon (debounced). */
   refresh(delayMs = 300): void {
-    if (!this.top || this.stopped) return
+    if (this.stopped) return
+    // Files change but there's no repo: maybe `git init` just ran (at most every few seconds).
+    if (!this.top) {
+      if (Date.now() - this.lastDetect > 3000) void this.detect()
+      return
+    }
     if (this.debounce) clearTimeout(this.debounce)
     this.debounce = setTimeout(() => void this.load(), delayMs)
   }
@@ -250,7 +302,14 @@ export class GitStatus {
     const top = this.top!
     // Runs every few seconds in the background: never take the index lock (see READ_ONLY).
     const out = await run(["git", ...READ_ONLY, "status", "--porcelain=v1", "-z", "-uall", "--branch"], this.root)
-    if (out === null || this.stopped || out === this.lastOut) return
+    if (this.stopped) return
+    if (out === null) {
+      // Failing again and again, with no HEAD left: the repo was deleted.
+      if (++this.failures >= 3 && this.gitDir && !(await Bun.file(join(this.gitDir, "HEAD")).exists())) this.lost()
+      return
+    }
+    this.failures = 0
+    if (out === this.lastOut) return
     this.lastOut = out
     this.branch = out.startsWith("## ") ? parseBranch(out.slice(0, out.indexOf("\0") >>> 0)) : null
     // Parsed once: the marks come from the entries (thousands of untracked files make this add up).
@@ -272,14 +331,26 @@ export class GitStatus {
     for (const l of this.listeners) l()
   }
 
+  /**
+   * What changes when git state changes outside the editor: the index and HEAD (staging, commits,
+   * checkouts), the branch's ref (reset, commit from another worktree), the upstream's ref and
+   * FETCH_HEAD (fetch, push, pull), packed-refs (gc).
+   */
   private async gitFingerprint(): Promise<string> {
-    const parts: string[] = []
-    for (const f of ["index", "HEAD"]) {
-      const st = await Bun.file(join(this.gitDir!, f))
-        .stat()
-        .catch(() => null)
-      parts.push(st ? `${st.ino}:${st.mtimeMs}:${st.size}` : "-")
-    }
+    const files = [join(this.gitDir!, "index"), join(this.gitDir!, "HEAD")]
+    const common = this.commonDir ?? this.gitDir!
+    const b = this.branch
+    if (b && !b.detached) files.push(join(common, "refs/heads", b.name))
+    if (b?.upstream) files.push(join(common, "refs/remotes", b.upstream))
+    files.push(join(common, "packed-refs"), join(common, "FETCH_HEAD"))
+    const parts = await Promise.all(
+      files.map(async (f) => {
+        const st = await Bun.file(f)
+          .stat()
+          .catch(() => null)
+        return st ? `${st.ino}:${st.mtimeMs}:${st.size}` : "-"
+      }),
+    )
     return parts.join("|")
   }
 }
