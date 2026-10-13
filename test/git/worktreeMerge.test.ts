@@ -56,3 +56,32 @@ test("merging: the leftover work is committed, then merged; conflicts are report
   expect(await main.merge("copane/agent-1")).toEqual({ conflicts: 1 })
   expect(await Bun.file(join(root, "c.txt")).text()).toContain("<<<<<<<")
 })
+
+test("merging over your uncommitted changes to the same files: refused, with the files listed", async () => {
+  const { root, main, agent } = await setup()
+  expect(await agent.commitAll("Work from agent")).toBeNull()
+  writeFileSync(join(root, "a.txt"), "a mine, not committed\n")
+  writeFileSync(join(root, "new.txt"), "mine too\n") // untracked, the agent adds it as well
+  const r = await main.merge("copane/agent-1")
+  expect(r).toMatchObject({ blocked: ["a.txt", "new.txt"] })
+  // Nothing was touched.
+  expect(await Bun.file(join(root, "a.txt")).text()).toBe("a mine, not committed\n")
+  // Once yours are committed, git merges: both files were changed on both sides, so both conflict.
+  expect(await main.commitAll("mine")).toBeNull()
+  expect(await main.merge("copane/agent-1")).toEqual({ conflicts: 2 })
+})
+
+test("overwrittenFiles reads both of git's lists", async () => {
+  const { overwrittenFiles } = await import("../../src/git/repo")
+  const err = [
+    "error: Your local changes to the following files would be overwritten by merge:",
+    "\tCHANGELOG.md",
+    "\tREADME.md",
+    "Please commit your changes or stash them before you merge.",
+    "error: The following untracked working tree files would be overwritten by merge:",
+    "\tnew.txt",
+    "Please move or remove them before you merge.",
+    "Aborting",
+  ].join("\n")
+  expect(overwrittenFiles(err)).toEqual(["CHANGELOG.md", "README.md", "new.txt"])
+})

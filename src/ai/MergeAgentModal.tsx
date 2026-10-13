@@ -28,6 +28,8 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
   const [top, setTop] = useState(0)
   const [status, setStatus] = useState<{ text: string; kind: "info" | "error" | "busy" } | null>(null)
   const [confirm, setConfirm] = useState<{ text: string; yes: () => void } | null>(null)
+  // Your uncommitted files the merge would overwrite (git refused): commit them, then merge again.
+  const [blocked, setBlocked] = useState<string[] | null>(null)
   const close = () => ws.ui.set({ modal: null })
   const change = changes?.[Math.min(sel, changes.length - 1)]
 
@@ -68,12 +70,35 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
     if (err) return setStatus({ text: `Couldn't commit the agent's leftover work: ${err}`, kind: "error" })
     const r = await repo.merge(session.branch)
     await ws.git?.afterChange()
+    if ("error" in r && r.blocked) {
+      setBlocked(r.blocked)
+      const names = r.blocked.slice(0, 3).join(", ") + (r.blocked.length > 3 ? ` +${r.blocked.length - 3} more` : "")
+      return setStatus({ text: `Not merged: your uncommitted changes to ${names} would be overwritten. c commit them and merge · s Source control`, kind: "error" })
+    }
     if ("error" in r) return setStatus({ text: `Merge failed: ${r.error}`, kind: "error" })
     if ("conflicts" in r) {
       close()
       return ws.notify(`Merge has conflicts in ${r.conflicts} file${r.conflicts === 1 ? "" : "s"}: resolve them with the bar in each file (Alt+1/2/3), then commit`, "warn")
     }
     afterMerge(ws, sessionId, worktreeOf(session), session.branch, changes?.length ?? 0)
+  }
+
+  /** Commit everything uncommitted in your project (it blocked the merge), then merge again. */
+  const commitMineAndMerge = async () => {
+    if (!repo || !session?.branch) return
+    const n = (await repo.status()).length
+    const message = `Your work before merging ${session.branch}`
+    setConfirm({
+      text: `Commit all ${n} uncommitted file${n === 1 ? "" : "s"} in your project ("${message}"), then merge? (y/n)`,
+      yes: async () => {
+        setStatus({ text: "Committing your changes…", kind: "busy" })
+        const err = await repo.commitAll(message)
+        await ws.git?.afterChange()
+        if (err) return setStatus({ text: `Couldn't commit your changes: ${err}`, kind: "error" })
+        setBlocked(null)
+        await merge()
+      },
+    })
   }
 
   const discard = () => {
@@ -119,6 +144,8 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
     else if (key.name === "return") open()
     else if (key.name === "m" && n) void merge()
     else if (key.name === "d") discard()
+    else if (key.name === "c" && blocked) void commitMineAndMerge()
+    else if (key.name === "s" && blocked) ws.ui.set({ modal: { kind: "scm" } })
   })
 
   if (!session?.branch) {
@@ -146,6 +173,12 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
             {btn("Merge (m)", () => void merge())}
             {btn("Discard (d)", discard)}
           </box>
+          {blocked && (
+            <box flexDirection="row" gap={1} height={1} marginTop={1}>
+              {btn("Commit mine & merge (c)", () => void commitMineAndMerge())}
+              {btn("Source control (s)", () => ws.ui.set({ modal: { kind: "scm" } }))}
+            </box>
+          )}
           <box height={1} />
           {changes === null ? (
             <text selectable={false} fg={colors.dim}>

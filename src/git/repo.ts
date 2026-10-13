@@ -94,6 +94,18 @@ export function firstError(err: string): string {
   return (lines.find((l) => /^(fatal|error):/i.test(l)) ?? lines.find((l) => !/^hint:/i.test(l)) ?? "git failed").replace(/^(fatal|error):\s*/i, "")
 }
 
+/** The files git lists (tab-indented) under "…would be overwritten by merge:" / "by checkout:". */
+export function overwrittenFiles(err: string): string[] {
+  const files: string[] = []
+  let inList = false
+  for (const line of err.split("\n")) {
+    if (/would be overwritten by/i.test(line)) inList = true
+    else if (inList && line.startsWith("\t")) files.push(line.trim())
+    else inList = false
+  }
+  return files
+}
+
 /** A file an agent changed in its worktree since it split off. */
 export interface WorktreeChange {
   rel: string
@@ -456,12 +468,18 @@ export class GitRepo {
     return r.ok ? null : firstError(r.err || r.out)
   }
 
-  /** Merge a branch into the current one (always a merge commit). Conflicts are left in the files. */
-  async merge(branch: string): Promise<{ ok: true } | { conflicts: number } | { error: string }> {
+  /**
+   * Merge a branch into the current one (always a merge commit). Conflicts are left in the files.
+   * When your uncommitted (or untracked) files would be overwritten, git refuses before touching
+   * anything: `blocked` lists them.
+   */
+  async merge(branch: string): Promise<{ ok: true } | { conflicts: number } | { error: string; blocked?: string[] }> {
     const r = await this.run(["merge", "--no-ff", "--no-edit", branch], { timeoutMs: 120_000 })
     if (r.ok) return { ok: true }
     const conflicts = (await this.status()).filter((e) => e.conflict).length
-    return conflicts ? { conflicts } : { error: firstError(r.err || r.out) }
+    if (conflicts) return { conflicts }
+    const blocked = overwrittenFiles(r.err)
+    return blocked.length ? { error: firstError(r.err), blocked } : { error: firstError(r.err || r.out) }
   }
 
   /** The staged changes, for the AI commit message. */
