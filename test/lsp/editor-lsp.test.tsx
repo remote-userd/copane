@@ -12,7 +12,12 @@ afterEach(() => {
   h = null
 })
 
-const until = (cond: () => boolean | Promise<boolean>, ms = 15_000) => waitUntil(cond, ms, () => h?.setup.renderOnce())
+/** On a timeout, says what the screen and the language server's diagnostics were (for CI). */
+const until = (cond: () => boolean | Promise<boolean>, ms = 15_000) =>
+  waitUntil(cond, ms, () => h?.setup.renderOnce()).catch((err: Error) => {
+    const diags = lsp ? [...(lsp as unknown as { diags: Map<string, { message: string }[]> }).diags].map(([p, d]) => `${p}: ${d.map((x) => x.message).join(" | ")}`) : []
+    throw new Error(`${err.message}\ndiagnostics: ${JSON.stringify(diags)}\ntext: ${JSON.stringify(h?.ws.buffers.active?.textarea?.plainText)}\n${h?.frame() ?? ""}`)
+  })
 
 test("diagnostics, F8, completion and go to definition in the editor", async () => {
   const root = await fixture({
