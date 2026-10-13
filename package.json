@@ -33,13 +33,13 @@
   "dependencies": {
     "@opentui/core": "0.5.17",
     "@opentui/react": "0.5.17",
-    "diff": "8.0.2",
+    "diff": "9.0.0",
     "gemoji": "8.1.0",
     "ignore": "^7.0.12",
     "jsonc-parser": "3.3.1",
-    "marked": "17.0.1",
+    "marked": "18.1.1",
     "react": "^19.2",
-    "zod": "^4.6.5"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
