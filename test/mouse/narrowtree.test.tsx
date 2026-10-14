@@ -54,3 +54,21 @@ test("moving the selection onto a long name scrolls it into view", async () => {
   // Its start shows: the name begins at the left edge (scrolled past the indent and icon), or fits.
   await until(() => /averyvery/.test(row("avery")))
 })
+
+test("git-ignored rows show faded", async () => {
+  const root = await fixture({ ".gitignore": "dist/\n", "dist/out.js": "x", "a.txt": "a" })
+  const ws = createWorkspace(root, { treeWidth: 30, focus: "editor" })
+  h = await renderApp(ws, { tree: <FileTree tree={new TreeModel(root)} height={29} icons="simple" /> })
+  await until(() => h!.frame().includes("dist"))
+  const fg = (text: string) => {
+    const at = h!.find(text)
+    let col = 0
+    for (const span of h!.setup.captureSpans().lines[at.y]!.spans) {
+      if (at.x < col + span.width) return span.fg.toInts().slice(0, 3).join(",")
+      col += span.width
+    }
+    return ""
+  }
+  expect(fg("dist")).toBe("95,95,95") // ui.ignoredFg
+  expect(fg("a.txt")).not.toBe("95,95,95")
+})

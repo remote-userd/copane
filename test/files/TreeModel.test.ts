@@ -63,3 +63,35 @@ test("a deleted folder leaves nothing cached behind", async () => {
   expect(cached()).toEqual([])
   expect(tree.rows().map((r) => r.entry.name)).toEqual(["keep.ts"])
 })
+
+test("ignored files are listed and flagged; the Ctrl+P list still leaves them out", async () => {
+  const root = await fixture({ ".gitignore": "dist/\n", "dist/out.js": "x", "a.ts": "a" })
+  const tree = new TreeModel(root)
+  await tree.load()
+  await tree.expand(join(root, "dist"))
+  expect(tree.rows().map((r) => [r.entry.name, r.entry.ignored ?? false])).toEqual([
+    ["dist", true],
+    ["out.js", true],
+    [".gitignore", false],
+    ["a.ts", false],
+  ])
+  expect((await tree.files()).files.sort()).toEqual([".gitignore", "a.ts"])
+})
+
+test("showIgnored: false hides ignored files", async () => {
+  const root = await fixture({ ".gitignore": "dist/\n", "dist/out.js": "x", "a.ts": "a" })
+  const tree = new TreeModel(root, { showIgnored: false })
+  await tree.load()
+  expect(tree.rows().map((r) => r.entry.name)).toEqual([".gitignore", "a.ts"])
+})
+
+test("an ignored folder (not watched) is read again each time it's expanded", async () => {
+  const root = await fixture({ ".gitignore": "dist/\n", "dist/out.js": "x" })
+  const tree = new TreeModel(root)
+  await tree.load()
+  await tree.expand(join(root, "dist"))
+  tree.collapse(join(root, "dist"))
+  await writeFile(join(root, "dist", "more.js"), "y")
+  await tree.expand(join(root, "dist"))
+  expect(tree.rows().map((r) => r.entry.name)).toContain("more.js")
+})

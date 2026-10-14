@@ -239,7 +239,8 @@ export function FileTree({
         // A folder icon shows open/closed itself; the arrow is only for styles without one.
         const arrow = r.entry.isDir ? (icon ? "" : r.expanded ? "▾ " : "▸ ") : icons === "none" ? "  " : ""
         const isActive = r.entry.path === activePath
-        const fg = isActive ? colors.accent : r.entry.isDir ? colors.text : colors.dim
+        const ignored = r.entry.ignored === true
+        const fg = isActive ? colors.accent : ignored ? colors.ignoredFg : r.entry.isDir ? colors.text : colors.dim
         const mark = git ? (r.entry.isDir ? git.dirMark(r.entry.path) : git.mark(r.entry.path)) : null
         // The active file keeps its accent; git colours everything else.
         const gitColor = isActive ? null : markColor(mark)
@@ -268,7 +269,7 @@ export function FileTree({
               <text selectable={false} wrapMode="none" flexShrink={0} marginLeft={-left} fg={isSel && focused ? colors.text : (gitColor ?? fg)}>
                 {" ".repeat(r.depth * indentW)}
                 {arrow}
-                {icon ? <span fg={icon.color}>{icon.glyph} </span> : null}
+                {icon ? <span fg={ignored ? colors.ignoredFg : icon.color}>{icon.glyph} </span> : null}
                 {r.entry.name}
               </text>
             </box>

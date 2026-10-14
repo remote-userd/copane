@@ -5,6 +5,9 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- The files pane shows git-ignored files and folders (`dist/`, `.env`, ...) faded, as VS Code does, instead of hiding them. `tree.showIgnored: false` hides them again.
+
 ## [0.9.5] - 2026-10-14
 
 ### Changed

@@ -349,6 +349,8 @@ In a git repository the tree shows status: **M** modified (yellow), **U** untrac
 
 The AI's work shows there too, in violet: **✎** on files the AI is editing in the current turn, **✦** on files with changes you haven't reviewed, and a violet • on the folders above them. Clicking a ✦ file opens it at its first AI change. The right-click menu adds **Review AI Changes** and **Accept AI Changes**, or **Accept AI Changes in Folder** on a folder.
 
+Files and folders matched by `.gitignore` (`dist/`, `.env`, ...) show faded in the tree, as in VS Code; `{ "tree": { "showIgnored": false } }` hides them. `.git` and `node_modules` are never listed, and Ctrl+P and project search skip ignored files either way.
+
 ## Icons
 
 The tree shows file-type icons. Set the style in the config: `{ "tree": { "icons": "nerd" } }`.
@@ -398,7 +400,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
   "ai": { "command": "claude", "args": [], "startHidden": false, "notify": "bell", "agents": [{ "name": "codex", "command": "codex" }], "services": [] },
   "editor": { "highlightMaxBytes": 1000000, "copyOnSelect": false, "saveBeforeAi": true, "autocomplete": true, "cursorStyle": "line", "wordWrap": false, "startHidden": true, "highlightCursor": true, "indentGuides": true, "autoIndent": true, "autoClosingBrackets": true, "formatter": "auto", "formatOnSave": false, "smoothScrolling": true },
   "lsp": { "python": { "command": ["pylsp"] } },
-  "tree": { "icons": "simple" },
+  "tree": { "icons": "simple", "showIgnored": true },
   "statusBar": { "resources": true },
   "preview": { "imageProtocol": "auto" },
   "update": "auto",

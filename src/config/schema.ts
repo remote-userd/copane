@@ -83,6 +83,8 @@ export const configSchema = z
       .object({
         /** File-type icons: "nerd" needs a Nerd Font in the terminal (`copane --install-font` sets one up). */
         icons: z.enum(["nerd", "simple", "none"]).default("simple"),
+        /** Files and folders matched by .gitignore, shown faded (as in VS Code). Off hides them. */
+        showIgnored: z.boolean().default(true),
       })
       .prefault({}),
     statusBar: z

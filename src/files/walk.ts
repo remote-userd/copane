@@ -1,15 +1,17 @@
 import { readdir } from "node:fs/promises"
 import { relative, sep } from "node:path"
-import { IgnoreMatcher } from "./ignore"
+import { HARD_EXCLUDES, IgnoreMatcher } from "./ignore"
 
 export interface DirEntry {
   name: string
   path: string
   isDir: boolean
+  /** Matched by .gitignore: only listed when asked for (the tree shows these faded). */
+  ignored?: boolean
 }
 
-/** Sorted, ignore-filtered entries of one directory: folders first, then files. */
-export async function listDir(dir: string, matcher: IgnoreMatcher): Promise<DirEntry[]> {
+/** Sorted, ignore-filtered entries of one directory: folders first, then files. `withIgnored` keeps .gitignored ones, flagged. */
+export async function listDir(dir: string, matcher: IgnoreMatcher, withIgnored = false): Promise<DirEntry[]> {
   let dirents
   try {
     dirents = await readdir(dir, { withFileTypes: true })
@@ -23,7 +25,11 @@ export async function listDir(dir: string, matcher: IgnoreMatcher): Promise<DirE
     const path = prefix + d.name
     const isDir = d.isDirectory()
     if (!isDir && !d.isFile() && !d.isSymbolicLink()) continue
-    if (matcher.isIgnored(path, isDir)) continue
+    if (HARD_EXCLUDES.has(d.name)) continue
+    if (matcher.isIgnored(path, isDir)) {
+      if (withIgnored) out.push({ name: d.name, path, isDir, ignored: true })
+      continue
+    }
     out.push({ name: d.name, path, isDir })
   }
   return out.sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1))

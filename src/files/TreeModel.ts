@@ -22,8 +22,15 @@ export class TreeModel {
   /** Absolute paths in the resolved file list: a change to one of these leaves the list as is. */
   private listed: Set<string> | null = null
 
-  constructor(readonly root: string) {
+  /** List .gitignored entries too (flagged, shown faded). */
+  private readonly showIgnored: boolean
+
+  constructor(
+    readonly root: string,
+    { showIgnored = true }: { showIgnored?: boolean } = {},
+  ) {
     this.matcher = new IgnoreMatcher(root)
+    this.showIgnored = showIgnored
     this.expanded.add(root)
   }
 
@@ -41,7 +48,7 @@ export class TreeModel {
   }
 
   async load(dir = this.root): Promise<void> {
-    const entries = await listDir(dir, this.matcher)
+    const entries = await listDir(dir, this.matcher, this.showIgnored)
     this.children.set(dir, entries)
     if (dir === this.root && this.selected === null && entries[0]) this.selected = entries[0].path
     this.emit()
@@ -96,8 +103,13 @@ export class TreeModel {
       return
     }
     this.expanded.add(path)
-    if (!this.children.has(path)) await this.load(path)
+    // Ignored folders aren't watched (dist/ and the like churn): read them again on every expand.
+    if (!this.children.has(path) || this.isIgnoredDir(path)) await this.load(path)
     else this.emit()
+  }
+
+  private isIgnoredDir(path: string): boolean {
+    return this.children.get(dirname(path))?.find((e) => e.path === path)?.ignored === true
   }
 
   collapse(path: string): void {
@@ -127,7 +139,7 @@ export class TreeModel {
     for (let d = dirname(path); d.startsWith(this.root) && d !== this.root; d = dirname(d)) chain.unshift(d)
     for (const d of chain) {
       this.expanded.add(d)
-      if (!this.children.has(d)) this.children.set(d, await listDir(d, this.matcher))
+      if (!this.children.has(d)) this.children.set(d, await listDir(d, this.matcher, this.showIgnored))
     }
     this.selected = path
     this.emit()
@@ -171,7 +183,7 @@ export class TreeModel {
       dirs.delete(path)
     }
     const loaded = [...dirs].filter((d) => this.children.has(d))
-    const listings = await Promise.all(loaded.map((d) => listDir(d, this.matcher)))
+    const listings = await Promise.all(loaded.map((d) => listDir(d, this.matcher, this.showIgnored)))
     loaded.forEach((d, i) => this.children.set(d, listings[i]!))
     if (loaded.length) this.emit()
   }

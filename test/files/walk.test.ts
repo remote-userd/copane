@@ -38,6 +38,23 @@ test("listDir sorts folders first and hides ignored entries", async () => {
   expect(entries.map((e) => e.name)).toEqual(["src", ".gitignore", "README.md"])
 })
 
+test("listDir with ignored entries flags them, and still leaves out .git and node_modules", async () => {
+  const root = await fixture()
+  const matcher = new IgnoreMatcher(root)
+  const entries = await listDir(root, matcher, true)
+  expect(entries.map((e) => [e.name, e.ignored ?? false])).toEqual([
+    ["dist", true],
+    ["src", false],
+    [".gitignore", false],
+    ["README.md", false],
+  ])
+  // Inside an ignored folder everything is ignored; nested .gitignore rules apply too.
+  expect((await listDir(join(root, "dist"), matcher, true)).map((e) => [e.name, e.ignored])).toEqual([["out.js", true]])
+  const sub = await listDir(join(root, "src", "sub"), matcher, true)
+  expect(sub.find((e) => e.name === "secret.txt")?.ignored).toBe(true)
+  expect(sub.find((e) => e.name === "ok.txt")?.ignored).toBeUndefined()
+})
+
 test("walkFiles stops at the limit", async () => {
   const root = await fixture()
   const r = await walkFiles(root, new IgnoreMatcher(root), 2)

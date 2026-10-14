@@ -64,6 +64,8 @@ export const ui = {
   borderFocused: claude.clay,
   text: claude.text,
   dim: "#8a8a8a",
+  // File-tree rows matched by .gitignore
+  ignoredFg: "#5f5f5f",
   accent: claude.clay,
   warn: claude.amber,
   error: claude.rose,

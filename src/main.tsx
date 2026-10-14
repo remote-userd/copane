@@ -118,7 +118,7 @@ setInternalErrorHandler(
   () => saveRecovery(ws),
 )
 onShutdown(saveBeforeAi(ws))
-const tree = new TreeModel(ws.root)
+const tree = new TreeModel(ws.root, { showIgnored: ws.config.tree.showIgnored })
 // Build the Ctrl+P index in the background once the first screen is up, so the picker opens instantly.
 setTimeout(() => void tree.files(), 1500).unref?.()
 const git = new GitStatus(ws.root)
