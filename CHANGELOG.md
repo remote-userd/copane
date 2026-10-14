@@ -5,6 +5,8 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-10-14
+
 ### Changed
 - Opening a file while the editor is hidden (the default start, or Ctrl+Alt+X) now shows the editor beside the AI pane, instead of keeping it hidden until Ctrl+E.
 - `editor.startHidden` is no longer "maximize AI" in disguise: the editor is hidden only while no file is open, the AI pane starts with ⤢ (not ⤡), and maximizing and restoring the AI pane no longer changes whether the editor shows.
@@ -175,7 +177,8 @@ First public release.
 - VS Code keys and settings import.
 - Release binaries for Linux and macOS (x64 and arm64), and a one-line installer.
 
-[Unreleased]: https://github.com/sevheng/copane/compare/v0.9.4...HEAD
+[Unreleased]: https://github.com/sevheng/copane/compare/v0.9.5...HEAD
+[0.9.5]: https://github.com/sevheng/copane/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/sevheng/copane/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/sevheng/copane/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/sevheng/copane/compare/v0.9.1...v0.9.2
