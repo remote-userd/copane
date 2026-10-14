@@ -101,8 +101,6 @@ const ws = createWorkspace(
   {
     focus: args.file ? "editor" : "tree",
     aiVisible: !config.ai.startHidden,
-    // Start with the tree and the AI pane only: Ctrl+Alt+X or Ctrl+E shows the editor.
-    aiMaximized: config.editor.startHidden && !config.ai.startHidden ? { tree: true, editor: false } : null,
     wordWrap: config.editor.wordWrap,
     ...(await loadLayout()),
   },

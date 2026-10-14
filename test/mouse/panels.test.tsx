@@ -5,7 +5,7 @@ import { FileTree } from "../../src/files/FileTree"
 import { FilePicker } from "../../src/files/FilePicker"
 import { TreeModel } from "../../src/files/TreeModel"
 import { paneWidths } from "../../src/app/App"
-import { createWorkspace, fixture, numbered, renderApp, type Harness } from "../helpers"
+import { createWorkspace, editorShown, fixture, numbered, renderApp, type Harness } from "../helpers"
 
 let h: Harness | null = null
 afterEach(() => {
@@ -15,7 +15,7 @@ afterEach(() => {
 
 async function app(files: Record<string, string>, open: string[] = [], size = { width: 140, height: 30 }) {
   const root = await fixture(files)
-  const ws = createWorkspace(root)
+  const ws = createWorkspace(root, {}, editorShown())
   const tree = new TreeModel(root)
   for (const f of open) await ws.buffers.open(f)
   h = await renderApp(ws, { tree: <FileTree tree={tree} height={size.height - 1} />, picker: <FilePicker tree={tree} />, ai: <text>AI-PANE</text> }, size)

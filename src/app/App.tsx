@@ -113,19 +113,20 @@ export function App({ slots = {} }: { slots?: AppSlots }) {
   const showTree = ui.treeVisible && !!slots.tree && dims.width >= 100
   const showAi = ui.aiVisible && !!slots.ai
   const { treeWidth, aiWidth } = paneWidths(dims.width, ui, showTree, showAi)
-  // "Maximize AI": the editor only takes room once you show it (Ctrl+E), and until its last tab closes.
+  // editor.startHidden: no editor until a file opens. "Maximize AI": the editor only takes room once you
+  // open a file or show it (Ctrl+E). Both: until its last tab closes.
   const fileCount = useBufferSelector((b) => b.list().length)
-  const hideEditor = !!ui.aiMaximized && showAi && (!ui.aiMaximized.editor || fileCount === 0)
+  const emptyHidden = ws.config.editor.startHidden && fileCount === 0
+  const hideEditor = showAi && (emptyHidden || (!!ui.aiMaximized && (!ui.aiMaximized.editor || fileCount === 0)))
   const fullAi = dims.width - (showTree ? treeWidth + 1 : 0)
-  // The hidden editor can't hold the keyboard (the last tab just closed, Ctrl+E): the AI takes it.
   useEffect(() => {
-    if (hideEditor && ui.focus === "editor") {
-      ws.ui.set({ focus: "ai" })
-      ws.ai?.focus()
-      // A file opened (tree, Ctrl+P) into the hidden editor: say how to see it.
-      if (fileCount) ws.notify("Editor hidden: Ctrl+E shows it")
-    }
-  }, [hideEditor, ui.focus, ws, fileCount])
+    if (!hideEditor || ui.focus !== "editor") return
+    // A file opened (tree, Ctrl+P, links) into the hidden editor: show it beside the AI pane.
+    if (fileCount && ui.aiMaximized) return ws.ui.set({ aiMaximized: { ...ui.aiMaximized, editor: true } })
+    // The last tab just closed: the hidden editor can't hold the keyboard, the AI takes it.
+    ws.ui.set({ focus: "ai" })
+    ws.ai?.focus()
+  }, [hideEditor, ui.focus, ui.aiMaximized, ws, fileCount])
 
   if (tooSmall) {
     return (

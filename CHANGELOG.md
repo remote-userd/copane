@@ -5,6 +5,10 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Opening a file while the editor is hidden (the default start, or Ctrl+Alt+X) now shows the editor beside the AI pane, instead of keeping it hidden until Ctrl+E.
+- `editor.startHidden` is no longer "maximize AI" in disguise: the editor is hidden only while no file is open, the AI pane starts with ⤢ (not ⤡), and maximizing and restoring the AI pane no longer changes whether the editor shows.
+
 ## [0.9.4] - 2026-10-14
 
 ### Fixed

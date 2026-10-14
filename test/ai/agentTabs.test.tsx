@@ -5,7 +5,7 @@ import { TerminalPane, worktreeFor, type AiConfig } from "../../src/ai/TerminalP
 import type { MenuItem } from "../../src/app/state"
 import { GitStatus } from "../../src/files/gitStatus"
 import { parseWorktrees } from "../../src/git/repo"
-import { createWorkspace, fixture, renderApp, type Harness, waitUntil, GIT_ENV } from "../helpers"
+import { createWorkspace, editorShown, fixture, renderApp, type Harness, waitUntil, GIT_ENV } from "../helpers"
 
 // Several waits on the UI and git per test: more room than the default 5 s.
 setDefaultTimeout(15_000)
@@ -31,7 +31,7 @@ const config = (): AiConfig => ({
 })
 
 async function pane(root: string) {
-  const ws = createWorkspace(root)
+  const ws = createWorkspace(root, {}, editorShown())
   h = await renderApp(ws, { tree: <text>TREE</text>, ai: <TerminalPane config={config()} /> }, { width: 140, height: 24 })
   await until(() => h!.frame().includes("first-agent-ready"))
   return ws
@@ -243,7 +243,7 @@ test("a new worktree agent skips a number whose branch was kept after its worktr
 })
 
 test("a CLI that opens with a question brings focus to the AI pane, even when it then goes quiet", async () => {
-  const ws = createWorkspace(await fixture({ "a.txt": "a" }), { focus: "editor" })
+  const ws = createWorkspace(await fixture({ "a.txt": "a" }), { focus: "editor" }, editorShown())
   const asks: AiConfig = {
     command: "/bin/sh",
     // Lots of output first (scans are throttled), then the question as the very last thing.

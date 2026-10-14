@@ -5,6 +5,7 @@ import { act, type ReactNode } from "react"
 import { testRender } from "@opentui/react/test-utils"
 import { App, type AppSlots } from "../src/app/App"
 import { createWorkspace, WorkspaceContext, type Workspace } from "../src/app/workspace"
+import { configSchema } from "../src/config/schema"
 import { resetAgentTabs } from "../src/ai/TerminalPane"
 import { resetNavHistory } from "../src/app/navHistory"
 import { windowFocus } from "../src/app/windowFocus"
@@ -18,6 +19,9 @@ import { resetCompletion } from "../src/lsp/CompletionPopup"
  * Environment for git commands in tests: a fixed author, and no optional locks (a test's own
  * `git status` must not take the index lock while the app commits, which made commits flaky).
  */
+/** A config whose editor shows with no file open (editor.startHidden defaults to true). */
+export const editorShown = () => configSchema.parse({ editor: { startHidden: false } })
+
 export const GIT_ENV = {
   ...process.env,
   GIT_AUTHOR_NAME: "T",

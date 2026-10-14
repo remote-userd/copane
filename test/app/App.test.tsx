@@ -8,7 +8,7 @@ import { App } from "../../src/app/App"
 import { runCommand } from "../../src/keymap/commands"
 import { configSchema } from "../../src/config/schema"
 import { createWorkspace, WorkspaceContext, type Workspace } from "../../src/app/workspace"
-import { captureFrame } from "../helpers"
+import { captureFrame, editorShown } from "../helpers"
 
 let cleanup: (() => void) | null = null
 afterEach(() => {
@@ -29,7 +29,7 @@ async function render(ws: Workspace, width: number, height: number) {
 }
 
 test("shell shows tree, editor placeholder, AI pane and status hints at 120x30", async () => {
-  const ws = createWorkspace(process.cwd())
+  const ws = createWorkspace(process.cwd(), {}, editorShown())
   const frame = captureFrame(await render(ws, 120, 30))
   expect(frame).toContain("TREE-SLOT")
   expect(frame).toContain("AI-SLOT")
@@ -135,7 +135,47 @@ test("AI actions send the context plus a request and submit it", async () => {
   expect(ws.ui.get().focus).toBe("ai")
 })
 
-test("maximize AI: the editor stays hidden when files open, until you show it", async () => {
+test("editor.startHidden: no editor until a file opens, and maximize AI leaves that alone", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "ce-hidden-"))
+  await writeFile(join(dir, "a.ts"), "const a = 1\n")
+  const ws = createWorkspace(dir, { focus: "tree" })
+  const setup = await render(ws, 120, 30)
+  const frame = () => captureFrame(setup)
+  const step = async (fn: () => unknown) => {
+    await act(async () => void (await fn()))
+    await setup.renderOnce()
+    await setup.renderOnce()
+  }
+  expect(frame()).toContain("TREE-SLOT")
+  expect(frame()).not.toContain("No file open")
+  expect(ws.ui.get().aiMaximized).toBeNull()
+
+  // Maximize AI and back: the tree goes and returns, the editor stays as it was (hidden).
+  await step(() => runCommand(ws, "view.maximizeAi"))
+  expect(frame()).not.toContain("TREE-SLOT")
+  await step(() => runCommand(ws, "view.maximizeAi"))
+  expect(frame()).toContain("TREE-SLOT")
+  expect(frame()).not.toContain("No file open")
+
+  // Opening a file shows the editor; maximize AI hides it, restoring brings it back.
+  await step(async () => {
+    await ws.buffers.open("a.ts")
+    ws.ui.set({ focus: "editor" })
+  })
+  expect(frame()).toContain("const a = 1")
+  await step(() => runCommand(ws, "view.maximizeAi"))
+  expect(frame()).not.toContain("const a = 1")
+  await step(() => runCommand(ws, "view.maximizeAi"))
+  expect(frame()).toContain("const a = 1")
+  expect(frame()).toContain("TREE-SLOT")
+
+  // Closing the last tab hides it again, and the AI takes the keyboard.
+  await step(() => ws.buffers.close(ws.buffers.list()[0]!.id))
+  expect(frame()).not.toContain("No file open")
+  expect(ws.ui.get().focus).toBe("ai")
+})
+
+test("maximize AI: the editor stays hidden until a file opens or you show it", async () => {
   const dir = await mkdtemp(join(tmpdir(), "ce-maxai-"))
   await writeFile(join(dir, "a.ts"), "const a = 1\n")
   await writeFile(join(dir, "b.ts"), "const b = 2\n")
@@ -154,16 +194,19 @@ test("maximize AI: the editor stays hidden when files open, until you show it", 
   expect(aiColumn()).toBe(0)
   expect(captureFrame(setup)).not.toContain("const a = 1")
 
-  // Opening a file (as a tree click does) keeps it hidden, and says how to show it.
+  // Opening a file (as a tree click does) shows the editor beside the AI pane, with the keyboard.
   await step(async () => {
     await ws.buffers.open("b.ts")
     ws.ui.set({ focus: "editor" })
   })
-  expect(aiColumn()).toBe(0)
-  expect(ws.ui.get().focus).toBe("ai")
-  expect(ws.ui.get().notice?.text).toContain("Ctrl+E")
+  await step(() => {})
+  expect(captureFrame(setup)).toContain("const b = 2")
+  expect(aiColumn()).toBeGreaterThan(30)
+  expect(ws.ui.get()).toMatchObject({ focus: "editor", aiMaximized: { tree: true, editor: true } })
 
-  // Ctrl+E shows it beside the AI pane; Ctrl+Alt+X hides it again; once more restores the layout.
+  // Ctrl+Alt+X hides it again; Ctrl+E shows it; Ctrl+Alt+X hides it; once more restores the layout.
+  await step(() => runCommand(ws, "view.maximizeAi"))
+  expect(aiColumn()).toBe(0)
   await step(() => runCommand(ws, "focus.editor"))
   expect(captureFrame(setup)).toContain("const b = 2")
   expect(aiColumn()).toBeGreaterThan(30)
