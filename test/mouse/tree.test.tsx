@@ -135,3 +135,54 @@ test("icons: nerd style shows only the folder icon, no arrow", async () => {
   expect(h.frame()).toContain("\uf07c src")
   expect(h.frame()).not.toContain("▾")
 })
+
+test("toolbar: New File opens the prompt; Collapse All closes the folders", async () => {
+  const { h, tree, root } = await app({ "src/a.ts": "a", "lib/b.ts": "b" })
+  await tree.expand(join(root, "src"))
+  await settle()
+  expect(h.frame()).toContain("a.ts")
+  // Plain glyphs: + (file), +/ (folder), ↻ (refresh), ⊟ (collapse).
+  const collapse = h.find("⊟")
+  await h.step(() => h.mouse.click(collapse.x, collapse.y))
+  await settle()
+  expect(h.frame()).not.toContain("a.ts")
+  const add = h.find("+  +/")
+  await h.step(() => h.mouse.click(add.x, add.y))
+  await settle()
+  expect(h.frame()).toContain("New file")
+})
+
+test("drag a file onto a folder: asks, moves it, and its open tab follows", async () => {
+  const { h, ws, root } = await app({ "lib/keep.ts": "k", "a.ts": "content" }, ["a.ts"])
+  ws.ui.set({ focus: "tree" })
+  await settle()
+  // A tree row: the tab and breadcrumbs name a.ts too, further right.
+  const inTree = (name: string) => {
+    const y = h.lines().findIndex((l, i) => i > 0 && l.slice(0, 20).includes(name))
+    return { x: h.lines()[y]!.indexOf(name), y }
+  }
+  const from = inTree("a.ts")
+  const to = inTree("lib")
+  await h.step(() => h.mouse.drag(from.x, from.y, to.x, to.y))
+  await settle()
+  expect(h.frame()).toContain("Move a.ts into lib/?")
+  await h.step(() => h.keys.pressKey("m"))
+  await settle(150)
+  expect(existsSync(join(root, "lib/a.ts"))).toBe(true)
+  expect(existsSync(join(root, "a.ts"))).toBe(false)
+  expect(ws.buffers.active?.path).toBe(join(root, "lib/a.ts"))
+  expect(h.frame()).toContain("Moved to lib/a.ts")
+})
+
+test("a drag that stays on its row is a click; a drop on its own folder does nothing", async () => {
+  const { h, ws } = await app({ "lib/x.ts": "x", "a.ts": "a" })
+  const a = h.find("a.ts")
+  await h.step(() => h.mouse.drag(a.x, a.y, a.x + 3, a.y))
+  await settle()
+  expect(ws.buffers.active?.relPath).toBe("a.ts")
+  expect(ws.ui.get().focus).toBe("tree")
+  // Below the rows is the project root, where a.ts already is.
+  await h.step(() => h.mouse.drag(a.x, a.y, a.x, a.y + 10))
+  await settle()
+  expect(ws.ui.get().modal).toBeNull()
+})

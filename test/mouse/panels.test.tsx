@@ -37,7 +37,7 @@ test("tree: wheel scrolls the list without changing the selection", async () => 
   expect(tree.selected).toBe(first)
 })
 
-test("tree: clicking a folder toggles it and focuses the tree; clicking a file opens it in the editor", async () => {
+test("tree: clicking a folder toggles it; a click opens a file and keeps focus in the tree, a double-click goes to the editor", async () => {
   const { h, ws } = await app({ "src/a.ts": "a", "src/b.ts": "b", "README.md": "r" })
   ws.ui.set({ focus: "editor" })
   const dir = h.find("▸ src")
@@ -48,6 +48,13 @@ test("tree: clicking a folder toggles it and focuses the tree; clicking a file o
   expect(ws.ui.get().focus).toBe("tree")
   const file = h.find("b.ts")
   await h.step(() => h.mouse.click(file.x, file.y))
+  await Bun.sleep(30)
+  expect(ws.buffers.active?.relPath).toBe(join("src", "b.ts"))
+  expect(ws.ui.get().focus).toBe("tree")
+  // Still the tree's keys: ↓ moves the selection.
+  await h.step(() => h.keys.pressArrow("down"))
+  expect(h.frame()).toContain("README.md")
+  await h.step(() => h.mouse.doubleClick(file.x, file.y))
   await Bun.sleep(30)
   expect(ws.buffers.active?.relPath).toBe(join("src", "b.ts"))
   expect(ws.ui.get().focus).toBe("editor")
@@ -257,4 +264,22 @@ test("breadcrumbs show the file's folders; clicking one reveals it in the tree",
   await h.setup.renderOnce()
   expect(ws.ui.get().focus).toBe("tree")
   expect(tree.selected).toBe(join(root, "src"))
+})
+
+test("Ctrl+B hides the sidebar wherever focus is, and shows it again with the tree focused", async () => {
+  const { h, ws } = await app({ "a.ts": "a" }, ["a.ts"])
+  ws.ui.set({ focus: "editor" })
+  await h.step(() => h.keys.pressKey("b", { ctrl: true }))
+  expect(ws.ui.get().treeVisible).toBe(false)
+  expect(ws.ui.get().focus).toBe("editor")
+  await h.step(() => h.keys.pressKey("b", { ctrl: true }))
+  expect(ws.ui.get().treeVisible).toBe(true)
+  expect(ws.ui.get().focus).toBe("tree")
+  await h.step(() => h.keys.pressKey("b", { ctrl: true }))
+  expect(ws.ui.get().treeVisible).toBe(false)
+  expect(ws.ui.get().focus).toBe("editor")
+  // Alt+E focuses the tree (VS Code's Ctrl+Shift+E), showing it.
+  await h.step(() => h.keys.pressKey("e", { meta: true }))
+  expect(ws.ui.get().treeVisible).toBe(true)
+  expect(ws.ui.get().focus).toBe("tree")
 })

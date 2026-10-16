@@ -1,6 +1,6 @@
 // Bun has no rename/remove/mkdir/listing APIs: those stay on node:fs.
 import { mkdir, readdir, rename, rm } from "node:fs/promises"
-import { dirname, isAbsolute, join } from "node:path"
+import { basename, dirname, isAbsolute, join, sep } from "node:path"
 
 /** File-tree operations. Each returns the affected absolute path or throws an Error with a user-facing message. */
 
@@ -50,6 +50,16 @@ export async function renamePath(from: string, toName: string): Promise<string> 
   if (to === from) return from
   if (await exists(to)) throw new Error(`${toName.trim()} already exists`)
   await mkdir(dirname(to), { recursive: true })
+  await rename(from, to)
+  return to
+}
+
+/** Move a file or folder into another folder, keeping its name (drag and drop in the tree). */
+export async function movePath(from: string, toDir: string): Promise<string> {
+  if (toDir === from || toDir.startsWith(from + sep)) throw new Error(`Cannot move ${basename(from)} into itself`)
+  const to = join(toDir, basename(from))
+  if (to === from) return from
+  if (await exists(to)) throw new Error(`${basename(from)} already exists there`)
   await rename(from, to)
   return to
 }

@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { countEntries, createFile, createFolder, deletePath, renamePath, validateName } from "../../src/files/fileOps"
+import { countEntries, createFile, createFolder, deletePath, movePath, renamePath, validateName } from "../../src/files/fileOps"
 import { fixture } from "../helpers"
 
 test("validateName rejects empty, absolute, .. and NUL names", () => {
@@ -43,4 +43,17 @@ test("deletePath removes folders recursively; countEntries counts what is inside
   await deletePath(join(root, "d"))
   expect(existsSync(join(root, "d"))).toBe(false)
   await expect(deletePath(join(root, "nope"))).rejects.toThrow()
+})
+
+test("movePath moves into another folder and refuses itself, its own subfolders and clashes", async () => {
+  const root = await fixture({ "a.txt": "A", "lib/a.txt": "other", "d/e/f.txt": "F", "x.txt": "X" })
+  expect(await movePath(join(root, "x.txt"), join(root, "d/e"))).toBe(join(root, "d/e/x.txt"))
+  expect(readFileSync(join(root, "d/e/x.txt"), "utf8")).toBe("X")
+  expect(await movePath(join(root, "d/e"), root)).toBe(join(root, "e"))
+  expect(readFileSync(join(root, "e/f.txt"), "utf8")).toBe("F")
+  await expect(movePath(join(root, "d"), join(root, "d"))).rejects.toThrow("into itself")
+  mkdirSync(join(root, "d/inner"))
+  await expect(movePath(join(root, "d"), join(root, "d/inner"))).rejects.toThrow("into itself")
+  await expect(movePath(join(root, "a.txt"), join(root, "lib"))).rejects.toThrow("already exists")
+  expect(readFileSync(join(root, "lib/a.txt"), "utf8")).toBe("other")
 })

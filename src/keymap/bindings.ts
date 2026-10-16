@@ -9,7 +9,9 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "ctrl+q": "app.quit",
     "ctrl+s": "file.save",
     "ctrl+p": "file.picker",
-    "ctrl+b": "focus.tree",
+    "ctrl+b": "view.toggleSidebar",
+    // VS Code's Ctrl+Shift+E arrives as Ctrl+E (focus.editor).
+    "alt+e": "focus.tree",
     "ctrl+e": "focus.editor",
     "ctrl+j": "focus.ai",
     "ctrl+w": "buffer.close",
@@ -130,7 +132,7 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
   // While the AI terminal is focused only these reach the editor; everything else goes to the CLI.
   ai: {
     "ctrl+q": "app.quit",
-    "ctrl+b": "focus.tree",
+    "ctrl+b": "view.toggleSidebar",
     "ctrl+e": "focus.editor",
     "ctrl+j": "focus.editor",
     "ctrl+p": "file.picker",

@@ -17,7 +17,7 @@ import { saveBeforeAi } from "./app/saveBeforeAi"
 import { isCompiled, setLaunchCwd, takeRestoreState, watchForUpdate } from "./app/update"
 import { startAutoUpdate } from "./app/autoUpdate"
 import { installRelease, latestRelease } from "./setup/upgrade"
-import { FileTree } from "./files/FileTree"
+import { FileTree, TreeToolbar } from "./files/FileTree"
 import { FilePicker } from "./files/FilePicker"
 import { SearchModal } from "./files/SearchModal"
 import { SearchPanel } from "./files/SearchPanel"
@@ -258,6 +258,7 @@ function TreeSlot() {
     <Sidebar
       files={<FileTree tree={tree} git={git} icons={config.tree.icons} height={height} header={false} />}
       search={<SearchPanel tree={tree} height={height} mode="sidebar" />}
+      actions={<TreeToolbar tree={tree} />}
     />
   )
 }

@@ -4,7 +4,7 @@ import { revealInFileManager, revealLabel } from "./reveal"
 import type { MenuItem } from "../app/state"
 import type { Workspace } from "../app/workspace"
 import { runCommand } from "../keymap/commands"
-import { countEntries, createFile, createFolder, deletePath, renamePath } from "./fileOps"
+import { countEntries, createFile, createFolder, deletePath, movePath, renamePath } from "./fileOps"
 import type { TreeModel, TreeRow } from "./TreeModel"
 
 /** File-tree actions behind the tree keys and its right-click menu. */
@@ -48,6 +48,52 @@ export async function newItem(ws: Workspace, tree: TreeModel, row: TreeRow | nul
   })
 }
 
+/**
+ * Rename or move a path on disk with its open tabs following. The tabs move first so the
+ * watcher's echo does not report them as deleted, and move back when the disk step fails.
+ */
+async function withTabs(ws: Workspace, from: string, planned: string, op: () => Promise<string>): Promise<string> {
+  ws.buffers.renamePath(from, planned)
+  try {
+    return await op()
+  } catch (err) {
+    ws.buffers.renamePath(planned, from)
+    throw err
+  }
+}
+
+/** Drag and drop: move a file or folder into `toDir`, after asking (as VS Code does by default). */
+export function moveItem(ws: Workspace, tree: TreeModel, from: string, toDir: string): void {
+  if (dirname(from) === toDir) return
+  const where = toDir === tree.root ? "the project root" : rel(ws, toDir) + "/"
+  ws.ui.set({
+    modal: {
+      kind: "confirm",
+      title: "Move",
+      body: `Move ${rel(ws, from)} into ${where}?`,
+      options: [
+        {
+          key: "m",
+          label: "Move",
+          run: async () => {
+            ws.ui.set({ modal: null, focus: "tree" })
+            let to: string
+            try {
+              to = await withTabs(ws, from, join(toDir, basename(from)), () => movePath(from, toDir))
+            } catch (err) {
+              return ws.notify((err as Error).message, "error")
+            }
+            await tree.renamed(from, to)
+            await tree.reveal(to)
+            ws.notify(`Moved to ${rel(ws, to)}`)
+          },
+        },
+        { key: "c", label: "Cancel", run: () => ws.ui.set({ modal: null }) },
+      ],
+    },
+  })
+}
+
 export function renameItem(ws: Workspace, tree: TreeModel, row: TreeRow): void {
   const from = row.entry.path
   ws.ui.set({
@@ -61,15 +107,7 @@ export function renameItem(ws: Workspace, tree: TreeModel, row: TreeRow): void {
         if (name.trim() === row.entry.name) return null
         let to: string
         try {
-          // Move open tabs first so the watcher's echo does not report them as deleted.
-          const planned = join(dirname(from), name.trim())
-          ws.buffers.renamePath(from, planned)
-          try {
-            to = await renamePath(from, name)
-          } catch (err) {
-            ws.buffers.renamePath(planned, from)
-            throw err
-          }
+          to = await withTabs(ws, from, join(dirname(from), name.trim()), () => renamePath(from, name))
         } catch (err) {
           return (err as Error).message
         }

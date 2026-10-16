@@ -3,7 +3,7 @@
 Run in a real terminal, in plain mode and inside tmux.
 
 1. `bun run dev some-file.ts` opens the file with syntax colours and line numbers.
-1a. The sidebar's tab row shows the project folder name on the right, and the terminal tab is titled with it. After Ctrl+Q the shell gets its own title back.
+1a. The sidebar shows no project folder name (tab row or EXPLORER header); the terminal tab is titled with it. After Ctrl+Q the shell gets its own title back.
 1b. Push to an ssh remote whose key needs a passphrase (not in an agent). Source control shows an error within a few seconds; the screen is not garbled and keys still work.
 1c. In a repo with `core.autocrlf=true`, change one line and stage just that hunk (gutter). Source control shows one line staged, not the whole file. Then press Space quickly on several files: no "index.lock" error.
 1d. Source control: stage the middle of three changed files; the selection moves to the next one. Press → on a file with two changes, ↓, Space: only that change is staged. Right-click a file: the panel stays behind the menu, Esc or a click outside leaves it open, and Stage brings it back. File history from that menu, and `b` (Branches): Esc returns to the panel. The History (g) button lists the project's commits; Esc returns too. `m` with a multi-line AI message: Ctrl+J adds lines, and the commit keeps the body.
@@ -15,7 +15,8 @@ Run in a real terminal, in plain mode and inside tmux.
 4. Ctrl+P, type part of a path, press Enter. The file opens in a new tab and is revealed in the tree.
 5. Ctrl+PageDown / Ctrl+PageUp switch tabs, and undo still works after switching.
 6. Ctrl+W on a dirty tab asks to save, discard or cancel.
-7. Ctrl+B focuses the tree. Arrows, Enter and Left/Right work. Ctrl+B again hides it.
+7. Ctrl+B hides the sidebar; Ctrl+B again shows it with the tree focused. Arrows, Enter and Left/Right work. Alt+E focuses the tree while it is shown.
+7a. Click a file in the tree: it opens and the tree keeps focus (↓ moves the selection). Double-click it: focus goes to the editor. Drag an open file onto a folder, press `m`: it moves and its tab follows. Dragging a folder onto itself or its own subfolder shows no target. The FILES tab's buttons: + and +/ create next to the selection, ↻ refreshes, ⊟ collapses all; they hide on the SEARCH tab.
 8. Ctrl+J focuses the AI pane. Claude's prompt takes input, and Esc and Shift+Tab reach Claude.
 9. Ask Claude to edit the open file. The buffer reloads with a "Reloaded" notice, and Ctrl+Z restores your version.
 10. Make an unsaved edit, then have Claude edit the same file. The conflict bar appears. Ctrl+R takes Claude's version and Ctrl+S keeps yours.

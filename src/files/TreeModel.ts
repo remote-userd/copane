@@ -116,6 +116,27 @@ export class TreeModel {
     if (this.expanded.delete(path)) this.emit()
   }
 
+  /** Close every folder (the explorer's Collapse All); a hidden selection moves to its top-level folder. */
+  collapseAll(): void {
+    this.expanded = new Set([this.root])
+    if (this.selected?.startsWith(this.root + sep)) {
+      const top = this.selected.slice(this.root.length + 1).split(sep)[0]!
+      this.selected = join(this.root, top)
+    }
+    this.emit()
+  }
+
+  /** Read the root and every open folder again (the explorer's Refresh). */
+  async refreshAll(): Promise<void> {
+    this.forgetFiles()
+    const dirs = [...this.children.keys()].filter((d) => d === this.root || this.expanded.has(d))
+    // Closed folders are read again when opened.
+    for (const d of [...this.children.keys()]) if (!dirs.includes(d)) this.children.delete(d)
+    const listings = await Promise.all(dirs.map((d) => listDir(d, this.matcher, this.showIgnored).catch(() => null)))
+    dirs.forEach((d, i) => (listings[i] ? this.children.set(d, listings[i]) : this.children.delete(d)))
+    this.emit()
+  }
+
   select(path: string | null): void {
     if (this.selected !== path) {
       this.selected = path

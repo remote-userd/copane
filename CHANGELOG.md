@@ -5,6 +5,16 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- File tree toolbar: New File, New Folder, Refresh and Collapse All buttons at the right of the FILES tab (in the EXPLORER header in the standalone tree).
+- Drag a file or folder in the tree onto a folder to move it (after a confirmation); open tabs follow.
+- Alt+E focuses the file tree (VS Code's Ctrl+Shift+E, which terminals send as Ctrl+E).
+
+### Changed
+- A click on a file in the tree opens it and keeps focus in the tree, as in VS Code; a double-click (or Enter) goes to the editor. Space opens a file and stays in the tree.
+- Ctrl+B shows or hides the sidebar, as in VS Code, instead of focusing the tree first.
+- The sidebar no longer shows the project folder name, neither in its tab row nor in the EXPLORER header (the terminal tab is still titled with it).
+
 ## [0.9.6] - 2026-10-14
 
 ### Added

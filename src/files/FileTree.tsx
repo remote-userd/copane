@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useKeyboard } from "@opentui/react"
-import { basename } from "node:path"
+import type { BoxRenderable } from "@opentui/core"
+import { dirname, sep } from "node:path"
 import { useUi, useWorkspace } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import type { TreeModel } from "./TreeModel"
 import type { GitMark, GitStatus } from "./gitStatus"
-import { deleteItem, newItem, openTreeMenu, renameItem, revealItem } from "./treeActions"
+import { deleteItem, moveItem, newItem, openTreeMenu, renameItem, revealItem } from "./treeActions"
 import { iconFor, type IconStyle } from "./icons"
 import { PaneHeader } from "../app/PaneHeader"
+import { DOUBLE_CLICK_MS, HoverBox } from "../app/Modal"
+import { safely } from "../app/safely"
 import { aiMarks, openAtFirstAiChange } from "../ai/review"
 
 const RIGHT = 2
@@ -15,7 +18,6 @@ const RIGHT = 2
 const SIDE_STEP = 4
 /** Columns kept for a row's mark (✎ ✦ M U •) at the right. */
 const MARK_W = 3
-const shorten = (s: string, max: number) => (s.length > max ? s.slice(0, max - 1) + "…" : s)
 const noGit = { subscribe: () => () => {}, getSnapshot: () => 0 }
 
 function markColor(mark: GitMark | null): string | null {
@@ -96,7 +98,8 @@ export function FileTree({
     if (next) showName(next)
   }
 
-  const openRow = async (idx: number) => {
+  /** Open a row: a folder toggles; a file opens, and focus goes to it or (`focusEditor` false) stays here. */
+  const openRow = async (idx: number, focusEditor = true) => {
     const row = rows[idx]
     if (!row) return
     tree.select(row.entry.path)
@@ -106,12 +109,49 @@ export function FileTree({
     }
     try {
       // A file with unreviewed AI changes, not open yet: straight to its first change.
-      if (ws.review?.has(row.entry.path) && !ws.buffers.byPath(row.entry.path)) return void (await openAtFirstAiChange(ws, row.entry.path))
-      await ws.buffers.open(row.entry.path)
-      ws.ui.set({ focus: "editor" })
+      if (ws.review?.has(row.entry.path) && !ws.buffers.byPath(row.entry.path)) await openAtFirstAiChange(ws, row.entry.path)
+      else await ws.buffers.open(row.entry.path)
+      ws.ui.set({ focus: focusEditor ? "editor" : "tree" })
     } catch (err) {
       ws.notify((err as Error).message, "warn")
     }
+  }
+
+  // Mouse, as in VS Code's explorer: a click opens a file and keeps focus here (the keys still
+  // work on the tree); a double-click moves to the editor. Opening waits for the release, since
+  // a press may start a drag.
+  const pressed = useRef<string | null>(null)
+  const lastClick = useRef<{ path: string; at: number } | null>(null)
+  const clickRow = (idx: number) => {
+    const row = rows[idx]
+    if (!row) return
+    const now = Date.now()
+    const double = !row.entry.isDir && lastClick.current?.path === row.entry.path && now - lastClick.current.at < DOUBLE_CLICK_MS
+    // A third quick click stays in the editor too.
+    lastClick.current = { path: row.entry.path, at: now }
+    if (double) return ws.ui.set({ focus: "editor" })
+    void openRow(idx, false)
+  }
+
+  // Drag and drop: a row dragged onto a folder (or a file in it, or empty space for the root) moves there.
+  const boxRef = useRef<BoxRenderable | null>(null)
+  const [drag, setDragState] = useState<{ from: string; to: string | null } | null>(null)
+  // The handlers read it before React re-renders.
+  const dragRef = useRef(drag)
+  const setDrag = (d: typeof drag) => {
+    dragRef.current = d
+    setDragState(d)
+  }
+  /** The folder a drop at (x, y) goes into, or null where it can't go. */
+  const dropDir = (from: string, x: number, y: number): string | null => {
+    const b = boxRef.current
+    if (!b || x < b.x || x >= b.x + b.width || y < b.y || y >= b.y + b.height) return null
+    const at = y - b.y - (header ? 1 : 0)
+    if (at < 0) return null
+    const r = rows[top + at]
+    const dir = !r || at >= viewH ? tree.root : r.entry.isDir ? r.entry.path : dirname(r.entry.path)
+    if (dir === from || dir.startsWith(from + sep) || dir === dirname(from)) return null
+    return dir
   }
 
   useKeyboard((key) => {
@@ -149,8 +189,11 @@ export function FileTree({
         moveBy(viewH)
         break
       case "return":
-      case "space":
         void openRow(selectedIdx)
+        break
+      // Space opens a file but stays in the tree (VS Code), so you can step through files.
+      case "space":
+        void openRow(selectedIdx, false)
         break
       case "right":
         if (row?.entry.isDir && !row.expanded) void tree.toggle(row.entry.path)
@@ -205,6 +248,7 @@ export function FileTree({
       flexDirection="column"
       backgroundColor={colors.panelBg}
       overflow="hidden"
+      ref={boxRef}
       onSizeChange={function (this: { width: number }) {
         setWidth(this.width)
       }}
@@ -212,6 +256,31 @@ export function FileTree({
         ws.ui.set({ focus: "tree", sidebar: "files" })
         // Right-click on empty space: create at the project root.
         if (e.button === RIGHT) openTreeMenu(ws, tree, null, e.x, e.y)
+      }}
+      onMouseDrag={(e) => {
+        const from = pressed.current
+        if (!from || e.button !== 0) return
+        e.stopPropagation()
+        const b = boxRef.current
+        if (b) {
+          const at = e.y - b.y - (header ? 1 : 0)
+          // A wobble within the pressed row is still a click, not a drag.
+          if (!dragRef.current && rows[top + at]?.entry.path === from) return
+          // Near the top or bottom edge: scroll, to drop on rows out of view.
+          if (at <= 0 && top > 0) setTop(top - 1)
+          else if (at >= viewH - 1 && top < maxTop) setTop(top + 1)
+        }
+        setDrag({ from, to: dropDir(from, e.x, e.y) })
+      }}
+      onMouseDragEnd={(e) => {
+        const d = dragRef.current
+        if (!d) return
+        // The release that follows goes to the dragged row: not a click.
+        pressed.current = null
+        e.stopPropagation()
+        setDrag(null)
+        const to = dropDir(d.from, e.x, e.y)
+        if (to) moveItem(ws, tree, d.from, to)
       }}
       onMouseScroll={(e) => {
         e.stopPropagation()
@@ -225,16 +294,15 @@ export function FileTree({
     >
       {header ? (
         <PaneHeader title="EXPLORER" focused={focused} bg={colors.panelBg}>
-          <text selectable={false} fg={colors.headerFg}>
-            {/* What the header has left after " EXPLORER  " and its padding. */}
-            {shorten(basename(tree.root), Math.max(6, width - 13))}
-          </text>
+          <TreeToolbar tree={tree} />
         </PaneHeader>
       ) : null}
       {visible.map((r, i) => {
         const idx = top + i
         const isSel = idx === selectedIdx && tree.selected !== null
-        const isHover = hovered === r.entry.path
+        const isHover = drag ? false : hovered === r.entry.path
+        // While dragging: the folder the drop would go into, and what is in it.
+        const isDrop = drag?.to != null && (r.entry.path === drag.to || dirname(r.entry.path) === drag.to)
         const icon = iconFor(r.entry.name, r.entry.isDir, r.expanded, icons)
         // A folder icon shows open/closed itself; the arrow is only for styles without one.
         const arrow = r.entry.isDir ? (icon ? "" : r.expanded ? "▾ " : "▸ ") : icons === "none" ? "  " : ""
@@ -251,17 +319,29 @@ export function FileTree({
             height={1}
             flexDirection="row"
             paddingLeft={1}
-            backgroundColor={isSel ? (focused ? colors.selectionBg : colors.tabActiveBg) : isHover ? colors.tabActiveBg : undefined}
+            backgroundColor={isDrop ? colors.selectionBg : isSel ? (focused ? colors.selectionBg : colors.tabActiveBg) : isHover ? colors.tabActiveBg : undefined}
             onMouseOver={() => setHovered(r.entry.path)}
             onMouseOut={() => setHovered((h) => (h === r.entry.path ? null : h))}
             onMouseDown={(e) => {
               e.preventDefault()
               e.stopPropagation()
+              pressed.current = null
               if (e.button === RIGHT) {
                 tree.select(r.entry.path)
                 ws.ui.set({ focus: "tree" })
                 openTreeMenu(ws, tree, r, e.x, e.y)
-              } else void openRow(idx)
+              } else if (e.button === 0) {
+                tree.select(r.entry.path)
+                ws.ui.set({ focus: "tree", sidebar: "files" })
+                pressed.current = r.entry.path
+              }
+            }}
+            onMouseUp={(e) => {
+              // A release after a drag is the drop, not a click (drag-end already cleared `pressed`).
+              if (e.button !== 0 || pressed.current !== r.entry.path) return
+              pressed.current = null
+              e.stopPropagation()
+              clickRow(idx)
             }}
           >
             <box flexGrow={1} flexShrink={1} overflow="hidden">
@@ -291,6 +371,34 @@ export function FileTree({
           </box>
         )
       })}
+    </box>
+  )
+}
+
+/** Nerd Font codicons, as in VS Code's EXPLORER header; plain glyphs otherwise. */
+const TOOL_GLYPHS = {
+  nerd: { file: "\u{ea7f}", folder: "\u{ea80}", refresh: "\u{eb37}", collapse: "\u{eac5}" },
+  plain: { file: "+", folder: "+/", refresh: "\u21bb", collapse: "\u229f" },
+}
+
+/** New File, New Folder, Refresh and Collapse All buttons for the tree, acting on its selection. */
+export function TreeToolbar({ tree }: { tree: TreeModel }) {
+  const ws = useWorkspace()
+  const g = ws.config.tree.icons === "nerd" ? TOOL_GLYPHS.nerd : TOOL_GLYPHS.plain
+  const selected = () => tree.rows().find((r) => r.entry.path === tree.selected) ?? null
+  const button = (glyph: string, run: () => unknown) => (
+    <HoverBox paddingX={1} onPress={(b) => b === 0 && void safely(ws, run)}>
+      <text selectable={false} fg={colors.headerFg}>
+        {glyph}
+      </text>
+    </HoverBox>
+  )
+  return (
+    <box flexDirection="row" flexShrink={1} overflow="hidden">
+      {button(g.file, () => newItem(ws, tree, selected(), "file"))}
+      {button(g.folder, () => newItem(ws, tree, selected(), "folder"))}
+      {button(g.refresh, () => tree.refreshAll())}
+      {button(g.collapse, () => tree.collapseAll())}
     </box>
   )
 }

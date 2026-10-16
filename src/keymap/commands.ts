@@ -311,13 +311,8 @@ function openSearch(ws: Workspace, replace: boolean): void {
 
 function setFocus(ws: Workspace, focus: "tree" | "editor" | "ai"): void {
   const ui = ws.ui.get()
-  // Ctrl+B from the SEARCH tab goes to the file tree (VS Code's Ctrl+Shift+E).
+  // From the SEARCH tab, focusing the tree switches to FILES (as VS Code's Ctrl+Shift+E).
   if (focus === "tree" && ui.focus === "tree" && ui.sidebar === "search") return ws.ui.set({ sidebar: "files" })
-  if (focus === "tree" && ui.focus === "tree") {
-    // Second press hides the tree and returns to the editor.
-    ws.ui.set({ treeVisible: false, focus: "editor" })
-    return
-  }
   // "Maximize AI" hid the editor: Ctrl+E brings it back when it has tabs to show.
   const max = ui.aiMaximized
   const showEditor = focus === "editor" && max && !max.editor && ws.buffers.list().length ? { aiMaximized: { ...max, editor: true }, notice: null } : {}
@@ -416,7 +411,16 @@ export const commands = {
   "file.picker": { title: "Go to file", run: (ws) => ws.ui.set({ modal: { kind: "picker" } }) },
   "file.symbolInFile": { title: "Go to symbol in file", run: (ws) => ws.ui.set({ modal: { kind: "picker", query: "@" } }) },
   "file.symbolInProject": { title: "Go to symbol in project", run: (ws) => ws.ui.set({ modal: { kind: "picker", query: "#" } }) },
-  "focus.tree": { title: "Toggle / focus file tree", run: (ws) => setFocus(ws, "tree") },
+  "focus.tree": { title: "Focus file tree", run: (ws) => setFocus(ws, "tree") },
+  "view.toggleSidebar": {
+    title: "Show / hide the sidebar (file tree)",
+    run(ws) {
+      const ui = ws.ui.get()
+      // Hidden: show it with the tree focused. Shown: hide it, as VS Code's Ctrl+B does.
+      if (!ui.treeVisible) return setFocus(ws, "tree")
+      ws.ui.set({ treeVisible: false, focus: ui.focus === "tree" ? "editor" : ui.focus })
+    },
+  },
   "focus.editor": { title: "Focus editor", run: (ws) => setFocus(ws, "editor") },
   "focus.ai": { title: "Focus AI terminal", run: (ws) => setFocus(ws, "ai") },
   "find.open": { title: "Find in file (again: toggle replace)", run: (ws) => openFind(ws, false) },

@@ -86,7 +86,7 @@ function decorStyles() {
 
 const WELCOME: [string, string][] = [
   ["Ctrl+P", "Go to file"],
-  ["Ctrl+B", "File tree"],
+  ["Ctrl+B", "Show / hide the file tree"],
   ["Ctrl+J", "Ask the AI"],
   ["Ctrl+L", "Send file to the AI"],
   ["Ctrl+Alt+X", "Maximize the AI pane"],

@@ -62,6 +62,9 @@ export function Modal({ title, width = 60, height, onClose, children }: ModalPro
   )
 }
 
+/** Two presses this close together are a double-click (the renderer reports only presses). */
+export const DOUBLE_CLICK_MS = 400
+
 export function HoverBox({
   children,
   onPress,

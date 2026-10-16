@@ -244,7 +244,7 @@ Terminals can't send some Ctrl+Shift keys (they arrive as the plain Ctrl key), s
 | Ctrl+Shift+F (search files) | Ctrl+Alt+F | Works as Ctrl+Shift+F only in terminals that send it |
 | Ctrl+Shift+H (replace in files) | Ctrl+Alt+F, then Ctrl+F | Ctrl+Shift+H arrives as Backspace. Alt+Enter replaces all; Alt+C / Alt+W / Alt+R toggle case, whole word, regex |
 | Ctrl+. (quick fix) | Alt+. | Most terminals send Ctrl+. as a plain `.`. Shift+Alt+O organizes imports, as in VS Code |
-| Ctrl+Shift+E / Ctrl+Shift+G | Ctrl+B / Ctrl+Alt+D | File tree / source control |
+| Ctrl+Shift+E / Ctrl+Shift+G | Alt+E / Ctrl+Alt+D | Focus the file tree / source control. Ctrl+B shows or hides the sidebar, as in VS Code |
 | Ctrl+Shift+T (reopen tab) | Ctrl+Alt+T | Ctrl+T is "go to symbol in project", as in VS Code |
 | Ctrl+Tab | Ctrl+PageDown, Alt+1–9 | Terminals don't send Ctrl+Tab |
 | Ctrl+` (terminal) | Alt+` | A terminal tab in the AI pane. Ctrl+` arrives as Ctrl+Space in most terminals |
@@ -290,7 +290,8 @@ Press **F1** for the command palette: every command, searchable, with its shortc
 | Ctrl+← / → , Ctrl+Backspace / Ctrl+Delete | Move by word, delete a word |
 | Ctrl+K Ctrl+X / Ctrl+K S / Ctrl+K Z | Trim trailing whitespace / save all / maximize the editor |
 | Ctrl+D / Ctrl+Alt+A | Multi-cursor: add the next occurrence / all occurrences of the word or selection |
-| Ctrl+B | Focus or hide the file tree (from the SEARCH tab: back to FILES) |
+| Ctrl+B | Show or hide the sidebar (shown again with the file tree focused) |
+| Alt+E | Focus the file tree (from the SEARCH tab: back to FILES) |
 | Ctrl+E | Focus the editor |
 | Ctrl+J | Focus the AI pane, or back to the editor from it |
 | Ctrl+Alt+J | Show or hide the AI pane |
@@ -333,7 +334,12 @@ Dragged pane widths are remembered in `~/.local/state/copane/layout.json`.
 
 ## File tree
 
-With the tree focused (Ctrl+B), or from the right-click menu on a row:
+The mouse works as in VS Code's explorer:
+- A click on a file opens it and keeps focus in the tree, so the keys below still work. A double-click moves focus to the editor.
+- Drag a file or folder onto a folder (or onto a file in it, or onto empty space for the project root) to move it. You confirm the move, and open tabs follow.
+- The buttons at the right of the FILES tab create a file or folder next to the selection (+, +/), refresh the tree (↻) and collapse all folders (⊟). With Nerd Font icons they show as VS Code's icons.
+
+With the tree focused (Alt+E, or a click), or from the right-click menu on a row:
 
 | Key | Action |
 | --- | --- |
@@ -341,6 +347,7 @@ With the tree focused (Ctrl+B), or from the right-click menu on a row:
 | Shift+A | New folder |
 | r / F2 | Rename (the cursor starts before the extension) |
 | Delete | Delete permanently, after a confirmation |
+| Enter / Space | Open the file and go to the editor / open it and stay in the tree |
 | Shift+Alt+R | Reveal in File Explorer (WSL), Reveal in Finder (macOS), or Open Containing Folder (Linux) |
 
 The menu also has the reveal item, Copy Path, Copy Relative Path, Send to AI (types `@path` into the AI prompt), and Open Preview for Markdown files. Right-click empty space to create at the project root, or to reveal the project folder. In the editor, Shift+Alt+R reveals the open file. Open tabs follow renames; deleting closes their tabs unless they have unsaved changes.

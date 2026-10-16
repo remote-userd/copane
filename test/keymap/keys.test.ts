@@ -43,6 +43,8 @@ const GLOBAL: [string, string, CommandId][] = [
   ["Alt+N (ESC n)", "\x1bn", "ai.nextChange"],
   ["Alt+P (ESC p)", "\x1bp", "ai.prevChange"],
   ["Alt+` (ESC `)", "\x1b`", "ai.newTerminal"],
+  ["Alt+E (ESC e)", "\x1be", "focus.tree"],
+  ["Ctrl+B", "\x02", "view.toggleSidebar"],
 ]
 
 test("Ctrl+Alt+X maximizes the AI pane, from the AI pane too", () => {
@@ -92,4 +94,9 @@ test.each(LEGACY)("%s reaches its editor command", (_name, bytes, command) => {
 test("plain capital letters still type (Shift+K is not Alt+Shift+K)", () => {
   expect(keyToString(parseKeypress("K")!)).toBe("shift+k")
   expect(buildBindings().editor.get("shift+k")).toBeUndefined()
+})
+
+test("Ctrl+B shows / hides the sidebar, from the AI pane too", () => {
+  const key = keyToString(parseKeypress("\x02")!)
+  expect(buildBindings().ai.get(key)).toBe("view.toggleSidebar")
 })

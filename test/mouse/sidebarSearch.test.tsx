@@ -51,9 +51,9 @@ test("Ctrl+Alt+F: the SEARCH tab, seeded with the word; Enter walks results and 
   await h.step(() => h.keys.pressEscape())
   await settle(150)
   expect(ws.ui.get().focus).toBe("editor")
-  // Ctrl+B from the search tab shows the tree.
+  // Alt+E (focus the tree) from the search tab shows the tree.
   await h.step(() => h.keys.pressKey("f", { ctrl: true, meta: true }))
-  await h.step(() => h.keys.pressKey("b", { ctrl: true }))
+  await h.step(() => h.keys.pressKey("e", { meta: true }))
   expect(ws.ui.get().sidebar).toBe("files")
   expect(h.frame()).toContain("TREE BODY")
 })
@@ -129,11 +129,10 @@ test("mouse: tabs, ▸ replace, toggles, × dismisses, ⇄ on a match and on a f
   expect(h.frame()).toContain("TREE BODY")
 })
 
-test("the sidebar's tab row names the project folder", async () => {
+test("the sidebar does not show the project folder name", async () => {
   const { h, root } = await app({ "a.ts": "x\n" })
   const name = root.split("/").pop()!
   const top = h.frame().split("\n").find((l) => l.includes("FILES") || l.includes("\u{f02dc}"))!
-  // A long name is shortened in the middle; both ends stay.
-  expect(top).toContain(name.slice(0, 4))
-  expect(top).toContain(name.slice(-4))
+  // The temp folder's random tail: nothing else on the row could contain it.
+  expect(top).not.toContain(name.slice(-4))
 })

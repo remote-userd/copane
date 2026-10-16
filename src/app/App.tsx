@@ -8,6 +8,7 @@ import { StatusBar } from "./StatusBar"
 import { ConfirmModal } from "./ConfirmModal"
 import { HelpModal } from "./HelpModal"
 import { ContextMenu } from "./ContextMenu"
+import { DOUBLE_CLICK_MS } from "./Modal"
 import { PromptModal } from "./PromptModal"
 import { CommandPalette } from "./CommandPalette"
 import { InfoPopup } from "./InfoPopup"
@@ -48,9 +49,6 @@ export function paneWidths(
   if (showAi) ai = Math.min(ai, room - (showTree ? tree : 0))
   return { treeWidth: tree, aiWidth: ai }
 }
-
-/** Two presses on a divider this close together are a double-click (the renderer reports only presses). */
-const DOUBLE_CLICK_MS = 400
 
 /**
  * The 1-column line between two panes; drag it to resize, double-click to go back to the default
