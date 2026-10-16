@@ -5,6 +5,12 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- In the AI pane, Ctrl+J and Ctrl+B go to the CLI: Ctrl+J is Claude's new line (terminals send Shift+Enter as plain Enter, so there was no way to type one), and Ctrl+B is its "run in background" (in a shell tab, cursor back). Ctrl+E goes back to the editor; Ctrl+J from the editor still focuses the pane. `keys.ai` brings the old keys back.
+
+### Added
+- Alt+` opens a terminal tab from the AI pane too, not only from the editor.
+
 ## [0.9.8] - 2026-10-16
 
 ### Changed

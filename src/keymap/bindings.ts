@@ -132,11 +132,11 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
   },
   tree: {},
   // While the AI terminal is focused only these reach the editor; everything else goes to the CLI.
+  // Ctrl+J (Claude's new line; Shift+Enter is plain Enter in most terminals) and Ctrl+B (Claude's
+  // "run in background", the shell's cursor back) stay with the CLI: Ctrl+E goes back to the editor.
   ai: {
     "ctrl+q": "app.quit",
-    "ctrl+b": "view.toggleSidebar",
     "ctrl+e": "focus.editor",
-    "ctrl+j": "focus.editor",
     "ctrl+p": "file.picker",
     f1: "app.palette",
     "ctrl+alt+r": "app.restart",
@@ -148,6 +148,7 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "ctrl+alt+w": "ai.closeAgent",
     "ctrl+alt+v": "ai.nextChange",
     "ctrl+alt+n": "ai.newAgent",
+    "alt+`": "ai.newTerminal",
     "ctrl+alt+pagedown": "ai.nextAgent",
     "ctrl+alt+pageup": "ai.prevAgent",
   },

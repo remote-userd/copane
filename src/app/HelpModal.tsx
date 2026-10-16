@@ -60,7 +60,7 @@ export function HelpModal({ bindings }: { bindings: ReturnType<typeof buildBindi
       .filter(([, id]) => !/^buffer\.goto[2-9]$/.test(id))
       .map(([key, id]) => (id === "buffer.goto1" ? [`${pretty(key)}…9`, "Go to tab 1–9 (9: the last)"] : [pretty(key), commands[id as CommandId].title]))
   // The AI pane only lets a few keys through; list just the ones that differ from General.
-  const aiOnly = keys("ai").filter(([k]) => !bindings.global.has(k.toLowerCase()) || k === "Ctrl+J")
+  const aiOnly = keys("ai").filter(([k]) => !bindings.global.has(k.toLowerCase()))
 
   const section = (title: string, rows: [string, string][]): Line[] => [
     { kind: "head", text: title },

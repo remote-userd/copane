@@ -146,3 +146,23 @@ test("links in terminal lines: file:line[:col], tsc's (line,col), and URLs", () 
   expect(browserCommand("http://x", "mac")).toEqual(["open", "http://x"])
   expect(browserCommand("http://x", "linux")).toEqual(["xdg-open", "http://x"])
 })
+
+test("in the AI pane, Ctrl+J and Ctrl+B reach the CLI (Claude's new line / run in background)", async () => {
+  const root = await fixture({ "a.txt": "a\n" })
+  const ws = createWorkspace(root, { focus: "ai" })
+  // Raw mode, so the bytes arrive as sent; dd stops after two of them and od prints them.
+  const raw: AiConfig = { ...config([]), args: ["-c", "stty raw -echo; echo agent-ready; dd bs=1 count=2 2>/dev/null | od -An -tx1"] }
+  h = await renderApp(ws, { tree: <text>TREE</text>, ai: <TerminalPane config={raw} /> }, { width: 150, height: 24 })
+  await until(() => h!.frame().includes("agent-ready"))
+  await h.step(() => h!.keys.pressKey("LINEFEED"))
+  await h.step(() => h!.keys.pressKey("b", { ctrl: true }))
+  await until(() => h!.frame().includes("0a 02"))
+  expect(ws.ui.get().focus).toBe("ai")
+})
+
+test("Alt+` opens a terminal tab from the AI pane too", async () => {
+  const { ws } = await pane([])
+  ws.ui.set({ focus: "ai" })
+  await h!.step(() => h!.keys.pressKey("`", { meta: true }))
+  await until(() => h!.frame().includes("SH 2 ●"))
+})

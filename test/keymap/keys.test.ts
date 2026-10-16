@@ -97,7 +97,11 @@ test("plain capital letters still type (Shift+K is not Alt+Shift+K)", () => {
   expect(buildBindings().editor.get("shift+k")).toBeUndefined()
 })
 
-test("Ctrl+B shows / hides the sidebar, from the AI pane too", () => {
-  const key = keyToString(parseKeypress("\x02")!)
-  expect(buildBindings().ai.get(key)).toBe("view.toggleSidebar")
+test("Ctrl+J and Ctrl+B stay with the CLI in the AI pane (Claude's new line / run in background)", () => {
+  for (const bytes of ["\n", "\x02"]) expect(buildBindings().ai.get(keyToString(parseKeypress(bytes)!))).toBeUndefined()
+  expect(buildBindings().ai.get(keyToString(parseKeypress("\x05")!))).toBe("focus.editor")
+})
+
+test("Alt+` opens a terminal tab from the AI pane too", () => {
+  expect(buildBindings().ai.get(keyToString(parseKeypress("\x1b`")!))).toBe("ai.newTerminal")
 })

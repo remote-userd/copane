@@ -76,6 +76,7 @@ const RIGHT = 2
 const DIM = "\x1b[2m"
 const YELLOW = "\x1b[33m"
 const RESET = "\x1b[0m"
+const LINE_FEED = new Uint8Array([10])
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 const BUSY_MS = 800
 
@@ -305,6 +306,10 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
         if (e.button === 0 && ws.ui.get().focus !== "ai") ws.ui.set({ focus: "ai" })
       },
     })
+    // Legacy terminals send Ctrl+J as a bare line feed, a key the emulator's encoder has no code
+    // for: pass the byte on (Claude's new line, as when it runs on its own).
+    const encodeKey = term.encodeKey.bind(term)
+    term.encodeKey = (key) => (key.name === "linefeed" && key.eventType !== "release" && !key.ctrl && !key.meta && !key.option ? LINE_FEED : encodeKey(key))
     // The cursor shape of editor.cursorStyle (a thin line by default), until the program asks for another.
     const cursor = cursorSequence(ws.config.editor.cursorStyle)
     term.write(cursor)

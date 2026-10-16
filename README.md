@@ -88,7 +88,7 @@ Built with [Bun](https://bun.sh) and [OpenTUI](https://opentui.com). Linux and m
 The editor is built around a loop: ask Claude, see what it changed, keep or undo it.
 
 1. **Give context.** Select lines, or nothing for the whole file, and press **Ctrl+L**. The AI prompt gets `@path#L10-20` plus the snippet. In the tree, right-click a file or folder and choose **Send to AI**.
-2. **Ask.** Ctrl+J moves you to the AI pane and back. Unsaved files are saved when you switch, so Claude reads what you see. Turn this off with `editor.saveBeforeAi: false`.
+2. **Ask.** Ctrl+J moves you to the AI pane, and Ctrl+E brings you back. Unsaved files are saved when you switch, so Claude reads what you see. Turn this off with `editor.saveBeforeAi: false`.
 3. **See what changed.** Files Claude edits reload automatically, and the changed lines flash. The line numbers mark lines that differ from the last commit: **▎** green added, yellow changed, and a red **▁** for deleted. The tree marks changed files.
 4. **Review it in place.** Lines the AI changed get a violet **┃** until you've reviewed them, a bar above the file counts them, and the status bar shows how many files are left. **Alt+N** (or **Ctrl+Alt+V**, which also works from the AI pane) jumps to the next AI change and shows what it replaced: **a** accepts it and moves on, **r** undoes it (Ctrl+Z brings it back), **↑ ↓** step. Past the last change in a file, Alt+N opens the next file. The file tree marks what's left with **✦**, and what the AI is editing right now with **✎**. The bar also has **Accept file**, **Undo file** and **Accept all**. Alt+P goes back. What's left to review is remembered when you quit or restart, and committing a file (yourself or by the AI) accepts its AI changes, so marks never pile up.
 5. **Review everything.** **Ctrl+Alt+D** lists all changed files with a diff. **Enter** opens a file at the change, and **r** reverts it.
@@ -302,7 +302,7 @@ Press **F1** for the command palette: every command, searchable, with its shortc
 | Ctrl+B | Show or hide the sidebar (shown again with the file tree focused) |
 | Alt+E | Focus the file tree (from the SEARCH tab: back to FILES) |
 | Ctrl+E | Focus the editor |
-| Ctrl+J | Focus the AI pane, or back to the editor from it |
+| Ctrl+J | Focus the AI pane (in the pane, Ctrl+J is the CLI's new line; Ctrl+E goes back) |
 | Ctrl+Alt+J | Show or hide the AI pane |
 | Ctrl+Alt+M | Maximize the editor, and press again to restore |
 | Ctrl+Alt+X | Maximize the AI pane (or **⤢** in its header): it fills the window, even with tabs open. The editor stays hidden until you open a file (from the tree, Ctrl+P, links), which shows it beside the AI pane, or press Ctrl+E (with tabs open); pressing again hides it, and pressing once more restores the layout. Separately, while no file is open there is no editor, only the tree and the AI pane (`editor.startHidden: false` shows the editor's "No file open"); maximizing and restoring the AI pane leaves that alone |
@@ -338,7 +338,7 @@ Press **F1** for the command palette: every command, searchable, with its shortc
 - Search ignores case unless your text has a capital letter.
 - In the replace field, Enter replaces one match and Alt+Enter replaces all. Each replace is a single undo step.
 
-While the AI pane has focus, every key goes to the CLI except Ctrl+Q, Ctrl+B, Ctrl+E, Ctrl+J, Ctrl+P, F1, Ctrl+Alt+J, Ctrl+Alt+D and Ctrl+Alt+R. Esc, Ctrl+C and Shift+Tab therefore work in Claude Code as usual.
+While the AI pane has focus, every key goes to the CLI except Ctrl+Q, Ctrl+E (back to the editor), Ctrl+P, F1, Alt+` (new terminal) and the Ctrl+Alt keys: J, X, D, R, Z, W, V, N and PgUp/PgDn. Esc, Ctrl+C, Shift+Tab, Ctrl+J (Claude's new line, since terminals send Shift+Enter as Enter) and Ctrl+B (run in background; in a shell, cursor back) therefore work as usual. To take a key back, bind it under `keys.ai`, e.g. `"keys": { "ai": { "ctrl+j": "focus.editor" } }`.
 
 Dragged pane widths are remembered in `~/.local/state/copane/layout.json`.
 
@@ -396,7 +396,7 @@ If icons show as boxes, your terminal isn't using a Nerd Font yet. On Windows, f
 - **Editor:** click to place the cursor, drag to select, double-click selects a word. The wheel scrolls without moving the cursor, and Shift+wheel scrolls sideways.
 - **Line numbers:** click a number to select that line, drag to select several.
 - **Ctrl+click** (or Alt+click) a name to go to its definition.
-- **Right-click:** a menu with Go to definition, Find all references, Cut, Copy, Paste, Select all and Send to AI. In the AI pane it offers Copy, Paste and Restart.
+- **Right-click:** a menu with Go to definition, Find all references, Cut, Copy, Paste, Select all and Send to AI. In the AI pane there is no menu: right-click copies the selection, or pastes when nothing is selected.
 - **Panes:** clicking a pane focuses it. Drag the border between panes to resize them, and double-click it to reset that pane's width.
 - **Tree and picker:** the wheel scrolls, rows highlight on hover, and a click opens the file or toggles the folder. Right-click a tree row for file actions. In a narrow tree, long names are clipped at the edge: Shift+wheel (or a sideways swipe) scrolls the tree sideways.
 - **Tabs:** click to switch, click × or middle-click to close, wheel over the tab bar to cycle.
