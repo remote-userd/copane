@@ -38,6 +38,12 @@ test("takeRestoreState reads the saved tabs once and deletes the file", async ()
   expect(await takeRestoreState({})).toBeNull()
 })
 
+test("takeRestoreState brings back the project folder (ce started from the welcome page)", async () => {
+  const file = join(tmp(), "restore.json")
+  writeFileSync(file, JSON.stringify({ files: [], active: null, root: "/work/app" }))
+  expect(await takeRestoreState({ CE_RESTORE_FILE: file })).toEqual({ files: [], active: null, root: "/work/app" })
+})
+
 test("installed launcher restarts the editor on exit code 75 and passes args through", async () => {
   const prefix = tmp()
   const inst = Bun.spawnSync(["sh", "scripts/install.sh"], {

@@ -23,6 +23,8 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
     "ctrl+alt+k": "app.help",
     "ctrl+l": "ai.sendContext",
     "ctrl+alt+r": "app.restart",
+    // VS Code's Ctrl+R (Open Recent) is "reload from disk" here.
+    "ctrl+alt+o": "file.openRecent",
     "ctrl+alt+j": "view.toggleAi",
     "ctrl+alt+m": "view.maximizeEditor",
     "ctrl+alt+x": "view.maximizeAi",

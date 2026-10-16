@@ -21,6 +21,8 @@ export interface RestoreState {
   /** Absolute paths of open tabs, in tab order. */
   files: string[]
   active: string | null
+  /** The project folder: `ce` started without one (the welcome page) comes back to it. */
+  root?: string
 }
 
 /** True when running as a `bun build --compile` binary rather than `bun run`. */
@@ -49,6 +51,7 @@ export async function takeRestoreState(env: Record<string, string | undefined> =
     return {
       files: Array.isArray(data.files) ? data.files.filter((f): f is string => typeof f === "string") : [],
       active: typeof data.active === "string" ? data.active : null,
+      ...(typeof data.root === "string" ? { root: data.root } : {}),
     }
   } catch {
     return null

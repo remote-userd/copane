@@ -1,11 +1,14 @@
-import { basename, resolve } from "node:path"
+import { basename } from "node:path"
 import { createCliRenderer } from "@opentui/core"
 import { createRoot, useTerminalDimensions } from "@opentui/react"
 import { App } from "./app/App"
 import { ErrorBoundary } from "./app/ErrorBoundary"
-import { installSignalHandlers, onShutdown, prepareTerminal, registerRenderer, setInternalErrorHandler } from "./app/shutdown"
+import { installSignalHandlers, onShutdown, prepareTerminal, registerRenderer, setInternalErrorHandler, shutdown } from "./app/shutdown"
 import { restoreRecovery, saveRecovery } from "./app/recovery"
 import { createWorkspace, WorkspaceContext } from "./app/workspace"
+import { pathArg } from "./app/args"
+import { forgetRecent, loadRecent, recordRecent } from "./app/recent"
+import { Welcome } from "./app/Welcome"
 import { loadConfig } from "./config/load"
 import { createClipboard } from "./app/clipboard"
 import { loadLayout, persistLayout } from "./app/layoutState"
@@ -35,7 +38,7 @@ import { AiReview, reviewStatePath } from "./ai/review"
 import { windowFocus, windowFocused } from "./app/windowFocus"
 import pkg from "../package.json"
 
-const USAGE = `Usage: copane [file|directory]
+const USAGE = `Usage: copane [file|directory]   (no argument: the welcome page with recent folders; . opens this one)
        copane --upgrade        install the latest release
        copane --install-font   install the bundled Nerd Font for file-tree icons
        copane --version
@@ -43,7 +46,7 @@ const USAGE = `Usage: copane [file|directory]
 Opens a terminal code editor with an AI CLI (default: claude) in a side pane.
 Config: ~/.config/copane/config.json`
 
-async function parseArgs(argv: string[]): Promise<{ root: string; file: string | null }> {
+async function parseArgs(argv: string[]): Promise<{ root: string | null; file: string | null }> {
   if (argv.includes("-h") || argv.includes("--help")) {
     console.log(USAGE)
     process.exit(0)
@@ -61,13 +64,7 @@ async function parseArgs(argv: string[]): Promise<{ root: string; file: string |
     await main()
     process.exit(0)
   }
-  const arg = argv.find((a) => !a.startsWith("-"))
-  if (!arg) return { root: process.cwd(), file: null }
-  const abs = resolve(arg)
-  // A missing path is a new file, opened relative to the current folder.
-  const info = await Bun.file(abs).stat().catch(() => null)
-  if (info?.isDirectory()) return { root: abs, file: null }
-  return { root: process.cwd(), file: abs }
+  return pathArg(argv)
 }
 
 const args = await parseArgs(process.argv.slice(2))
@@ -77,7 +74,8 @@ if (!process.stdin.isTTY || !process.stdout.isTTY) {
   process.exit(1)
 }
 setLaunchCwd(process.cwd())
-process.chdir(args.root)
+// A restart (an update, Ctrl+Alt+R, Open Recent Folder) brings its folder and tabs back.
+const restored = await takeRestoreState()
 const { config, warning } = await loadConfig()
 
 prepareTerminal()
@@ -92,12 +90,27 @@ renderer.on("blur", () => windowFocus.set({ focused: false }))
 // Every pane, popup and preview listens for keys; Node's leak warning at 10 would print over the UI.
 renderer.keyInput.setMaxListeners(100)
 installPerfLog(renderer)
+const reactRoot = createRoot(renderer)
+
+/** No folder given: the welcome page picks one (or quits). */
+async function chooseFolder(): Promise<string> {
+  const recent = await loadRecent()
+  const path = await new Promise<string | null>((done) =>
+    reactRoot.render(<Welcome version={pkg.version} recent={recent} cwd={process.cwd()} onOpen={done} onForget={(p) => void forgetRecent(p)} onQuit={() => done(null)} />),
+  )
+  if (path === null) return shutdown(0)
+  return path
+}
+
+const root = args.root ?? restored?.root ?? (config.startup.welcome ? await chooseFolder() : process.cwd())
+process.chdir(root)
+void recordRecent(root)
 // The terminal tab shows the project's folder name; an empty title on exit hands it back to the shell.
-renderer.setTerminalTitle(basename(args.root))
+renderer.setTerminalTitle(basename(root))
 onShutdown(() => renderer.setTerminalTitle(""))
 
 const ws = createWorkspace(
-  args.root,
+  root,
   {
     focus: args.file ? "editor" : "tree",
     aiVisible: !config.ai.startHidden,
@@ -214,8 +227,7 @@ void restoreRecovery(ws).then((files) => {
   if (files.length) ws.notify(`Restored unsaved changes from a crash: ${files.join(", ")} (Ctrl+Z drops them)`, "warn")
 })
 
-const restored = await takeRestoreState()
-if (restored) {
+if (restored?.files.length) {
   // Restarted (e.g. after an update): bring back the tabs, then the active one.
   void (async () => {
     // With the editor hidden ("maximize AI"), the tabs come back behind it.
@@ -281,7 +293,7 @@ const aiConfig = {
   services: config.ai.services,
 }
 
-createRoot(renderer).render(
+reactRoot.render(
   // The profiler only counts with CE_PERF set (and only in `bun run dev`: see perfCommit).
   <Profiler id="app" onRender={Bun.env.CE_PERF ? perfCommit : noop}>
     <WorkspaceContext.Provider value={ws}>

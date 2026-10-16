@@ -45,6 +45,7 @@ const GLOBAL: [string, string, CommandId][] = [
   ["Alt+` (ESC `)", "\x1b`", "ai.newTerminal"],
   ["Alt+E (ESC e)", "\x1be", "focus.tree"],
   ["Ctrl+B", "\x02", "view.toggleSidebar"],
+  ["Ctrl+Alt+O (ESC Ctrl+O)", "\x1b\x0f", "file.openRecent"],
 ]
 
 test("Ctrl+Alt+X maximizes the AI pane, from the AI pane too", () => {

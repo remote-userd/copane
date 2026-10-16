@@ -53,10 +53,13 @@ You'll want [Claude Code](https://docs.claude.com/en/docs/claude-code) (`claude`
 Then open things the way VS Code's `code` does:
 
 ```sh
+ce                   # the welcome page: pick a recent folder
 ce .                 # this folder
 ce src/main.ts       # a file (its project folder is the workspace)
 ce ~/projects/app    # another folder
 ```
+
+**Welcome page:** `ce` on its own lists the folders you opened recently, as VS Code's Welcome page does. ↑↓ and Enter (or a click, or 1–9) open one, Delete removes one from the list, `.` opens the folder you're in, and `o` takes a typed path (Tab completes folder names). In the editor, **Ctrl+Alt+O** (Open recent folder) shows the same list and switches to the folder you pick, asking first about unsaved files. Set `"startup": { "welcome": false }` for `ce` to open the current folder instead.
 
 **Updating:** copane updates itself. Once a day it checks GitHub for a new release and installs it in the background, so the next time you start `ce` you're on the latest version. Every open editor then shows "⟳ Update installed: restart" in the status bar: click it or press Ctrl+Alt+R and, after asking about unsaved files, the editor restarts on the new version with the same folder and tabs. `ce --upgrade` installs the latest release right away. To choose when to update, set `"update": "notify"` (the status bar says when a release is out, and a click installs it) or `"off"` (never checks).
 
@@ -249,6 +252,7 @@ Terminals can't send some Ctrl+Shift keys (they arrive as the plain Ctrl key), s
 | Ctrl+Shift+H (replace in files) | Ctrl+Alt+F, then Ctrl+F | Ctrl+Shift+H arrives as Backspace. Alt+Enter replaces all; Alt+C / Alt+W / Alt+R toggle case, whole word, regex |
 | Ctrl+. (quick fix) | Alt+. | Most terminals send Ctrl+. as a plain `.`. Shift+Alt+O organizes imports, as in VS Code |
 | Ctrl+Shift+E / Ctrl+Shift+G | Alt+E / Ctrl+Alt+D | Focus the file tree / source control. Ctrl+B shows or hides the sidebar, as in VS Code |
+| Ctrl+R (open recent) | Ctrl+Alt+O | Ctrl+R reloads the file from disk |
 | Ctrl+Shift+T (reopen tab) | Ctrl+Alt+T | Ctrl+T is "go to symbol in project", as in VS Code |
 | Ctrl+Tab | Ctrl+PageDown, Alt+1–9 | Terminals don't send Ctrl+Tab |
 | Ctrl+` (terminal) | Alt+` | A terminal tab in the AI pane. Ctrl+` arrives as Ctrl+Space in most terminals |
@@ -317,7 +321,8 @@ Press **F1** for the command palette: every command, searchable, with its shortc
 | Ctrl+A | Select all |
 | Ctrl+Z / Ctrl+Y | Undo / redo |
 | Ctrl+R | Reload a file that changed on disk, dropping local edits |
-| Ctrl+Alt+R | Restart (loads a newly installed version), keeping open tabs |
+| Ctrl+Alt+R | Restart (loads a newly installed version), keeping the folder and open tabs |
+| Ctrl+Alt+O | Open a recent folder (or type one), switching the editor to it |
 
 **Typing:** Enter keeps the line's indent, one level more after `{`, `(` or `[`, and between a pair like `{}` the closer goes to its own line. Brackets and quotes close themselves, typing the closer steps over it, and Backspace between an empty pair deletes both. A bracket or quote typed over a selection wraps it. Turn these off with `editor.autoIndent: false` and `editor.autoClosingBrackets: false`.
 
@@ -412,6 +417,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
   "editor": { "highlightMaxBytes": 1000000, "copyOnSelect": false, "saveBeforeAi": true, "autocomplete": true, "cursorStyle": "line", "wordWrap": false, "startHidden": true, "highlightCursor": true, "indentGuides": true, "autoIndent": true, "autoClosingBrackets": true, "formatter": "auto", "formatOnSave": false, "smoothScrolling": true },
   "lsp": { "python": { "command": ["pylsp"] } },
   "tree": { "icons": "simple", "showIgnored": true },
+  "startup": { "welcome": true },
   "git": { "blame": true, "inlineBlame": true, "aiCommitMessage": true, "scanDepth": 1, "detectSubmodules": true },
   "statusBar": { "resources": true },
   "preview": { "imageProtocol": "auto" },

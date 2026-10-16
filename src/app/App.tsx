@@ -12,6 +12,7 @@ import { DOUBLE_CLICK_MS } from "./Modal"
 import { PromptModal } from "./PromptModal"
 import { CommandPalette } from "./CommandPalette"
 import { InfoPopup } from "./InfoPopup"
+import { RecentModal } from "./RecentModal"
 import { MergeAgentModal } from "../ai/MergeAgentModal"
 import { TurnsModal } from "../ai/TurnsModal"
 import { ProblemsModal } from "../lsp/ProblemsModal"
@@ -179,6 +180,7 @@ export function App({ slots = {} }: { slots?: AppSlots }) {
       {modal?.kind === "palette" ? <CommandPalette bindings={bindings} /> : null}
       {modal?.kind === "info" ? <InfoPopup x={modal.x} y={modal.y} text={modal.text} /> : null}
       {modal?.kind === "problems" ? <ProblemsModal /> : null}
+      {modal?.kind === "recent" ? <RecentModal /> : null}
       {modal?.kind === "turns" ? <TurnsModal /> : null}
       {modal?.kind === "mergeAgent" ? <MergeAgentModal sessionId={modal.sessionId} /> : null}
       {modal?.kind === "locations" ? <LocationsModal title={modal.title} locations={modal.locations} /> : null}

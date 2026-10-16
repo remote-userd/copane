@@ -1,4 +1,4 @@
-import { relative } from "node:path"
+import { basename, relative } from "node:path"
 import type { Workspace } from "../app/workspace"
 import { shutdown } from "../app/shutdown"
 import { isCompiled, restart } from "../app/update"
@@ -335,16 +335,22 @@ function setFocus(ws: Workspace, focus: "tree" | "editor" | "ai"): void {
   if (focus === "ai") ws.ai?.focus()
 }
 
-/** Quit or restart, asking first when there are unsaved changes. */
-function leave(ws: Workspace, how: "quit" | "restart"): void {
+/** Open another project folder (Open Recent Folder): a restart into it, asking first about unsaved changes. */
+export function switchFolder(ws: Workspace, folder: string): void {
+  leave(ws, "restart", folder)
+}
+
+/** Quit or restart (in this folder, or into `folder`), asking first when there are unsaved changes. */
+function leave(ws: Workspace, how: "quit" | "restart", folder?: string): void {
   const go = () => {
     if (how === "quit") return void shutdown(0)
+    if (folder) return void restart({ files: [], active: null, root: folder })
     const files = ws.buffers.list().map((b) => b.path)
-    void restart({ files, active: ws.buffers.active?.path ?? null })
+    void restart({ files, active: ws.buffers.active?.path ?? null, root: ws.root })
   }
   if (!ws.buffers.hasDirty()) return go()
   const n = ws.buffers.list().filter((b) => b.dirty).length
-  const verb = how === "quit" ? "quit" : "restart"
+  const verb = how === "quit" ? "quit" : folder ? `open ${basename(folder)}` : "restart"
   ws.ui.set({
     modal: {
       kind: "confirm",
@@ -397,6 +403,7 @@ function sendContext(ws: Workspace, instruction?: string): void {
 export const commands = {
   "app.quit": { title: "Quit", run: (ws) => leave(ws, "quit") },
   "app.restart": { title: "Restart (load a newly installed version)", run: (ws) => leave(ws, "restart") },
+  "file.openRecent": { title: "Open recent folder…", run: (ws) => ws.ui.set({ modal: { kind: "recent" } }) },
   "app.reportProblem": { title: "Report a problem (the AI drafts a GitHub issue)", run: (ws) => reportProblem(ws) },
   "app.installUpdate": {
     title: "Install the latest copane release",

@@ -87,6 +87,12 @@ export const configSchema = z
         detectSubmodules: z.boolean().default(true),
       })
       .prefault({}),
+    startup: z
+      .object({
+        /** `ce` with no folder shows the welcome page (recent folders) instead of opening the current folder. */
+        welcome: z.boolean().default(true),
+      })
+      .prefault({}),
     tree: z
       .object({
         /** File-type icons: "nerd" needs a Nerd Font in the terminal (`copane --install-font` sets one up). */
