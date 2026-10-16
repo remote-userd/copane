@@ -3,13 +3,14 @@ import { basename, dirname } from "node:path"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import type { TextareaRenderable } from "@opentui/core"
 import { HoverBox, Modal } from "../app/Modal"
-import { useWorkspace, type Workspace, useCursorStyle } from "../app/workspace"
+import { useUi, useWorkspace, type Workspace, useCursorStyle } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import { openAt } from "../app/navHistory"
 import type { StatusEntry } from "./repo"
 import { sendChangesForReview } from "../ai/askAi"
 import { aiMarks } from "../ai/review"
 import { setGitActivity, useGitActivity, useSpinner, type GitActivity } from "./activity"
+import { closeModal, openOver } from "../app/modalStack"
 
 /**
  * Source control (Ctrl+Alt+D): conflicts, staged and unstaged files with a diff of the
@@ -138,6 +139,8 @@ function wrappedRows(labels: string[], width: number): number {
 export function SourceControlPanel() {
   const cursorStyle = useCursorStyle()
   const ws = useWorkspace()
+  // Under its own menu or a dialog opened from it, the panel stays on screen but not in charge of the keys.
+  const onTop = useUi().modal?.kind === "scm"
   const repos = ws.git
   const dims = useTerminalDimensions()
   const snap = useSyncExternalStore(repos?.subscribe ?? none.subscribe, repos?.getSnapshot ?? none.getSnapshot)
@@ -242,7 +245,7 @@ export function SourceControlPanel() {
   const diff = colorDiff(rawDiff)
   const hunks = diffHunks(rawDiff)
 
-  const close = () => ws.ui.set({ modal: null })
+  const close = () => closeModal(ws)
   const showRepo = (i: number) => {
     const s = all[(i + all.length) % all.length]
     if (!s || s === git) return
@@ -407,60 +410,53 @@ export function SourceControlPanel() {
     await done(`${unstage ? "Unstaged" : "Staged"} a change in ${row.entry.rel}`)
   }
 
-  // Right-click on a file: a menu over the panel. Dismissing it returns here; an item that acts opens the panel again.
+  // Right-click on a file: a menu over the panel, which stays open under it and under what its items open.
   const rowMenu = (r: Row, x: number, y: number) => {
     const g = git
     const rp = repo
     if (!g || !rp) return
-    const reopen = () => ws.ui.set({ modal: { kind: "scm" } })
     const staged = r.section === "staged"
-    ws.ui.set({
-      modal: {
-        kind: "menu",
-        x,
-        y,
-        over: { kind: "scm" },
-        items: [
-          { label: "Open file", hint: "Enter", run: () => void openAt(ws, r.entry.path, 0, 0, 0) },
-          {
-            label: staged ? "Unstage" : "Stage",
-            hint: "Space",
-            disabled: r.section === "conflict",
-            run: async () => {
-              const err = staged ? await rp.unstage([r.entry.path]) : await rp.stage([r.entry.path])
-              if (err) ws.notify(err, "error")
-              await g.afterChange()
-              reopen()
-            },
+    openOver(ws, {
+      kind: "menu",
+      x,
+      y,
+      items: [
+        { label: "Open file", hint: "Enter", run: () => void openAt(ws, r.entry.path, 0, 0, 0) },
+        {
+          label: staged ? "Unstage" : "Stage",
+          hint: "Space",
+          disabled: r.section === "conflict",
+          run: async () => {
+            const err = staged ? await rp.unstage([r.entry.path]) : await rp.stage([r.entry.path])
+            if (err) ws.notify(err, "error")
+            await g.afterChange()
           },
-          {
-            label: "Discard changes…",
-            hint: "r",
-            run: () =>
-              ws.ui.set({
-                modal: {
-                  kind: "confirm",
-                  title: "Discard changes",
-                  body: `Discard all changes to ${r.entry.rel}?${r.entry.untracked ? " This deletes the new file." : ""}`,
-                  options: [
-                    {
-                      key: "d",
-                      label: "Discard",
-                      run: async () => {
-                        const err = await g.revert(r.entry.path)
-                        if (err) ws.notify(err, "error")
-                        reopen()
-                      },
-                    },
-                    { key: "c", label: "Cancel", run: reopen },
-                  ],
+        },
+        {
+          label: "Discard changes…",
+          hint: "r",
+          run: () =>
+            openOver(ws, {
+              kind: "confirm",
+              title: "Discard changes",
+              body: `Discard all changes to ${r.entry.rel}?${r.entry.untracked ? " This deletes the new file." : ""}`,
+              options: [
+                {
+                  key: "d",
+                  label: "Discard",
+                  run: async () => {
+                    const err = await g.revert(r.entry.path)
+                    if (err) ws.notify(err, "error")
+                    closeModal(ws)
+                  },
                 },
-              }),
-          },
-          { label: "File history", run: () => ws.ui.set({ modal: { kind: "history", path: r.entry.path, back: { kind: "scm" } } }) },
-          { label: "Review all changes with AI", hint: "v", run: () => sendChangesForReview(ws) },
-        ],
-      },
+                { key: "c", label: "Cancel", run: () => closeModal(ws) },
+              ],
+            }),
+        },
+        { label: "File history", run: () => openOver(ws, { kind: "history", path: r.entry.path }) },
+        { label: "Review all changes with AI", hint: "v", run: () => sendChangesForReview(ws) },
+      ],
     })
   }
 
@@ -597,10 +593,10 @@ export function SourceControlPanel() {
         if (key.shift) void pull()
         break
       case "b":
-        ws.ui.set({ modal: { kind: "branches", back: { kind: "scm" } } })
+        openOver(ws, { kind: "branches" })
         break
       case "g":
-        ws.ui.set({ modal: { kind: "history", path: null, back: { kind: "scm" } } })
+        openOver(ws, { kind: "history", path: null })
         break
       case "n":
         showRepo(all.indexOf(git!) + (key.shift ? -1 : 1))
@@ -786,7 +782,7 @@ export function SourceControlPanel() {
               key={inputKey}
               ref={msgRef}
               initialValue={message}
-              focused={focus === "message" && !confirm}
+              focused={focus === "message" && !confirm && onTop}
               placeholder="Commit message"
               backgroundColor={colors.bg}
               focusedBackgroundColor={colors.bg}
@@ -803,8 +799,8 @@ export function SourceControlPanel() {
             {btn(buttons[3]!, () => void sendChangesForReview(ws))}
             {btn(buttons[4]!, () => void push())}
             {btn(buttons[5]!, () => void pull())}
-            {btn(buttons[6]!, () => ws.ui.set({ modal: { kind: "branches", back: { kind: "scm" } } }))}
-            {btn(buttons[7]!, () => ws.ui.set({ modal: { kind: "history", path: null, back: { kind: "scm" } } }))}
+            {btn(buttons[6]!, () => openOver(ws, { kind: "branches" }))}
+            {btn(buttons[7]!, () => openOver(ws, { kind: "history", path: null }))}
           </box>
           <box height={1} />
           {rows.length === 0 ? (

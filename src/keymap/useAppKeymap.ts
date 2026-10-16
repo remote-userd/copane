@@ -31,6 +31,13 @@ export function useAppKeymap(): ReturnType<typeof buildBindings> {
     const ui = ws.ui.get()
     if (ui.modal) {
       chord.current = null
+      // Quit works under any dialog (it still asks about unsaved files), as the too-small screen promises.
+      if (bindings.global.get(keyToString(key)) === "app.quit") {
+        key.preventDefault()
+        key.stopPropagation()
+        ws.ui.set({ modal: null })
+        void runCommand(ws, "app.quit")
+      }
       return
     }
     // A cursor parked by the wheel comes back before any key acts on it.

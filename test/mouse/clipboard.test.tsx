@@ -185,3 +185,26 @@ test("AI pane: a startup question (claude's trust prompt) pulls focus to the pan
   expect(ws.ui.get().focus).toBe("ai")
   expect(ws.ui.get().notice?.text).toContain("asking a question")
 })
+
+test("AI pane: the trust prompt while a dialog is open pulls focus once the dialog closes", async () => {
+  const root = await fixture({ "a.txt": "x\n" })
+  const ws = createWorkspace(root, { focus: "tree", modal: { kind: "help" } })
+  const script = "printf 'Quick safety check: Is this a project you trust?\\n Yes, I trust this\\n folder\\n'; sleep 5"
+  const hh = await renderApp(ws, { ai: <TerminalPane config={{ command: "/bin/sh", args: ["-c", script], maxScrollbackBytes: 10000 }} /> })
+  h = hh
+  for (let i = 0; i < 40 && !hh.frame().includes("Shortcuts"); i++) {
+    await Bun.sleep(25)
+    await hh.setup.renderOnce()
+  }
+  // The question has arrived (the scan runs within a second), but the dialog keeps the keyboard.
+  await Bun.sleep(1200)
+  await hh.setup.renderOnce()
+  expect(ws.ui.get().focus).toBe("tree")
+  await hh.step(() => hh.keys.pressEscape())
+  for (let i = 0; i < 40 && ws.ui.get().focus !== "ai"; i++) {
+    await Bun.sleep(25)
+    await hh.setup.renderOnce()
+  }
+  expect(ws.ui.get().focus).toBe("ai")
+  expect(ws.ui.get().notice?.text).toContain("asking a question")
+})

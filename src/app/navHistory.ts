@@ -1,6 +1,7 @@
 import type { CodeEditorRenderable } from "../editor/CodeEditorRenderable"
 import type { Buffer } from "../editor/BufferStore"
 import type { Workspace } from "./workspace"
+import { modalChanged } from "./modalStack"
 
 /**
  * Where you were before each jump (go to definition, search result, go to line, opening a
@@ -61,9 +62,11 @@ export async function openAt(
 ): Promise<void> {
   // A jump: remember where we were so Ctrl+Alt+← comes back here.
   if (opts.record !== false) recordJump(ws)
+  const before = ws.ui.get().modal
   const buf = await openFile(ws, path)
   if (!buf) return
-  ws.ui.set({ modal: null })
+  // The dialog the jump came from closes; one opened while the file loaded stays.
+  if (!modalChanged(ws, before)) ws.ui.set({ modal: null })
   for (let i = 0; i < 40; i++) {
     const ed = ws.buffers.byId(buf.id)?.textarea as CodeEditorRenderable | null | undefined
     if (ed && !ed.isDestroyed && ed.lineCount > line) {

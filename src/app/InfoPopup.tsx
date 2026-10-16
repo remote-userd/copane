@@ -1,12 +1,13 @@
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import { useWorkspace } from "./workspace"
 import { ui as colors } from "../config/theme"
+import { closeModal } from "./modalStack"
 
 /** Read-only text near the cursor (hover info, a diagnostic). Any key or click closes it. */
 export function InfoPopup({ x, y, text }: { x: number; y: number; text: string }) {
   const ws = useWorkspace()
   const dims = useTerminalDimensions()
-  const close = () => ws.ui.set({ modal: null })
+  const close = () => closeModal(ws)
   useKeyboard((key) => {
     key.preventDefault()
     key.stopPropagation()

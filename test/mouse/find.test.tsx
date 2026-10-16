@@ -105,6 +105,34 @@ test("search popup (narrow terminals) lists hits and Enter opens the file at the
   expect(ws.ui.get().modal).toBeNull()
 })
 
+test("search popup: the Replace all question returns to the popup, fields kept, on Escape or Cancel", async () => {
+  const { h, ws } = await app({ "a.ts": "x\n", "b.ts": "const needle = 1\n" })
+  await h.step(() => ws.ui.set({ modal: { kind: "search", replace: true } }))
+  await h.step(() => h.keys.typeText("needle"))
+  for (let i = 0; i < 30 && !h.frame().includes("b.ts"); i++) await settle(30)
+  await h.step(() => h.keys.pressTab())
+  await h.step(() => h.keys.typeText("pin"))
+  const ask = async () => {
+    // Back in the popup, its search runs again first: click once the results are in.
+    for (let i = 0; i < 30 && ws.ui.get().modal?.kind !== "confirm"; i++) {
+      const button = h.find("Replace all")
+      await h.step(() => h.mouse.click(button.x + 1, button.y))
+      await settle(60)
+    }
+    expect(h.frame()).toContain('"needle" → "pin"')
+  }
+  await ask()
+  await h.step(() => h.keys.pressEscape())
+  await settle()
+  expect(ws.ui.get().modal?.kind).toBe("search")
+  expect(h.frame()).toContain("needle")
+  expect(h.frame()).toContain("pin")
+  await ask()
+  await h.step(() => h.keys.pressKey("n"))
+  await settle()
+  expect(ws.ui.get().modal?.kind).toBe("search")
+})
+
 test("F1 command palette: fuzzy search shows shortcuts; Enter runs the command", async () => {
   const { h, ws } = await app({ "a.ts": "x\n" })
   await h.step(() => h.keys.pressKey("F1"))

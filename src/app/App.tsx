@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
-import { useRenderer, useTerminalDimensions } from "@opentui/react"
+import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react"
 import { setStyleOwner } from "../editor/syntaxStyle"
 import { EditorPane } from "../editor/EditorPane"
 import { useAppKeymap } from "../keymap/useAppKeymap"
 import { ui as colors } from "../config/theme"
 import { StatusBar } from "./StatusBar"
+import { closeModal } from "./modalStack"
 import { ConfirmModal } from "./ConfirmModal"
 import { HelpModal } from "./HelpModal"
 import { ContextMenu } from "./ContextMenu"
@@ -106,9 +107,13 @@ export function App({ slots = {} }: { slots?: AppSlots }) {
   const aiStatus = useSyncExternalStore(status.subscribe, status.get)
 
   // A context menu can open over a dialog (Source control's file menu): the dialog stays under it.
-  const modal = ui.modal?.kind === "menu" ? (ui.modal.over ?? null) : ui.modal
+  const modal = ui.modal?.kind === "menu" ? (ui.modal.back ?? null) : ui.modal
 
   const tooSmall = dims.width < 60 || dims.height < 12
+  // Too small to draw a dialog, which then can't take its keys: Escape still closes it.
+  useKeyboard((key) => {
+    if (tooSmall && key.name === "escape" && ws.ui.get().modal) closeModal(ws)
+  })
   const showTree = ui.treeVisible && !!slots.tree && dims.width >= 100
   const showAi = ui.aiVisible && !!slots.ai
   const { treeWidth, aiWidth } = paneWidths(dims.width, ui, showTree, showAi)
@@ -175,8 +180,8 @@ export function App({ slots = {} }: { slots?: AppSlots }) {
       {modal?.kind === "search" ? slots.search : null}
       {modal?.kind === "diff" ? <DiffModal bufId={modal.bufId} /> : null}
       {modal?.kind === "scm" ? <SourceControlPanel /> : null}
-      {modal?.kind === "branches" ? <BranchPicker mode={modal.mode ?? "switch"} back={modal.back} /> : null}
-      {modal?.kind === "history" ? <HistoryModal path={modal.path} sha={modal.sha} back={modal.back} /> : null}
+      {modal?.kind === "branches" ? <BranchPicker mode={modal.mode ?? "switch"} /> : null}
+      {modal?.kind === "history" ? <HistoryModal path={modal.path} sha={modal.sha} /> : null}
       {modal?.kind === "palette" ? <CommandPalette bindings={bindings} /> : null}
       {modal?.kind === "info" ? <InfoPopup x={modal.x} y={modal.y} text={modal.text} /> : null}
       {modal?.kind === "problems" ? <ProblemsModal /> : null}

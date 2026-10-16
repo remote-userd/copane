@@ -7,6 +7,7 @@ import type { CodeAction, Diagnostic, Range } from "./LspManager"
 import { applyTextEdits, type TextEdit } from "./edits"
 import { applyToFiles } from "../app/fileEdits"
 import { colToIndex, indexToCol } from "./positions"
+import { modalChanged } from "../app/modalStack"
 
 const editorOf = (ws: Workspace) => (ws.buffers.active?.textarea ?? null) as CodeEditorRenderable | null
 
@@ -42,7 +43,9 @@ export async function showHover(ws: Workspace): Promise<void> {
   const h = here(ws)
   if (!h) return ws.notify("No file open", "warn")
   if (!ws.lsp?.hasServer(h.buf.path)) return ws.notify("No language server for this file", "warn")
+  const before = ws.ui.get().modal
   const info = await ws.lsp.hover(h.buf.path, h.pos)
+  if (modalChanged(ws, before)) return
   const problems = diagnosticsAtCursor(ws).map(describeDiagnostic)
   const text = [...problems, info ?? ""].filter(Boolean).join("\n\n")
   if (!text) return ws.notify("Nothing to show here")
@@ -195,7 +198,9 @@ export async function findReferences(ws: Workspace): Promise<void> {
   const h = here(ws)
   if (!h) return ws.notify("No file open", "warn")
   if (!ws.lsp?.hasServer(h.buf.path)) return ws.notify("No language server for this file", "warn")
+  const before = ws.ui.get().modal
   const refs = await ws.lsp.references(h.buf.path, h.pos)
+  if (modalChanged(ws, before)) return
   if (!refs.length) return ws.notify("No references found")
   const { word } = wordAt(h.line, h.pos.character)
   ws.ui.set({ modal: { kind: "locations", title: `References to ${word || "symbol"} (${refs.length})`, locations: refs } })
@@ -242,7 +247,9 @@ export async function quickFix(ws: Workspace): Promise<void> {
   if (!ws.lsp?.hasServer(h.buf.path)) return ws.notify("No language server for this file", "warn")
   // The actions' edits are for the text as it is now: one picked after more typing is skipped.
   const since = openVersions(ws)
+  const before = ws.ui.get().modal
   const actions = (await ws.lsp.codeActions(h.buf.path, selectionRange(h))).sort((a, b) => kindOrder(a) - kindOrder(b))
+  if (modalChanged(ws, before)) return
   const row = h.pos.line
   // A problem on this line can also go to the AI, even when the server has no fix for it.
   const problemHere = ws.lsp.diagnostics(h.buf.path).some((d) => (d.severity ?? 1) <= 2 && d.range.start.line <= row && d.range.end.line >= row)

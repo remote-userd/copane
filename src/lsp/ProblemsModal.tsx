@@ -7,6 +7,7 @@ import { ui as colors } from "../config/theme"
 import { openAt } from "../app/navHistory"
 import { indexToCol } from "./positions"
 import { sendProblems } from "../ai/askAi"
+import { closeModal } from "../app/modalStack"
 
 const noLsp = { subscribe: () => () => {}, getSnapshot: () => 0 }
 
@@ -19,7 +20,7 @@ export function ProblemsModal() {
   const [sel, setSel] = useState(0)
   const listH = Math.max(3, Math.min(20, dims.height - 8))
   const start = Math.max(0, Math.min(sel - listH + 1, all.length - listH))
-  const close = () => ws.ui.set({ modal: null })
+  const close = () => closeModal(ws)
 
   const jump = async (i: number) => {
     const p = all[i]

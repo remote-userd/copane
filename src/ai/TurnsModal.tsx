@@ -7,6 +7,7 @@ import { openAt } from "../app/navHistory"
 import { ui as colors } from "../config/theme"
 import { hunks, type Hunk } from "../editor/hunks"
 import { relTo, type Turn, type TurnFile } from "./turns"
+import { closeModal } from "../app/modalStack"
 
 type Focus = "turns" | "files" | "changes"
 
@@ -46,7 +47,7 @@ export function TurnsModal() {
   const turn = turns[Math.min(ti, turns.length - 1)]
   const file: TurnFile | undefined = turn?.files[Math.min(fi, turn.files.length - 1)]
   const fileHunks = file && turn ? (changes.get(key(turn, file.path)) ?? []) : []
-  const close = () => ws.ui.set({ modal: null })
+  const close = () => closeModal(ws)
 
   useEffect(() => {
     if (!log) return

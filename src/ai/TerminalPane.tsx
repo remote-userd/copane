@@ -377,13 +377,23 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
       lastScan = Date.now()
       if (asked || disposed || !/trust\s+this\s+folder|do\s+you\s+trust/i.test(plain(tail))) return
       asked = true
-      if (ws.ui.get().focus !== "ai" && !ws.ui.get().modal) {
+      const pullFocus = () => {
+        if (ws.ui.get().focus === "ai") return
         tabs.set({ active: id })
         ws.ui.set({ focus: "ai", aiVisible: true })
         term.focus()
         ws.notify(`${name} is asking a question in the AI pane`)
       }
+      if (!ws.ui.get().modal) return pullFocus()
+      // A dialog is open: once it closes (the question can't be answered meanwhile).
+      offModalWait = ws.ui.subscribe(() => {
+        if (ws.ui.get().modal || disposed) return
+        offModalWait?.()
+        offModalWait = null
+        pullFocus()
+      })
     }
+    let offModalWait: (() => void) | null = null
     // Tell the user when the AI finishes or waits, unless they're watching this tab.
     let windowFocused = true
     const onFocus = () => (windowFocused = true)
@@ -569,6 +579,7 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
       renderer.off("focus", onFocus)
       renderer.off("blur", onBlur)
       offShutdown()
+      offModalWait?.()
       handles.delete(id)
       lastOutput.delete(id)
       terminals.delete(id)

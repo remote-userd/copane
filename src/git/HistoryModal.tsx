@@ -3,17 +3,17 @@ import { openFile } from "../app/navHistory"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import { Modal } from "../app/Modal"
 import { useWorkspace } from "../app/workspace"
-import type { Modal as ModalState } from "../app/state"
 import { ui as colors } from "../config/theme"
 import type { LogEntry } from "./repo"
 import { shortAgo } from "./blame"
 import { clipCols } from "../editor/CodeEditorRenderable"
+import { closeModal } from "../app/modalStack"
 
 /**
  * File history (commits touching a file, with that file's diff per commit) or a single
  * commit (from blame). ↑↓ choose, PgUp/PgDn scroll, y copies the sha, Enter opens the file.
  */
-export function HistoryModal({ path, sha, back }: { path: string | null; sha?: string; back?: ModalState }) {
+export function HistoryModal({ path, sha }: { path: string | null; sha?: string }) {
   const ws = useWorkspace()
   const dims = useTerminalDimensions()
   // A file's history comes from its own repository; the project's from the current one.
@@ -22,7 +22,7 @@ export function HistoryModal({ path, sha, back }: { path: string | null; sha?: s
   const [sel, setSel] = useState(0)
   const [diff, setDiff] = useState<string[]>([])
   const [top, setTop] = useState(0)
-  const close = () => ws.ui.set({ modal: back ?? null })
+  const close = () => closeModal(ws)
 
   useEffect(() => {
     if (!repo) return setCommits([])

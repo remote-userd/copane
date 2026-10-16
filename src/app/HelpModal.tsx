@@ -6,6 +6,7 @@ import { commands, type CommandId } from "../keymap/commands"
 import type { buildBindings, Layer } from "../keymap/bindings"
 import { ui as colors } from "../config/theme"
 import { prettyKeys } from "../keymap/keys"
+import { closeModal } from "./modalStack"
 
 const pretty = prettyKeys
 
@@ -91,7 +92,7 @@ export function HelpModal({ bindings }: { bindings: ReturnType<typeof buildBindi
     else if (key.name === "down" || key.name === "j") scroll(1)
     else if (key.name === "pageup") scroll(-viewH)
     else if (key.name === "pagedown" || key.name === "space") scroll(viewH)
-    else if (key.name === "escape" || key.name === "return" || key.name === "q" || key.name === "f1") ws.ui.set({ modal: null })
+    else if (key.name === "escape" || key.name === "return" || key.name === "q" || key.name === "f1") closeModal(ws)
   })
 
   const render = (l: Line, i: number) => {
@@ -124,7 +125,7 @@ export function HelpModal({ bindings }: { bindings: ReturnType<typeof buildBindi
       title={`Shortcuts (Esc to close)${more}`}
       width={twoCols ? colW * 2 + 6 : colW + 4}
       height={viewH + 4}
-      onClose={() => ws.ui.set({ modal: null })}
+      onClose={() => closeModal(ws)}
     >
       <box
         flexDirection="row"

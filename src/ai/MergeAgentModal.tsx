@@ -8,6 +8,7 @@ import { ui as colors } from "../config/theme"
 import { GitRepo, type WorktreeChange } from "../git/repo"
 import { colorDiff, type DiffLine } from "../git/SourceControlPanel"
 import { worktreeOf } from "./TerminalPane"
+import { closeModal, openOver } from "../app/modalStack"
 
 const LETTER_COLOR = { A: colors.ok, M: colors.warn, D: colors.error } as const
 
@@ -30,7 +31,7 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
   const [confirm, setConfirm] = useState<{ text: string; yes: () => void } | null>(null)
   // Your uncommitted files the merge would overwrite (git refused): commit them, then merge again.
   const [blocked, setBlocked] = useState<string[] | null>(null)
-  const close = () => ws.ui.set({ modal: null })
+  const close = () => closeModal(ws)
   const change = changes?.[Math.min(sel, changes.length - 1)]
 
   useEffect(() => {
@@ -145,7 +146,7 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
     else if (key.name === "m" && n) void merge()
     else if (key.name === "d") discard()
     else if (key.name === "c" && blocked) void commitMineAndMerge()
-    else if (key.name === "s" && blocked) ws.ui.set({ modal: { kind: "scm" } })
+    else if (key.name === "s" && blocked) openOver(ws, { kind: "scm" })
   })
 
   if (!session?.branch) {
@@ -176,7 +177,7 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
           {blocked && (
             <box flexDirection="row" gap={1} height={1} marginTop={1}>
               {btn("Commit mine & merge (c)", () => void commitMineAndMerge())}
-              {btn("Source control (s)", () => ws.ui.set({ modal: { kind: "scm" } }))}
+              {btn("Source control (s)", () => openOver(ws, { kind: "scm" }))}
             </box>
           )}
           <box height={1} />

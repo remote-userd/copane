@@ -13,6 +13,13 @@ All notable changes to copane are listed here. The format follows
 - A restart (Ctrl+Alt+R, or after an update) brings back the AI pane's tabs. Each Claude tab gets its own conversation id (`--session-id`) and resumes it (`--resume`), so two Claude tabs in one folder each get their own conversation back. Dev servers run their command again, and terminals open a fresh shell. Tabs whose worktree was removed stay closed.
 - Enter after you exit Claude in a tab brings it back in the same conversation (`/clear` for a fresh one).
 
+### Fixed
+- A dialog opened from another one goes back to it on Escape, a click outside or Cancel, one level at a time: Source control's Discard question, the search popup's Replace all question, Compare first from the "changed on disk" question, and Source control opened from Review & merge. Before, they closed everything.
+- Stage or Discard from Source control's right-click menu keeps the panel open throughout, instead of closing and reopening it. Its commit box no longer takes a paste while the menu is open.
+- A hover, references list or quick-fix menu that arrives after you opened another dialog no longer replaces it, and a file opened from a list no longer closes a dialog opened while it loaded.
+- Claude's "trust this folder?" question, asked while a dialog was open, now brings you to the AI pane once the dialog closes (it was missed).
+- Ctrl+Q quits from under any dialog (still asking about unsaved files). In a terminal too small to draw the dialog, Escape closes it.
+
 ## [0.9.8] - 2026-10-16
 
 ### Changed

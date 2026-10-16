@@ -4,6 +4,7 @@ import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import type { Modal as ModalState } from "./state"
 import { useWorkspace } from "./workspace"
 import { ui as colors } from "../config/theme"
+import { closeModal } from "./modalStack"
 
 type Menu = Extract<ModalState, { kind: "menu" }>
 
@@ -14,11 +15,12 @@ export function ContextMenu({ menu }: { menu: Menu }) {
   const [sel, setSel] = useState(enabled[0] ?? 0)
 
   // Dismissed: back to the dialog it opened over, if any. A chosen item decides where it goes.
-  const close = () => ws.ui.set({ modal: menu.over ?? null })
+  const close = () => closeModal(ws)
   const choose = (i: number) => {
     const item = menu.items[i]
     if (!item || item.disabled) return
-    ws.ui.set({ modal: null })
+    // The dialog under the menu stays open (mounted) while the item runs.
+    ws.ui.set({ modal: menu.back ?? null })
     void safely(ws, item.run)
   }
   const step = (d: number) => {

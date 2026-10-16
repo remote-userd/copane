@@ -7,6 +7,7 @@ import { commands, runCommand, type CommandId } from "../keymap/commands"
 import type { buildBindings } from "../keymap/bindings"
 import { fuzzyFilter } from "../files/fuzzy"
 import { prettyKeys } from "../keymap/keys"
+import { closeModal } from "./modalStack"
 
 const pretty = prettyKeys
 
@@ -36,7 +37,7 @@ export function CommandPalette({ bindings }: { bindings: ReturnType<typeof build
 
   const listH = Math.max(3, Math.min(18, dims.height - 8))
   const start = Math.max(0, Math.min(sel - listH + 1, matches.length - listH))
-  const close = () => ws.ui.set({ modal: null })
+  const close = () => closeModal(ws)
   const choose = (title: string | undefined) => {
     const item = title ? byTitle.get(title) : undefined
     if (!item) return

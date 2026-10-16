@@ -5,6 +5,7 @@ import { Modal } from "./Modal"
 import type { Modal as ModalState } from "./state"
 import { useWorkspace, useCursorStyle } from "./workspace"
 import { ui as colors } from "../config/theme"
+import { closeModal } from "./modalStack"
 
 type Prompt = Extract<ModalState, { kind: "prompt" }>
 
@@ -15,7 +16,7 @@ export function PromptModal({ modal }: { modal: Prompt }) {
   const input = useRef<InputRenderable | null>(null)
   const [error, setError] = useState<string | null>(null)
   const busy = useRef(false)
-  const close = () => ws.ui.set({ modal: null })
+  const close = () => closeModal(ws)
 
   useEffect(() => {
     const el = input.current

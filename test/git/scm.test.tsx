@@ -5,6 +5,8 @@ import { MouseButtons } from "@opentui/core/testing"
 import { GitStatus } from "../../src/files/gitStatus"
 import { GitRepos } from "../../src/git/repos"
 import { Store } from "../../src/app/store"
+import { openOver } from "../../src/app/modalStack"
+import { readFileSync } from "node:fs"
 import { createWorkspace, fixture, renderApp, type Harness, waitUntil, GIT_ENV } from "../helpers"
 
 // Several waits on the UI and git per test: more room than the default 5 s.
@@ -382,4 +384,65 @@ test("several repositories: a tab each; staging and committing act on the one sh
   } finally {
     repos.stop()
   }
+})
+
+test("the Discard confirm opened from the panel's menu: Escape, a click outside and Cancel return to the panel", async () => {
+  const { root } = await panel({ "a.ts": "a\n" }, { "a.ts": "b\n" })
+  await until(() => h!.frame().includes("Changes (1)"))
+  const askDiscard = async () => {
+    const at = h!.find(" M a.ts")
+    await h!.step(() => h!.mouse.click(at.x + 3, at.y, MouseButtons.RIGHT))
+    await until(() => h!.frame().includes("Discard changes…"))
+    await h!.step(() => h!.mouse.click(h!.find("Discard changes…").x, h!.find("Discard changes…").y))
+    await until(() => h!.frame().includes("Discard all changes to a.ts?"))
+  }
+  const backInPanel = async () => {
+    await until(() => !h!.frame().includes("Discard all changes to a.ts?"))
+    expect(h!.frame()).toContain("Changes (1)")
+  }
+  await askDiscard()
+  await h!.step(() => h!.keys.pressEscape())
+  await backInPanel()
+  await askDiscard()
+  await h!.step(() => h!.mouse.click(1, 1))
+  await backInPanel()
+  await askDiscard()
+  await press("c")
+  await backInPanel()
+  // Discard itself: done, and the panel is still there.
+  await askDiscard()
+  await press("d")
+  await until(() => readFileSync(join(root, "a.ts"), "utf8") === "a\n")
+  await until(() => !h!.frame().includes("Changes (1)"))
+  expect(h!.frame()).toContain("Source control")
+})
+
+test("Stage from the panel's menu: the panel stays on screen the whole time", async () => {
+  const { root } = await panel({ "a.ts": "a\n" }, { "a.ts": "b\n" })
+  await until(() => h!.frame().includes("Changes (1)"))
+  const at = h!.find(" M a.ts")
+  await h!.step(() => h!.mouse.click(at.x + 3, at.y, MouseButtons.RIGHT))
+  await until(() => h!.frame().includes("Discard changes…"))
+  await h!.step(() => h!.mouse.click(h!.find("Stage").x, h!.find("Stage").y))
+  await waitUntil(
+    async () => {
+      await h!.setup.renderOnce()
+      expect(h!.frame()).toContain("Source control")
+      return sh(root, "diff", "--cached", "--name-only").trim() === "a.ts" && h!.frame().includes("Staged (1)")
+    },
+    3000,
+  )
+})
+
+test("the panel opened over another dialog returns to it on Escape", async () => {
+  const { ws } = await panel({ "a.ts": "a\n" }, { "a.ts": "b\n" })
+  await h!.step(() => ws.ui.set({ modal: { kind: "help" } }))
+  await until(() => h!.frame().includes("Shortcuts"))
+  await h!.step(() => openOver(ws, { kind: "scm" }))
+  await until(() => h!.frame().includes("Changes (1)"))
+  await h!.step(() => h!.keys.pressEscape())
+  await until(() => h!.frame().includes("Shortcuts"))
+  expect(ws.ui.get().modal?.kind).toBe("help")
+  await h!.step(() => h!.keys.pressEscape())
+  await until(() => ws.ui.get().modal === null)
 })

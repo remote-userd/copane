@@ -26,6 +26,7 @@ import { decodeForBuffer } from "../editor/fileio"
 import { configPath } from "../config/load"
 import { importVSCodeSettings } from "../config/vscode"
 import { revealInFileManager } from "../files/reveal"
+import { closeModal, openOver } from "../app/modalStack"
 
 /**
  * Alt+1..9 go to that tab (Alt+9 the last), as in VS Code. In a merge conflict Alt+1/2/3
@@ -134,7 +135,7 @@ function askOverwrite(ws: Workspace, buf: Buffer): void {
             ws.notify(`Saved ${buf.relPath}`)
           },
         },
-        { key: "c", label: "Compare first", run: () => ws.ui.set({ modal: { kind: "diff", bufId: buf.id } }) },
+        { key: "c", label: "Compare first", run: () => openOver(ws, { kind: "diff", bufId: buf.id }) },
         { key: "escape", label: "Cancel", run: () => ws.ui.set({ modal: null }) },
       ],
     },
@@ -285,10 +286,6 @@ export function closeBuffer(ws: Workspace, id: number): void {
       ],
     },
   })
-}
-
-function closeModal(ws: Workspace): void {
-  ws.ui.set({ modal: null })
 }
 
 /**

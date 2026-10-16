@@ -6,6 +6,7 @@ import { HoverBox, Modal } from "../app/Modal"
 import { ui as colors } from "../config/theme"
 import type { Buffer } from "./BufferStore"
 import { acceptConflict, gotoConflict, useConflicts } from "../git/conflictActions"
+import { closeModal } from "../app/modalStack"
 
 /** Resolve a disk/AI conflict. Each returns after updating the buffer. */
 function resolve(ws: Workspace, buf: Buffer, how: "merge" | "disk" | "mine"): void {
@@ -97,7 +98,7 @@ export function DiffModal({ bufId }: { bufId: number }) {
   useKeyboard((key) => {
     key.preventDefault()
     key.stopPropagation()
-    if (!buf || key.name === "escape") return ws.ui.set({ modal: null })
+    if (!buf || key.name === "escape") return closeModal(ws)
     if (key.name === "m" && canMerge) resolve(ws, buf, "merge")
     else if (key.name === "d") resolve(ws, buf, "disk")
     else if (key.name === "k") resolve(ws, buf, "mine")
@@ -109,7 +110,7 @@ export function DiffModal({ bufId }: { bufId: number }) {
   if (!buf) return null
 
   return (
-    <Modal title={`${buf.relPath}: yours (−) vs on disk (+)`} width={Math.min(110, dims.width - 4)} height={viewH + 6} onClose={() => ws.ui.set({ modal: null })}>
+    <Modal title={`${buf.relPath}: yours (−) vs on disk (+)`} width={Math.min(110, dims.width - 4)} height={viewH + 6} onClose={() => closeModal(ws)}>
       <box
         flexDirection="column"
         height={viewH}

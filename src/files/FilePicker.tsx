@@ -12,6 +12,7 @@ import { indexToCol } from "../lsp/positions"
 import type { SymbolEntry } from "../lsp/LspManager"
 import type { CodeEditorRenderable } from "../editor/CodeEditorRenderable"
 import type { TreeModel } from "./TreeModel"
+import { closeModal } from "../app/modalStack"
 
 function Highlighted({ text, positions, selected }: { text: string; positions: number[]; selected: boolean }) {
   const set = new Set(positions)
@@ -93,7 +94,7 @@ export function FilePicker({ tree }: { tree: TreeModel }) {
     return () => clearTimeout(t)
   }, [mode, term, active?.id])
 
-  const close = () => ws.ui.set({ modal: null })
+  const close = () => closeModal(ws)
   const openFile = async (relPath: string) => {
     close()
     try {

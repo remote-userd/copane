@@ -7,6 +7,7 @@ import { ui as colors } from "../config/theme"
 import { openAt } from "../app/navHistory"
 import type { Location } from "./LspManager"
 import { indexToCol } from "./positions"
+import { closeModal } from "../app/modalStack"
 
 /** A list of code locations (references). Enter opens one. */
 export function LocationsModal({ title, locations }: { title: string; locations: Location[] }) {
@@ -16,7 +17,7 @@ export function LocationsModal({ title, locations }: { title: string; locations:
   const [lines, setLines] = useState<Map<string, string[]>>(new Map())
   const listH = Math.max(3, Math.min(20, dims.height - 8))
   const start = Math.max(0, Math.min(sel - listH + 1, locations.length - listH))
-  const close = () => ws.ui.set({ modal: null })
+  const close = () => closeModal(ws)
 
   // Load each file's text once to show the line and convert columns.
   useEffect(() => {

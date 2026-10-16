@@ -401,7 +401,7 @@ If icons show as boxes, your terminal isn't using a Nerd Font yet. On Windows, f
 - **Tree and picker:** the wheel scrolls, rows highlight on hover, and a click opens the file or toggles the folder. Right-click a tree row for file actions. In a narrow tree, long names are clipped at the edge: Shift+wheel (or a sideways swipe) scrolls the tree sideways.
 - **Tabs:** click to switch, click × or middle-click to close, wheel over the tab bar to cycle.
 - **Status bar:** the key hints are buttons, and clicking the AI status switches focus.
-- **Dialogs:** buttons are clickable, and clicking outside closes them.
+- **Dialogs:** buttons are clickable, and clicking outside closes them. A dialog opened from another one (Source control's Discard question, Branches, History) goes back to it on Esc or a click outside.
 - **AI pane:** select text with the mouse to copy it. Ctrl+C stays with the CLI.
 
 While the editor captures the mouse, most terminals use Shift+drag for their own text selection.

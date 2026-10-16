@@ -10,6 +10,7 @@ import { openAt } from "../app/navHistory"
 import { matcherFor, parseGlobs, replaceInFiles, replaceLines, searchFiles, type Hit, type MatchOptions, type SearchResult } from "./searchFiles"
 import type { TreeModel } from "./TreeModel"
 import { replaceSeed, selectAllSoon } from "../app/seededInput"
+import { closeModal } from "../app/modalStack"
 
 type Field = "query" | "replace" | "files"
 type Row = { kind: "file"; path: string; rel: string; count: number } | { kind: "hit"; hit: Hit }
@@ -174,7 +175,7 @@ export function SearchPanel({ tree, height, mode }: { tree: TreeModel; height: n
   const visible = rows.slice(start, start + listH)
   const fields: Field[] = showReplace ? ["query", "replace", "files"] : ["query", "files"]
 
-  const leave = () => (popup ? ws.ui.set({ modal: null }) : ws.ui.set({ focus: "editor" }))
+  const leave = () => (popup ? closeModal(ws) : ws.ui.set({ focus: "editor" }))
   const focusHere = () => !popup && ws.ui.set({ focus: "tree", sidebar: "search" })
   const toggle = (k: keyof MatchOptions) => setMatch((m) => ({ ...m, [k]: k === "caseSensitive" ? (m.caseSensitive ? undefined : true) : !m[k] }))
   /** Ctrl+F keeps the cursor where it is; clicking ▸ puts it in the replace field. */
@@ -237,9 +238,10 @@ export function SearchPanel({ tree, height, mode }: { tree: TreeModel; height: n
     const plan = await replaceInFiles(ws.root, query, replaceWith, { files, match, globs, skip })
     if (typeof plan === "string") return ws.notify(plan, "error")
     if (!plan.size) return ws.notify("Nothing to replace")
-    const back = () => ws.ui.set({ modal: popup ? { kind: "search", replace: true, restore: true } : null })
     ws.ui.set({
       modal: {
+        // From the popup: Escape or Cancel bring it back with its fields.
+        ...(popup ? { back: { kind: "search", replace: true, restore: true } } : {}),
         kind: "confirm",
         title: "Replace in files",
         body: `${plural(plan.size, "file")}: "${clip(query)}" → "${clip(replaceWith)}"${dismissed.size ? ` (${dismissed.size} skipped)` : ""}`,
@@ -254,7 +256,7 @@ export function SearchPanel({ tree, height, mode }: { tree: TreeModel; height: n
               setVersion((v) => v + 1)
             },
           },
-          { key: "n", label: "Cancel", run: back },
+          { key: "n", label: "Cancel", run: () => closeModal(ws) },
         ],
       },
     })
