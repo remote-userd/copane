@@ -45,9 +45,10 @@ async function welcome(opts: { here?: boolean } = {}) {
 
 test("lists recent folders; Enter, a number or a click opens one", async () => {
   const w = await welcome()
-  expect(w.frame()).toContain("Recent")
+  expect(w.frame()).toContain("RECENT")
   expect(w.frame()).toContain("alpha")
-  expect(w.frame()).toContain("Open current folder")
+  expect(w.frame()).toContain("Open folder…")
+  expect(w.frame()).toContain(`Open ${w.cwd.split("/").pop()}`)
   await w.step(() => w.keys.pressEnter())
   await w.step(() => w.keys.pressKey("2"))
   const beta = w.find("beta")
@@ -55,39 +56,76 @@ test("lists recent folders; Enter, a number or a click opens one", async () => {
   expect(w.opened).toEqual([join(w.cwd, "alpha"), join(w.cwd, "beta"), join(w.cwd, "beta")])
 })
 
-test("Delete forgets a folder; . opens the current one; Esc quits", async () => {
+test("Delete or the row's × removes a folder; . and the button open the current one; Esc quits", async () => {
   const w = await welcome()
   await w.step(() => w.keys.pressKey("DELETE"))
   expect(w.forgotten).toEqual([join(w.cwd, "alpha")])
   expect(w.frame()).not.toContain("alpha")
+  // The selected row shows its ×.
+  const x = w.find(" × ")
+  await w.step(() => w.mouse.click(x.x + 1, x.y))
+  expect(w.forgotten).toEqual([join(w.cwd, "alpha"), join(w.cwd, "beta")])
+  expect(w.frame()).toContain("Nothing yet")
   await w.step(() => w.keys.pressKey("."))
-  expect(w.opened).toEqual([w.cwd])
+  const here = w.find(`Open ${w.cwd.split("/").pop()}`)
+  await w.step(() => w.mouse.click(here.x, here.y))
+  expect(w.opened).toEqual([w.cwd, w.cwd])
   await w.step(() => w.keys.pressEscape())
   await waitUntil(() => w.quits() === 1, 1000)
 })
 
-test("o types a path: Tab completes a folder, a file is refused, a folder opens", async () => {
+test("browse: typing filters folders, Enter goes in, the first row opens the folder shown", async () => {
   const w = await welcome()
   await w.step(() => w.keys.pressKey("o"))
-  await w.step(() => w.keys.typeText("file.txt"))
-  await w.step(() => w.keys.pressEnter())
-  await waitUntil(async () => (await w.step(() => {}), w.frame().includes("Not a folder")), 1000)
-  for (let i = 0; i < 8; i++) await w.step(() => w.keys.pressBackspace())
+  const shows = (t: string) => waitUntil(async () => (await w.step(() => {}), w.frame().includes(t)), 1000)
+  await shows("Open folder")
+  await shows("▸  code")
+  expect(w.frame()).toContain("▸  alpha")
   await w.step(() => w.keys.typeText("co"))
-  await w.step(() => w.keys.pressTab())
-  await w.step(() => w.keys.typeText("g"))
-  await w.step(() => w.keys.pressTab())
-  await waitUntil(async () => (await w.step(() => {}), w.frame().includes("code/gamma/")), 1000)
+  await shows("matching “co”")
+  expect(w.frame()).not.toContain("▸  alpha")
+  // The match is selected: Enter goes into it.
+  await w.step(() => w.keys.pressEnter())
+  await shows("▸  gamma")
+  // A click goes into a folder; the first row opens the one shown.
+  const gamma = w.find("gamma")
+  await w.step(() => w.mouse.click(gamma.x, gamma.y))
+  await shows("Open this folder (gamma)")
   await w.step(() => w.keys.pressEnter())
   await waitUntil(() => w.opened.length === 1, 1000)
   expect(w.opened).toEqual([join(w.cwd, "code/gamma")])
 })
 
-test("inside the editor (here off) there is no 'Open current folder'", async () => {
+test("browse: a row's open button opens it directly; Backspace goes up; Esc goes back", async () => {
+  const w = await welcome()
+  await w.step(() => w.keys.pressKey("o"))
+  const shows = (t: string) => waitUntil(async () => (await w.step(() => {}), w.frame().includes(t)), 1000)
+  await shows("▸  beta")
+  const beta = w.find("▸  beta")
+  await w.step(() => w.mouse.moveTo(beta.x + 2, beta.y))
+  const open = w.find(" open ")
+  await w.step(() => w.mouse.click(open.x + 1, open.y))
+  expect(w.opened).toEqual([join(w.cwd, "beta")])
+  await w.step(() => w.keys.pressBackspace())
+  await shows(`Open this folder (${w.cwd.split("/").slice(-2, -1)[0]})`)
+  await w.step(() => w.keys.pressEscape())
+  await shows("RECENT")
+})
+
+test("inside the editor (here off) there is no button for the current folder", async () => {
   const w = await welcome({ here: false })
-  expect(w.frame()).not.toContain("Open current folder")
+  expect(w.frame()).not.toContain(`Open ${w.cwd.split("/").pop()}`)
   await w.step(() => w.keys.pressKey("."))
   expect(w.opened).toEqual([])
+})
+
+test("ago says how long ago", async () => {
+  const { ago } = await import("../../src/app/Welcome")
+  const now = 1_000_000_000_000
+  expect(ago(now - 10_000, now)).toBe("just now")
+  expect(ago(now - 5 * 60_000, now)).toBe("5m ago")
+  expect(ago(now - 2 * 3_600_000, now)).toBe("2h ago")
+  expect(ago(now - 3 * 86_400_000, now)).toBe("3d ago")
 })
 
 test("Ctrl+Alt+O in the editor shows the recent folders (not the open one); Esc goes back", async () => {
@@ -107,7 +145,7 @@ test("Ctrl+Alt+O in the editor shows the recent folders (not the open one); Esc 
     await h.step(() => h.keys.pressKey("o", { ctrl: true, meta: true }))
     await waitUntil(async () => (await h.step(() => {}), h.frame().includes("Open folder…")), 2000)
     expect(h.frame()).toContain(other.split("/").pop()!)
-    expect(h.frame()).not.toContain("Open current folder")
+    expect(h.frame()).not.toContain(`Open ${root.split("/").pop()}`)
     await h.step(() => h.keys.pressEscape())
     await waitUntil(() => ws.ui.get().modal === null, 1000)
   } finally {

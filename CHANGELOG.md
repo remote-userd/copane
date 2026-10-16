@@ -9,7 +9,7 @@ All notable changes to copane are listed here. The format follows
 - File tree toolbar: New File, New Folder, Refresh and Collapse All buttons at the right of the FILES tab (in the EXPLORER header in the standalone tree).
 - Drag a file or folder in the tree onto a folder to move it (after a confirmation); open tabs follow.
 - Alt+E focuses the file tree (VS Code's Ctrl+Shift+E, which terminals send as Ctrl+E).
-- Welcome page: `ce` with no folder lists recently opened folders to pick from (or opens the current folder with `.`, or a typed path). Ctrl+Alt+O (Open recent folder) switches folders from inside the editor. `startup.welcome: false` keeps opening the current folder.
+- Welcome page: `ce` with no folder lists recently opened folders (with their git branch and when you last opened them) to pick with a click or the keys, opens the current folder, or browses for one (type to filter, click to go in, **open** to open). Ctrl+Alt+O (Open recent folder) switches folders from inside the editor. `startup.welcome: false` keeps opening the current folder.
 - Several git repositories in one project, as in VS Code: a folder of clones, nested repositories and submodules each get tree marks, gutter markers, blame and history from their own repository. Source control has a tab per repository (`n` / `N` switch), and the status bar shows the open file's repository and branch. `git.scanDepth` (default 1) and `git.detectSubmodules` (default true) set where it looks.
 
 ### Changed
