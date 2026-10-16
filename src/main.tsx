@@ -32,7 +32,7 @@ import { keepBlames } from "./git/blame"
 import { configureHighlighterRecycling, highlighterIdleSoon } from "./editor/highlighter"
 import { LspManager } from "./lsp/LspManager"
 import { applyFileEdits } from "./lsp/lspActions"
-import { aiStatusSource, TerminalPane } from "./ai/TerminalPane"
+import { aiStatusSource, restorableTabs, TerminalPane } from "./ai/TerminalPane"
 import { affectedOpenFiles, FileWatcher, type ChangeBatch as FsBatch } from "./files/watcher"
 import { TurnLog } from "./ai/turns"
 import { AiReview, reviewStatePath } from "./ai/review"
@@ -241,6 +241,9 @@ void restoreRecovery(ws).then((files) => {
   if (files.length) ws.notify(`Restored unsaved changes from a crash: ${files.join(", ")} (Ctrl+Z drops them)`, "warn")
 })
 
+// The AI pane's tabs come back too, each claude tab into its own conversation.
+const aiTabs = restored?.ai && restored.root === root ? await restorableTabs(restored.ai).catch(() => undefined) : undefined
+
 if (restored?.files.length) {
   // Restarted (e.g. after an update): bring back the tabs, then the active one.
   void (async () => {
@@ -317,7 +320,7 @@ reactRoot.render(
             tree: <TreeSlot />,
             picker: <FilePicker tree={tree} />,
             search: <SearchModal tree={tree} />,
-            ai: <TerminalPane config={aiConfig} />,
+            ai: <TerminalPane config={aiConfig} restored={aiTabs} />,
             aiStatus: aiStatusSource,
           }}
         />

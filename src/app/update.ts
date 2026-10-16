@@ -23,6 +23,48 @@ export interface RestoreState {
   active: string | null
   /** The project folder: `ce` started without one (the welcome page) comes back to it. */
   root?: string
+  /** The AI pane's tabs, in order, and the index of the one shown. */
+  ai?: { tabs: RestoredTab[]; active: number }
+}
+
+/** An AI pane tab to open again: an agent CLI (with its Claude conversation) or a terminal. */
+export interface RestoredTab {
+  name: string
+  command: string
+  args: string[]
+  cwd: string
+  branch: string | null
+  worktree?: string
+  terminal?: { run?: string }
+  claudeSession?: string
+}
+
+const isStr = (v: unknown): v is string => typeof v === "string"
+
+function restoredTab(v: unknown): RestoredTab | null {
+  if (!v || typeof v !== "object") return null
+  const t = v as Record<string, unknown>
+  if (!isStr(t.name) || !isStr(t.command) || !isStr(t.cwd) || !Array.isArray(t.args) || !t.args.every(isStr)) return null
+  const run = (t.terminal as { run?: unknown } | undefined)?.run
+  return {
+    name: t.name,
+    command: t.command,
+    args: t.args,
+    cwd: t.cwd,
+    branch: isStr(t.branch) ? t.branch : null,
+    ...(isStr(t.worktree) ? { worktree: t.worktree } : {}),
+    ...(t.terminal && typeof t.terminal === "object" ? { terminal: isStr(run) ? { run } : {} } : {}),
+    ...(isStr(t.claudeSession) ? { claudeSession: t.claudeSession } : {}),
+  }
+}
+
+function restoredAi(v: unknown): RestoreState["ai"] {
+  const ai = v as { tabs?: unknown; active?: unknown } | null | undefined
+  if (!ai || !Array.isArray(ai.tabs)) return undefined
+  const tabs = ai.tabs.map(restoredTab).filter((t): t is RestoredTab => t !== null)
+  if (!tabs.length) return undefined
+  const active = typeof ai.active === "number" && ai.active >= 0 && ai.active < tabs.length ? ai.active : 0
+  return { tabs, active }
 }
 
 /** True when running as a `bun build --compile` binary rather than `bun run`. */
@@ -48,10 +90,12 @@ export async function takeRestoreState(env: Record<string, string | undefined> =
   if (!(await file.exists())) return null
   try {
     const data = (await file.json()) as Partial<RestoreState>
+    const ai = restoredAi(data.ai)
     return {
       files: Array.isArray(data.files) ? data.files.filter((f): f is string => typeof f === "string") : [],
       active: typeof data.active === "string" ? data.active : null,
       ...(typeof data.root === "string" ? { root: data.root } : {}),
+      ...(ai ? { ai } : {}),
     }
   } catch {
     return null

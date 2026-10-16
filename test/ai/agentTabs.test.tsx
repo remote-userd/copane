@@ -1,7 +1,7 @@
 import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
-import { existsSync, realpathSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, realpathSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { TerminalPane, worktreeFor, type AiConfig } from "../../src/ai/TerminalPane"
+import { restorableTabs, TerminalPane, worktreeFor, type AiConfig } from "../../src/ai/TerminalPane"
 import type { MenuItem } from "../../src/app/state"
 import { GitStatus } from "../../src/files/gitStatus"
 import { GitRepos } from "../../src/git/repos"
@@ -299,4 +299,51 @@ test("many tabs clip, but + and the maximize button stay visible at the right of
   }
   await until(() => (h!.frame().match(/SECOND/g) ?? []).length >= 3)
   expect(h!.lines()[0]!.trimEnd()).toMatch(/\+\s+⤢$/)
+})
+
+test("a claude tab starts its own conversation (--session-id)", async () => {
+  const root = await fixture({ "bin/claude": '#!/bin/sh\necho "claude args:$*"\nexec cat\n' })
+  chmodSync(join(root, "bin/claude"), 0o755)
+  const before = Bun.env.CLAUDE_CONFIG_DIR
+  Bun.env.CLAUDE_CONFIG_DIR = join(root, "no-claude-home")
+  try {
+    const ws = createWorkspace(root, {}, editorShown())
+    const claude: AiConfig = { ...config(), command: join(root, "bin/claude"), args: [] }
+    h = await renderApp(ws, { tree: <text>TREE</text>, ai: <TerminalPane config={claude} /> }, { width: 240, height: 24 })
+    const id = ws.agents!.snapshot()!.tabs[0]!.claudeSession!
+    expect(id).toMatch(/^[0-9a-f-]{36}$/)
+    await until(() => h!.frame().includes(`claude args:--session-id ${id}`))
+  } finally {
+    Bun.env.CLAUDE_CONFIG_DIR = before
+  }
+})
+
+test("tabs open before a restart come back: each claude tab in its conversation, a dev server running again", async () => {
+  const root = await fixture({ "web/package.json": "{}" })
+  const saved1 = "aaaaaaaa-1111-4222-8333-944445555666"
+  const fresh2 = "bbbbbbbb-1111-4222-8333-944445555666"
+  const home = await fixture({ [`projects/-work/${saved1}.jsonl`]: "{}\n" })
+  const before = Bun.env.CLAUDE_CONFIG_DIR
+  Bun.env.CLAUDE_CONFIG_DIR = home
+  try {
+    // Stand-ins for claude that print the args they got ($0 is the tab's name).
+    const agent = (name: string) => ({ name, command: "/bin/sh", args: ["-c", 'echo "$0 args:$*"; exec cat', name], cwd: root, branch: null })
+    const web = { name: "web", command: "/bin/sh", args: [], cwd: join(root, "web"), branch: null, terminal: { run: "echo web-is-up" } }
+    const tabs = [{ ...agent("one"), claudeSession: saved1 }, { ...agent("two"), claudeSession: fresh2 }, web]
+    // A worktree removed meanwhile: its tab stays closed.
+    const restored = await restorableTabs({ tabs: [...tabs, { ...agent("gone"), cwd: join(root, "removed") }], active: 1 })
+    expect(restored).toEqual({ tabs, active: 1 })
+
+    const ws = createWorkspace(root, {}, editorShown())
+    h = await renderApp(ws, { tree: <text>TREE</text>, ai: <TerminalPane config={config()} restored={restored} /> }, { width: 240, height: 24 })
+    // The shown tab: never talked to, so a new conversation under its id.
+    await until(() => h!.frame().includes(`two args:--session-id ${fresh2}`))
+    expect(ws.agents!.snapshot()).toEqual({ tabs, active: 1 })
+    await h!.step(() => ws.agents!.cycle(-1))
+    await until(() => h!.frame().includes(`one args:--resume ${saved1}`))
+    await h!.step(() => ws.agents!.cycle(-1))
+    await until(() => h!.lines().some((l) => l.includes("web-is-up") && !l.includes("echo")))
+  } finally {
+    Bun.env.CLAUDE_CONFIG_DIR = before
+  }
 })

@@ -62,7 +62,8 @@ export class AgentProcess {
     return Bun.which(command, { cwd }) ?? null
   }
 
-  start(cols: number, rows: number): void {
+  /** `args` in place of the configured ones, for this run (a claude tab's conversation). */
+  start(cols: number, rows: number, args = this.opts.args ?? []): void {
     if (this.proc) return
     const exe = AgentProcess.resolveCommand(this.opts.command, this.opts.cwd)
     if (!exe) {
@@ -70,7 +71,7 @@ export class AgentProcess {
       return
     }
     try {
-      const proc = Bun.spawn([exe, ...(this.opts.args ?? [])], {
+      const proc = Bun.spawn([exe, ...args], {
         cwd: this.opts.cwd,
         env: { ...Bun.env, ...this.opts.env, TERM: "xterm-256color", COLORTERM: "truecolor" },
         terminal: {

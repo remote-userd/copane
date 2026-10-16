@@ -346,7 +346,7 @@ function leave(ws: Workspace, how: "quit" | "restart", folder?: string): void {
     if (how === "quit") return void shutdown(0)
     if (folder) return void restart({ files: [], active: null, root: folder })
     const files = ws.buffers.list().map((b) => b.path)
-    void restart({ files, active: ws.buffers.active?.path ?? null, root: ws.root })
+    void restart({ files, active: ws.buffers.active?.path ?? null, root: ws.root, ai: ws.agents?.snapshot() })
   }
   if (!ws.buffers.hasDirty()) return go()
   const n = ws.buffers.list().filter((b) => b.dirty).length

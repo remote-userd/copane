@@ -15,6 +15,8 @@ import { GitRepo } from "../git/repo"
 import { AgentWatch, desktopNotify, plain, ringBell, type Attention } from "./alerts"
 import { lastError, OutputLines, servicesFor, type Service, type ServiceError } from "./services"
 import { linkAt, openLink } from "./terminalLinks"
+import { claudeArgs, newClaudeSession } from "./claudeSession"
+import type { RestoreState, RestoredTab } from "../app/update"
 
 export interface AgentChoice {
   name: string
@@ -49,6 +51,8 @@ export interface Session {
   worktree?: string
   /** A terminal tab (your shell, not an agent), and the command it was opened to run (a dev server). */
   terminal?: { run?: string }
+  /** A claude tab's conversation id: it starts (and after a restart of copane resumes) that one. */
+  claudeSession?: string
 }
 
 /** The top folder of a worktree session's checkout (what git commands run in). */
@@ -106,6 +110,22 @@ const terminals = new Map<number, EmbeddedTerminalRenderable>()
 const handles = new Map<number, AiHandle & { proc: () => AgentProcess | null }>()
 
 /** Tests: no tabs, terminals or handles left from another test (ids restart at 1). */
+/** Saved tabs that can open again: those whose folder is gone (a removed worktree) are left out. */
+export async function restorableTabs(saved: NonNullable<RestoreState["ai"]>): Promise<RestoreState["ai"]> {
+  const shown = saved.tabs[saved.active]
+  const kept: RestoredTab[] = []
+  for (const t of saved.tabs) if (await Bun.file(t.cwd).stat().then((s) => s.isDirectory(), () => false)) kept.push(t)
+  if (!kept.length) return undefined
+  return { tabs: kept, active: Math.max(0, kept.indexOf(shown!)) }
+}
+
+/** The open tabs, to open again after a restart. */
+export function snapshotAgentTabs(): RestoreState["ai"] {
+  const { sessions, active } = tabs.get()
+  if (!sessions.length) return undefined
+  return { tabs: sessions.map(({ id: _id, ...tab }) => tab), active: Math.max(0, sessions.findIndex((s) => s.id === active)) }
+}
+
 export function resetAgentTabs(): void {
   for (const h of handles.values()) h.kill()
   handles.clear()
@@ -489,16 +509,19 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
 
     // The emulator may resize before the child exists (that resize is dropped),
     // so always push the current layout size right after starting.
-    const startProc = () => {
+    const startProc = async () => {
+      // A claude tab goes back into its conversation once Claude has saved it.
+      const args = session.claudeSession ? await claudeArgs(session.args, session.claudeSession) : session.args
+      if (disposed) return
       const cols = Math.max(20, term.width)
       const rows = Math.max(5, term.height)
-      proc.start(cols, rows)
+      proc.start(cols, rows, args)
       proc.resize(cols, rows)
       // A run target: type its command into the fresh shell (it waits in the input until the shell reads it).
       if (run) proc.write(`${run}\r`)
     }
     // Start after the first layout so the PTY gets the real size.
-    const startTimer = setTimeout(startProc, 50)
+    const startTimer = setTimeout(() => void startProc(), 50)
 
     handles.set(id, {
       paste(text) {
@@ -523,7 +546,7 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
           term.write("\x1bc") // reset the emulator screen
           output?.clear()
           setState(id, { error: null })
-          startProc()
+          void startProc()
         }
         // A terminal restarts while running (a fresh shell, its command again); an agent only once it has exited.
         if (proc.status.kind !== "running") again()
@@ -582,18 +605,31 @@ export function worktreeFor(root: string, name: string, n: number, top = root): 
   return { path, branch: `copane/${slug}-${n}`, cwd: join(path, relative(top, root)) }
 }
 
-/** The AI pane: one tab per agent CLI. ws.ai always points at the visible tab. */
-export function TerminalPane({ config }: { config: AiConfig }) {
+/**
+ * The AI pane: one tab per agent CLI. ws.ai always points at the visible tab.
+ * `restored`: the tabs open before a restart, opened instead of one fresh tab.
+ */
+export function TerminalPane({ config, restored }: { config: AiConfig; restored?: RestoreState["ai"] }) {
   const ws = useWorkspace()
   const ui = useUi()
   const t = useSyncExternalStore(tabs.subscribe, tabs.get)
   const focused = ui.focus === "ai" && !ui.modal
   const nextId = useRef(2)
+  const saved = useRef(restored)
 
-  // The first tab: ai.command in the project.
+  // The first tab: ai.command in the project, or the tabs open before a restart.
   useEffect(() => {
+    const restore = saved.current
+    saved.current = undefined
+    if (restore) {
+      tabs.set({ sessions: restore.tabs.map((t, i) => ({ ...t, id: i + 1 })), active: restore.active + 1, state: {} })
+      nextId.current = restore.tabs.length + 1
+      return
+    }
     const name = basename(config.command)
-    tabs.set({ sessions: [{ id: 1, name, command: config.command, args: config.args, cwd: ws.root, branch: null }], active: 1, state: {} })
+    const claudeSession = newClaudeSession(config.command, config.args)
+    tabs.set({ sessions: [{ id: 1, name, command: config.command, args: config.args, cwd: ws.root, branch: null, ...(claudeSession ? { claudeSession } : {}) }], active: 1, state: {} })
+    nextId.current = 2
   }, [ws, config.command, config.args])
 
   useEffect(() => {
@@ -636,6 +672,7 @@ export function TerminalPane({ config }: { config: AiConfig }) {
       recount: (id) => void recount(ws, id),
       openRun: (x, y) => void openNewMenu(ws, config, x, y, (s) => addSession(s), true),
       newTerminal: () => addSession(terminalSession(ws.root)),
+      snapshot: snapshotAgentTabs,
       sendTerminalError: () => sendTerminalError(ws),
     }
     return () => {
@@ -649,7 +686,8 @@ export function TerminalPane({ config }: { config: AiConfig }) {
     // A second tab of the same CLI gets a number: "claude 2".
     const same = tabs.get().sessions.filter((o) => o.name === s.name || o.name.startsWith(`${s.name} `)).length
     const name = same ? `${s.name} ${same + 1}` : s.name
-    tabs.set({ sessions: [...tabs.get().sessions, { ...s, name, id }], active: id })
+    const claudeSession = s.claudeSession ?? newClaudeSession(s.command, s.args)
+    tabs.set({ sessions: [...tabs.get().sessions, { ...s, name, id, ...(claudeSession ? { claudeSession } : {}) }], active: id })
     ws.ui.set({ focus: "ai", aiVisible: true })
   }
 

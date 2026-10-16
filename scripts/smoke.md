@@ -25,7 +25,7 @@ Run in a real terminal, in plain mode and inside tmux.
 10. Make an unsaved edit, then have Claude edit the same file. The conflict bar appears. Ctrl+R takes Claude's version and Ctrl+S keeps yours.
 11. Select lines with Shift+arrows and press Ctrl+L. Claude's prompt receives `@file#Lx-y` and the snippet, without submitting.
 12. Resize the window. The editor and Claude both reflow.
-13. Exit Claude with /exit. The pane offers a restart on Enter.
+13. Exit Claude with /exit. The pane offers a restart on Enter, and Claude comes back in the same conversation.
 14. Ctrl+Q with unsaved changes prompts. After quitting, no `claude` process is left (`pgrep -f claude`).
 15. Set `"ai": {"command": "nope"}` in the config. The pane explains the command was not found.
 
@@ -105,3 +105,4 @@ Run in a real terminal, in plain mode and inside tmux.
 84. Start `ce .`: only the tree and the AI pane, no editor. The ⤢ button (not ⤡): Ctrl+Alt+X hides the tree, again brings it back, still no editor. Enter on a file in the tree: the editor appears with the file, between the tree and the AI pane. Ctrl+Alt+X and again: the editor hides and comes back with the file. Ctrl+W: no editor again. With `"editor": { "startHidden": false }`, `ce .` shows the editor's "No file open".
 85. Open a file and click into it: the cursor is a thin blinking line between characters (not a box), also in Ctrl+F, Ctrl+P, F1, Claude's prompt in the AI pane and a terminal tab (Alt+`). With `"editor": { "cursorStyle": "block" }` and a restart (Ctrl+Alt+R), it is a box again.
 86. In a repo whose `.gitignore` lists `dist/`, create `dist/out.js`: `dist` shows faded in the tree, and so does `out.js` inside it. Ctrl+P does not list `out.js`. Set `tree.showIgnored` to `false` and restart (Ctrl+Alt+R): `dist` is gone from the tree.
+87. Ask Claude something, open a second Claude tab (Ctrl+Alt+N) and ask it something else, then ▶ Run a dev server and Alt+` a terminal. Ctrl+Alt+R: the four tabs come back in order with the same one shown. Each Claude tab shows its own earlier conversation (not both the latest), the dev server runs again, and the terminal is a fresh shell in the same folder. A Claude tab you never typed in starts empty, without an error.

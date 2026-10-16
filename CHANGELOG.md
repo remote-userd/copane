@@ -10,6 +10,8 @@ All notable changes to copane are listed here. The format follows
 
 ### Added
 - Alt+` opens a terminal tab from the AI pane too, not only from the editor.
+- A restart (Ctrl+Alt+R, or after an update) brings back the AI pane's tabs. Each Claude tab gets its own conversation id (`--session-id`) and resumes it (`--resume`), so two Claude tabs in one folder each get their own conversation back. Dev servers run their command again, and terminals open a fresh shell. Tabs whose worktree was removed stay closed.
+- Enter after you exit Claude in a tab brings it back in the same conversation (`/clear` for a fresh one).
 
 ## [0.9.8] - 2026-10-16
 

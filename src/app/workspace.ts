@@ -9,6 +9,7 @@ import type { GitRepos } from "../git/repos"
 import type { LspManager } from "../lsp/LspManager"
 import type { TurnLog } from "../ai/turns"
 import type { AiReview } from "../ai/review"
+import type { RestoreState } from "./update"
 
 export interface Workspace {
   root: string
@@ -53,6 +54,8 @@ export interface AgentTabs {
   openRun(x?: number, y?: number): void
   /** Open a terminal tab (your shell) in the project. */
   newTerminal(): void
+  /** The open tabs, saved by a restart to open again. */
+  snapshot(): RestoreState["ai"]
   /** A terminal's error (the visible one's, else the newest), typed into the AI's prompt (not submitted). False when there is none. */
   sendTerminalError(): boolean
 }

@@ -44,6 +44,17 @@ test("takeRestoreState brings back the project folder (ce started from the welco
   expect(await takeRestoreState({ CE_RESTORE_FILE: file })).toEqual({ files: [], active: null, root: "/work/app" })
 })
 
+test("takeRestoreState brings back the AI pane's tabs, dropping malformed ones", async () => {
+  const file = join(tmp(), "restore.json")
+  const claude = { name: "claude", command: "claude", args: [], cwd: "/work/app", branch: null, claudeSession: "0b6f4c1e-1111-4222-8333-944445555666" }
+  const server = { name: "web", command: "/bin/zsh", args: [], cwd: "/work/app/web", branch: null, terminal: { run: "npm run dev" } }
+  writeFileSync(file, JSON.stringify({ files: [], active: null, ai: { tabs: [claude, { name: 3 }, server], active: 2 } }))
+  expect(await takeRestoreState({ CE_RESTORE_FILE: file })).toEqual({ files: [], active: null, ai: { tabs: [claude, server], active: 0 } })
+  // Nothing usable: no ai at all, and the files still come back.
+  writeFileSync(file, JSON.stringify({ files: ["/a.ts"], active: null, ai: { tabs: [{ name: "x", args: "no" }], active: 0 } }))
+  expect(await takeRestoreState({ CE_RESTORE_FILE: file })).toEqual({ files: ["/a.ts"], active: null })
+})
+
 test("installed launcher restarts the editor on exit code 75 and passes args through", async () => {
   const prefix = tmp()
   const inst = Bun.spawnSync(["sh", "scripts/install.sh"], {
