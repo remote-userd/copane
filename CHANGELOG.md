@@ -5,6 +5,8 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.9.8] - 2026-10-16
+
 ### Changed
 - Less memory per window. The syntax-colouring worker, whose memory only grows (about 40 MB after a typical file, 180 MB after a 300 KB one, 350 MB after an 800 KB one, kept until the window closed), now stops after a minute without highlighting or soon after you switch to another app, and starts again on the next edit. An idle window that had a big file open goes from ~230 MB to ~85 MB of its own memory. The binary also runs with Bun's `--smol` (5–10 MB less, typing speed unchanged), and freed memory is handed back when the window goes to the background.
 - The status bar's memory figure counts what each process uses on its own (Linux): the program's code, shared between windows, no longer makes each window look bigger.
@@ -207,7 +209,8 @@ First public release.
 - VS Code keys and settings import.
 - Release binaries for Linux and macOS (x64 and arm64), and a one-line installer.
 
-[Unreleased]: https://github.com/sevheng/copane/compare/v0.9.7...HEAD
+[Unreleased]: https://github.com/sevheng/copane/compare/v0.9.8...HEAD
+[0.9.8]: https://github.com/sevheng/copane/compare/v0.9.7...v0.9.8
 [0.9.7]: https://github.com/sevheng/copane/compare/v0.9.6...v0.9.7
 [0.9.6]: https://github.com/sevheng/copane/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/sevheng/copane/compare/v0.9.4...v0.9.5
