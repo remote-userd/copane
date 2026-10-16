@@ -5,6 +5,8 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.9.7] - 2026-10-16
+
 ### Added
 - File tree toolbar: New File, New Folder, Refresh and Collapse All buttons at the right of the FILES tab (in the EXPLORER header in the standalone tree).
 - Drag a file or folder in the tree onto a folder to move it (after a confirmation); open tabs follow.
@@ -198,7 +200,8 @@ First public release.
 - VS Code keys and settings import.
 - Release binaries for Linux and macOS (x64 and arm64), and a one-line installer.
 
-[Unreleased]: https://github.com/sevheng/copane/compare/v0.9.6...HEAD
+[Unreleased]: https://github.com/sevheng/copane/compare/v0.9.7...HEAD
+[0.9.7]: https://github.com/sevheng/copane/compare/v0.9.6...v0.9.7
 [0.9.6]: https://github.com/sevheng/copane/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/sevheng/copane/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/sevheng/copane/compare/v0.9.3...v0.9.4
