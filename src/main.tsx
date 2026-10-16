@@ -112,7 +112,9 @@ onShutdown(() => renderer.setTerminalTitle(""))
 const ws = createWorkspace(
   root,
   {
-    focus: args.file ? "editor" : "tree",
+    // A file given: the editor. Otherwise the AI, which may be asking something first (Claude's
+    // "do you trust this folder?"); the tree is a click or Alt+E away.
+    focus: args.file ? "editor" : config.ai.startHidden ? "tree" : "ai",
     aiVisible: !config.ai.startHidden,
     wordWrap: config.editor.wordWrap,
     ...(await loadLayout()),

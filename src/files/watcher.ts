@@ -63,7 +63,10 @@ export class FileWatcher {
         if (!filename) return
         const name = filename.toString()
         if (HARD_EXCLUDES.has(name)) return
-        this.pending.add(join(dir, name))
+        const path = join(dir, name)
+        // The home folder as the project: its tools' files (~/.claude.json, ...) change all the time.
+        if (this.matcher.toolPath(path)) return
+        this.pending.add(path)
         if (this.timer) clearTimeout(this.timer)
         this.timer = setTimeout(() => void this.flush(), this.debounceMs)
       })

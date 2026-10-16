@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs"
+import { homedir } from "node:os"
 import { join, relative, sep } from "node:path"
 import ignore, { type Ignore } from "ignore"
 
@@ -14,8 +15,26 @@ export class IgnoreMatcher {
   /** Folders already checked: everything inside an ignored folder is ignored too. */
   private ignoredDirs = new Map<string, boolean>()
   private readonly prefix: string
-  constructor(readonly root: string) {
+  /** The project is the home folder: its hidden folders are tools' (see toolPath). */
+  private readonly isHome: boolean
+  constructor(
+    readonly root: string,
+    home = homedir(),
+  ) {
     this.prefix = root.endsWith(sep) ? root : root + sep
+    this.isHome = root === home
+  }
+
+  /**
+   * With the home folder as the project, its hidden entries (.claude, .claude.json, .cache, .nvm,
+   * ...) belong to tools that write to them all the time, the AI's own session logs among them:
+   * they and everything inside count as ignored. They show faded and aren't watched, indexed,
+   * searched for repositories or taken for the AI's edits.
+   */
+  toolPath(absPath: string): boolean {
+    if (!this.isHome || !absPath.startsWith(this.prefix)) return false
+    const rest = absPath.slice(this.prefix.length)
+    return rest.length > 1 && rest.startsWith(".")
   }
 
   private rulesFor(dir: string): Ignore | null {
@@ -53,6 +72,7 @@ export class IgnoreMatcher {
     if (!absPath.startsWith(this.prefix)) return false
     const parts = absPath.slice(this.prefix.length).split(sep)
     if (parts.some((p) => HARD_EXCLUDES.has(p))) return true
+    if (this.toolPath(absPath)) return true
     if (parts.length > 1) {
       const parent = absPath.slice(0, absPath.length - parts.at(-1)!.length - 1)
       let hidden = this.ignoredDirs.get(parent)

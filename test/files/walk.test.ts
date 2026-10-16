@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { IgnoreMatcher } from "../../src/files/ignore"
 import { listDir, walkFiles } from "../../src/files/walk"
+import { fixture as files } from "../helpers"
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), "cedit-walk-"))
@@ -82,4 +83,20 @@ test("walkFiles lists breadth-first in a stable order", async () => {
   const deep = files.filter((f) => f.endsWith("/in/f.ts"))
   expect(deep).toEqual(Array.from({ length: 40 }, (_, i) => `d${String(i).padStart(2, "0")}/in/f.ts`))
   expect(files.indexOf("README.md")).toBeLessThan(files.indexOf("src/a.ts"))
+})
+
+test("with the home folder as the project, its hidden entries are tools': ignored, not listed, not watched", async () => {
+  const home = await files({ ".claude/projects/log.jsonl": "{}", ".claude.json": "{}", ".bashrc": "x", "code/app/a.ts": "a" })
+  const m = new IgnoreMatcher(home, home)
+  expect(m.toolPath(join(home, ".claude"))).toBe(true)
+  expect(m.toolPath(join(home, ".claude/projects/log.jsonl"))).toBe(true)
+  expect(m.toolPath(join(home, ".claude.json"))).toBe(true)
+  expect(m.toolPath(join(home, "code/app/a.ts"))).toBe(false)
+  expect(m.isIgnored(join(home, ".claude"), true)).toBe(true)
+  expect(m.isIgnored(join(home, "code"), true)).toBe(false)
+  expect((await walkFiles(home, new IgnoreMatcher(home, home))).files).toEqual(["code/app/a.ts"])
+  // Any other project keeps its hidden folders.
+  const other = new IgnoreMatcher(home, "/somewhere/else")
+  expect(other.toolPath(join(home, ".claude"))).toBe(false)
+  expect(other.isIgnored(join(home, ".claude"), true)).toBe(false)
 })

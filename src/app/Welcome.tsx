@@ -18,13 +18,15 @@ export function Welcome({
   recent: initial,
   cwd,
   here = true,
-  onOpen,
+  home = homedir(),
+  onOpen: openNow,
   onForget,
   onQuit,
 }: {
   version: string
   recent: RecentFolder[]
   cwd: string
+  home?: string
   /** Offer "Open current folder" (not from inside the editor, where that folder is already open). */
   here?: boolean
   onOpen: (path: string) => void
@@ -38,6 +40,15 @@ export function Welcome({
   const [hover, setHover] = useState<number | null>(null)
   const [top, setTop] = useState(0)
   const branches = useBranches(recent)
+  // Your home folder (or /) is not a project: the AI would get all of it, and tools write there all
+  // the time. Opening it takes a second click, after a warning.
+  const [pending, setPending] = useState<string | null>(null)
+  const tooBig = (p: string) => p === home || p === "/"
+  const onOpen = (p: string) => (tooBig(p) && pending !== p ? setPending(p) : openNow(p))
+  const warning = pending ? (pending === "/" ? "/ is the whole disk" : `${tildify(pending, home)} is your whole home folder`) : null
+  // Started in ~: the second button browses it rather than opening all of it.
+  const atHome = tooBig(cwd)
+  const openHere = () => (atHome ? setBrowsing(true) : onOpen(cwd))
 
   const width = Math.min(88, Math.max(40, dims.width - 4))
   // The card's frame, title, tagline, buttons, heading and gaps, plus the hints under it.
@@ -78,14 +89,14 @@ export function Welcome({
     else if (key.name === "return") recent[sel] ? onOpen(recent[sel]!.path) : setBrowsing(true)
     else if (key.name === "delete") forget(sel)
     else if (key.name === "o") setBrowsing(true)
-    else if (key.sequence === "." && here) onOpen(cwd)
+    else if (key.sequence === "." && here) openHere()
     else if (/^[1-9]$/.test(key.name)) {
       const r = recent[Number(key.name) - 1]
       if (r) onOpen(r.path)
     }
   })
 
-  if (browsing) return <FolderBrowser start={cwd} width={width} onOpen={onOpen} onBack={() => setBrowsing(false)} />
+  if (browsing) return <FolderBrowser start={cwd} width={width} warning={warning} pending={pending} onOpen={onOpen} onBack={() => (setPending(null), setBrowsing(false))} />
 
   const nameW = Math.min(24, Math.max(8, ...recent.map((r) => Bun.stringWidth(basename(r.path)))))
   const recentRow = (r: RecentFolder, i: number) => {
@@ -181,10 +192,15 @@ export function Welcome({
         <text selectable={false} fg={colors.dim}>
           A code editor with your AI beside it. Open a project to start.
         </text>
+        {warning ? (
+          <text selectable={false} fg={colors.warn}>
+            {`⚠ ${warning}: the AI would get all of it. Open it again to go ahead, or pick a project.`}
+          </text>
+        ) : null}
         <box height={1} />
         <box flexDirection="row" gap={2} flexWrap="wrap">
           <Button label="Open folder…" keyHint="o" strong onPress={() => setBrowsing(true)} />
-          {here ? <Button label={`Open ${basename(cwd) || cwd}`} keyHint="." onPress={() => onOpen(cwd)} /> : null}
+          {here ? <Button label={atHome ? `Browse ${tildify(cwd, home)}` : `Open ${basename(cwd) || cwd}`} keyHint="." onPress={openHere} /> : null}
         </box>
         <box height={1} />
         <box height={1} flexDirection="row">
@@ -220,7 +236,7 @@ export function Welcome({
           ["⏎", "open"],
           ["Del", "remove", () => forget(sel)],
           ["o", "browse", () => setBrowsing(true)],
-          ...(here ? ([[".", "this folder", () => onOpen(cwd)]] as const) : []),
+          ...(here ? ([[".", atHome ? `browse ${tildify(cwd, home)}` : "this folder", openHere]] as const) : []),
           ["Esc", here ? "quit" : "back", onQuit],
         ]}
       />
@@ -233,7 +249,22 @@ export function Welcome({
  * other. Typing filters the folders, a click or Enter goes into one, `open` on a row (or the
  * first row, for the folder shown) opens it.
  */
-function FolderBrowser({ start, width, onOpen, onBack }: { start: string; width: number; onOpen: (path: string) => void; onBack: () => void }) {
+function FolderBrowser({
+  start,
+  width,
+  warning,
+  pending,
+  onOpen,
+  onBack,
+}: {
+  start: string
+  width: number
+  /** Why the folder about to open needs a second go (see Welcome's tooBig). */
+  warning: string | null
+  pending: string | null
+  onOpen: (path: string) => void
+  onBack: () => void
+}) {
   const dims = useTerminalDimensions()
   const input = useRef<InputRenderable | null>(null)
   const [text, setText] = useState(withSlash(tildify(start)))
@@ -424,8 +455,10 @@ function FolderBrowser({ start, width, onOpen, onBack }: { start: string; width:
           />
         </box>
         <box height={1} paddingLeft={2}>
-          <text selectable={false} fg={error ? colors.error : colors.dim} wrapMode="none" truncate>
-            {error ?? (names === null ? "Reading…" : `${matches.length} folder${matches.length === 1 ? "" : "s"}${filter ? ` matching “${filter}”` : ""}`)}
+          <text selectable={false} fg={error ? colors.error : pending === dir ? colors.warn : colors.dim} wrapMode="none" truncate>
+            {error ??
+              (pending === dir && warning ? `⚠ ${warning}: the AI would get all of it. Open it again to go ahead.` : null) ??
+              (names === null ? "Reading…" : `${matches.length} folder${matches.length === 1 ? "" : "s"}${filter ? ` matching “${filter}”` : ""}`)}
           </text>
         </box>
         {shown.map((r, j) => rowView(r, top + j))}

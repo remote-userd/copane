@@ -77,8 +77,9 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
   const usage = useResourceUsage(ui.resources ?? ws.config.statusBar.resources)
   const usageText = usage ? `${g.cpu} ${formatBytes(usage.total.rss)} ${Math.round(usage.total.cpu)}%` : ""
 
-  // The open file's repository (as VS Code), named when the project holds several.
-  const repo = ws.git ? (ws.git.for(buf?.path) ?? ws.git.current()) : null
+  // The open file's repository (as VS Code), named when the project holds several. With no file
+  // in one, the project's own repository: never a nested one picked at random (~/.nvm in ~).
+  const repo = ws.git ? (ws.git.for(buf?.path) ?? (ws.git.main.enabled ? ws.git.main : null)) : null
   const branch = repo?.branch
   const repoName = repo && ws.git!.list().length > 1 ? `${ws.git!.name(repo)} ` : ""
   // A push, pull or commit from Source control keeps running when the panel closes: show it here.

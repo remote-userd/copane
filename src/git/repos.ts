@@ -99,7 +99,8 @@ export class GitRepos {
       for (const dir of level) {
         // Ignored folders too: a parent repository often ignores the ones cloned inside it.
         for (const e of await listDir(dir, this.matcher, true)) {
-          if (!e.isDir) continue
+          // The home folder's tool folders (.nvm, .oh-my-zsh, ...) are clones, not your projects.
+          if (!e.isDir || this.matcher.toolPath(e.path)) continue
           const dotGit = await Bun.file(join(e.path, ".git"))
             .stat()
             .catch(() => null)

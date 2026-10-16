@@ -10,12 +10,15 @@ All notable changes to copane are listed here. The format follows
 - Drag a file or folder in the tree onto a folder to move it (after a confirmation); open tabs follow.
 - Alt+E focuses the file tree (VS Code's Ctrl+Shift+E, which terminals send as Ctrl+E).
 - Welcome page: `ce` with no folder lists recently opened folders (with their git branch and when you last opened them) to pick with a click or the keys, opens the current folder, or browses for one (type to filter, click to go in, **open** to open). Ctrl+Alt+O (Open recent folder) switches folders from inside the editor. `startup.welcome: false` keeps opening the current folder.
+- The home folder is handled as what it is: started in `~`, the welcome page browses it instead of opening it, and opening `~` or `/` asks first. With `~` open anyway, its hidden entries (`.claude`, `.cache`, `.nvm`, ...) are treated as ignored, so tools writing there (the AI's session logs) aren't taken for changes and `.nvm`-style clones aren't listed as your repositories.
 - Several git repositories in one project, as in VS Code: a folder of clones, nested repositories and submodules each get tree marks, gutter markers, blame and history from their own repository. Source control has a tab per repository (`n` / `N` switch), and the status bar shows the open file's repository and branch. `git.scanDepth` (default 1) and `git.detectSubmodules` (default true) set where it looks.
 
 ### Changed
+- Starting without a file, focus is on the AI pane, so its first question (Claude's "do you trust this folder?") gets your keys; it used to look stuck behind the tree.
 - `ce` without a folder shows the welcome page instead of opening the current folder; use `ce .` for that. Restarts (updates, Ctrl+Alt+R) keep the folder.
 - A click on a file in the tree opens it and keeps focus in the tree, as in VS Code; a double-click (or Enter) goes to the editor. Space opens a file and stays in the tree.
 - Ctrl+B shows or hides the sidebar, as in VS Code, instead of focusing the tree first.
+- The status bar shows the project's own repository when no file is open, never a nested one.
 - The sidebar no longer shows the project folder name, neither in its tab row nor in the EXPLORER header (the terminal tab is still titled with it).
 
 ## [0.9.6] - 2026-10-14

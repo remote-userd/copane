@@ -13,7 +13,7 @@ afterEach(() => {
   setup = null
 })
 
-async function welcome(opts: { here?: boolean } = {}) {
+async function welcome(opts: { here?: boolean; atHome?: boolean } = {}) {
   const cwd = mkdtempSync(join(tmpdir(), "cea-welcome-"))
   for (const d of ["alpha", "beta", "code/gamma"]) mkdirSync(join(cwd, d), { recursive: true })
   writeFileSync(join(cwd, "file.txt"), "")
@@ -22,7 +22,7 @@ async function welcome(opts: { here?: boolean } = {}) {
   const forgotten: string[] = []
   let quit = 0
   setup = await testRender(
-    <Welcome version="9.9.9" recent={recent} cwd={cwd} here={opts.here} onOpen={(p) => opened.push(p)} onForget={(p) => forgotten.push(p)} onQuit={() => quit++} />,
+    <Welcome version="9.9.9" recent={recent} cwd={cwd} here={opts.here} home={opts.atHome ? cwd : "/nowhere"} onOpen={(p) => opened.push(p)} onForget={(p) => forgotten.push(p)} onQuit={() => quit++} />,
     { width: 100, height: 30, exitOnCtrlC: false },
   )
   await setup.renderOnce()
@@ -152,4 +152,25 @@ test("Ctrl+Alt+O in the editor shows the recent folders (not the open one); Esc 
     if (before === undefined) delete Bun.env.XDG_STATE_HOME
     else Bun.env.XDG_STATE_HOME = before
   }
+})
+
+test("started in the home folder: the button browses it, and opening ~ itself takes a second go", async () => {
+  const w = await welcome({ atHome: true })
+  const shows = (t: string) => waitUntil(async () => (await w.step(() => {}), w.frame().includes(t)), 1000)
+  expect(w.frame()).toContain("Browse ")
+  expect(w.frame()).not.toContain(`Open ${w.cwd.split("/").pop()}`)
+  await w.step(() => w.keys.pressKey("."))
+  await shows("Open this folder")
+  // The first row is ~ itself: a warning first, then it opens.
+  await w.step(() => w.keys.pressEnter())
+  await shows("your whole home folder")
+  expect(w.opened).toEqual([])
+  await w.step(() => w.keys.pressEnter())
+  expect(w.opened).toEqual([w.cwd])
+  // Going into a folder there opens it straight away.
+  await w.step(() => w.keys.typeText("al"))
+  await w.step(() => w.keys.pressEnter())
+  await shows("Open this folder (alpha)")
+  await w.step(() => w.keys.pressEnter())
+  expect(w.opened).toEqual([w.cwd, join(w.cwd, "alpha")])
 })
