@@ -5,6 +5,7 @@ import { sendChangesForReview, sendProblems } from "../../src/ai/askAi"
 import { formatChangesForAgent, formatProblemsForAgent } from "../../src/ai/sendToAgent"
 import type { Workspace } from "../../src/app/workspace"
 import { GitStatus } from "../../src/files/gitStatus"
+import { GitRepos } from "../../src/git/repos"
 import type { LspManager } from "../../src/lsp/LspManager"
 import { createWorkspace, fixture, GIT_ENV } from "../helpers"
 
@@ -91,8 +92,8 @@ test("review changes sends the uncommitted diff and new files from a real repo",
   writeFileSync(join(root, "new.ts"), "fresh\n")
   const ws = createWorkspace(root)
   const ai = fakeAi(ws)
-  ws.git = new GitStatus(root)
-  await ws.git.start(60_000)
+  ws.git = GitRepos.single(new GitStatus(root))
+  await ws.git.main.start(60_000)
   await sendChangesForReview(ws)
   ws.git.stop()
   const text = ai.text()

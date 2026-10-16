@@ -97,6 +97,8 @@ export class GitStatus {
   entries: StatusEntry[] = []
   /** Git operations, once the repository is found. */
   repo: GitRepo | null = null
+  /** Repositories inside this one (see git/repos.ts): they report their own files. */
+  private excluded: string[] = []
 
   constructor(readonly root: string) {}
 
@@ -195,6 +197,17 @@ export class GitStatus {
     }
     if (this.debounce) clearTimeout(this.debounce)
     this.debounce = setTimeout(() => void this.load(), delayMs)
+  }
+
+  /**
+   * Leave out repositories nested in this one (they show as one untracked folder, or a submodule
+   * as one changed entry): their own GitStatus reports the files inside.
+   */
+  exclude(tops: string[]): void {
+    if (tops.length === this.excluded.length && tops.every((t, i) => t === this.excluded[i])) return
+    this.excluded = tops
+    this.lastOut = null
+    void this.load()
   }
 
   /** Changed files (absolute paths) with their marks, sorted by path. */
@@ -313,7 +326,9 @@ export class GitStatus {
     this.lastOut = out
     this.branch = out.startsWith("## ") ? parseBranch(out.slice(0, out.indexOf("\0") >>> 0)) : null
     // Parsed once: the marks come from the entries (thousands of untracked files make this add up).
+    const ex = this.excluded
     this.entries = parseEntries(out, top)
+    if (ex.length) this.entries = this.entries.filter((e) => !ex.some((t) => e.path === t || e.path.startsWith(t + sep)))
     this.marks = new Map()
     this.dirMarks = new Map()
     for (const e of this.entries) {

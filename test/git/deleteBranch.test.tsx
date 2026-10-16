@@ -3,6 +3,7 @@ import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { parseKeypress } from "@opentui/core"
 import { GitStatus } from "../../src/files/gitStatus"
+import { GitRepos } from "../../src/git/repos"
 import { keyToString } from "../../src/keymap/keys"
 import { createWorkspace, fixture, renderApp, type Harness, waitUntil, GIT_ENV } from "../helpers"
 
@@ -35,7 +36,7 @@ async function repoWithBranches() {
   const ws = createWorkspace(root)
   git = new GitStatus(root)
   await git.start(60_000)
-  ws.git = git
+  ws.git = GitRepos.single(git)
   h = await renderApp(ws, { tree: <text>TREE</text> })
   return { root, ws }
 }

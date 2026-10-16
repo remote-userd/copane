@@ -179,6 +179,10 @@ With `"ai": { "notify": "desktop" }` you also get a system notification: a Windo
   - **File blame (Alt+B):** a column beside the editor with the author, age and summary of each block of lines, the cursor's commit shaded. It follows scrolling and word wrap. Click a block for its commit; Alt+B again hides it.
 - **Ctrl+Alt+G, file history:** the file's commits with their author and age, and each commit's changes. `y` copies a commit id. **Commit history** in the palette (or `g` in Source control) lists the whole project's commits.
 - **Ctrl+Alt+B, branches:** switch with fuzzy search, or type a new name to create a branch. It offers to save unsaved files first, and shows git's own error if the switch fails. **Shift+Delete**, the **× delete** on the selected row, or a right-click deletes a branch (or use **Delete a branch** in the palette). It asks first, and asks again before deleting a branch with commits that aren't merged anywhere. The current branch can't be deleted.
+- **Several repositories, as in VS Code:** open a folder of clones (`ce ~/work` with `front/` and `back/` repositories), or a repository with nested ones or submodules, and each repository gets git: tree marks, gutter markers, blame and file history come from the repository the file is in.
+  - **Source control** shows a tab per repository with its count of changed files; it opens on the open file's repository, and `n` / `N` (or a click) switch. Staging, committing, push / pull, branches and history act on the repository shown.
+  - **Status bar:** the open file's repository and branch (`front main`).
+  - **Where it looks:** folders down to `git.scanDepth` levels below the project (default 1; 2 finds `packages/*/`; 0 turns it off). `git.detectSubmodules: false` leaves out folders with a `.git` file (submodules, linked worktrees). AI review (`v`) sends every repository's changes; AI turns undo per repository. Agent worktrees still need the project itself to be a repository.
 - **Merge conflicts:** your side is tinted green and the incoming side blue. A bar shows the count and **Accept current / incoming / both** (Alt+1 / Alt+2 / Alt+3 while the cursor is in a conflict), and Alt+F5 goes to the next conflict. When you're done, save and stage the file.
 
 ## Markdown and images
@@ -408,6 +412,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
   "editor": { "highlightMaxBytes": 1000000, "copyOnSelect": false, "saveBeforeAi": true, "autocomplete": true, "cursorStyle": "line", "wordWrap": false, "startHidden": true, "highlightCursor": true, "indentGuides": true, "autoIndent": true, "autoClosingBrackets": true, "formatter": "auto", "formatOnSave": false, "smoothScrolling": true },
   "lsp": { "python": { "command": ["pylsp"] } },
   "tree": { "icons": "simple", "showIgnored": true },
+  "git": { "blame": true, "inlineBlame": true, "aiCommitMessage": true, "scanDepth": 1, "detectSubmodules": true },
   "statusBar": { "resources": true },
   "preview": { "imageProtocol": "auto" },
   "update": "auto",

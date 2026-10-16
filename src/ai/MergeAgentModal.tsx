@@ -19,7 +19,7 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
   const ws = useWorkspace()
   const dims = useTerminalDimensions()
   const session = ws.agents?.session(sessionId)
-  const repo = ws.git?.repo ?? null
+  const repo = ws.git?.main.repo ?? null
   const agent = session ? new GitRepo(worktreeOf(session)) : null
   const [base, setBase] = useState<string | null>(null)
   const [changes, setChanges] = useState<WorktreeChange[] | null>(null)
@@ -157,7 +157,7 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
   }
   const w = Math.min(dims.width - 4, 170)
   const leftW = Math.max(28, Math.floor(w * 0.3))
-  const into = ws.git?.branch?.name ?? "your branch"
+  const into = ws.git?.main.branch?.name ?? "your branch"
   const btn = (label: string, run: () => void) => (
     <HoverBox onPress={run} paddingX={1} bg={colors.segmentBg}>
       <text selectable={false} fg={colors.text}>
@@ -237,7 +237,7 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
 
 /** Merged: offer to clean up the worktree, its branch and the tab. */
 function afterMerge(ws: Workspace, sessionId: number, cwd: string, branch: string, files: number): void {
-  const repo = ws.git?.repo
+  const repo = ws.git?.main.repo
   ws.ui.set({
     modal: {
       kind: "confirm",

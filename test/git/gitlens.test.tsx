@@ -2,6 +2,7 @@ import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { GitStatus } from "../../src/files/gitStatus"
+import { GitRepos } from "../../src/git/repos"
 import { createWorkspace, fixture, renderApp, type Harness, waitUntil } from "../helpers"
 
 // Several waits on the UI and git per test: more room than the default 5 s.
@@ -32,7 +33,7 @@ async function twoAuthors(config: object = {}) {
   const ws = createWorkspace(root, {}, configSchema.parse(config))
   git = new GitStatus(root)
   await git.start(50)
-  ws.git = git
+  ws.git = GitRepos.single(git)
   await ws.buffers.open("a.ts")
   h = await renderApp(ws, { tree: <text>TREE</text> })
   return { ws, root }
@@ -76,7 +77,7 @@ test("file blame follows scrolling: the top row always names its block", async (
   const ws = createWorkspace(root)
   git = new GitStatus(root)
   await git.start(50)
-  ws.git = git
+  ws.git = GitRepos.single(git)
   await ws.buffers.open("a.ts")
   h = await renderApp(ws, { tree: <text>TREE</text> })
   ws.ui.set({ fileBlame: true })

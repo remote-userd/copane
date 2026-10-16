@@ -3,6 +3,7 @@ import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { MouseButtons } from "@opentui/core/testing"
 import { GitStatus } from "../../src/files/gitStatus"
+import { GitRepos } from "../../src/git/repos"
 import { Store } from "../../src/app/store"
 import { createWorkspace, fixture, renderApp, type Harness, waitUntil, GIT_ENV } from "../helpers"
 
@@ -37,7 +38,7 @@ async function setup() {
   const ws = createWorkspace(root)
   git = new GitStatus(root)
   await git.start(50)
-  ws.git = git
+  ws.git = GitRepos.single(git)
   h = await renderApp(ws, { tree: <text>TREE</text> })
   await h.step(() => h!.keys.pressKey("d", { ctrl: true, meta: true }))
   await until(() => h!.frame().includes("+TWO by ai"))
@@ -135,7 +136,7 @@ async function panel(
   opts.ws?.(ws)
   git = new GitStatus(root)
   await git.start(50)
-  ws.git = git
+  ws.git = GitRepos.single(git)
   h = await renderApp(ws, { tree: <text>TREE</text> }, opts.size)
   await h.step(() => h!.keys.pressKey("d", { ctrl: true, meta: true }))
   await until(() => h!.frame().includes("Source control"))
@@ -338,4 +339,47 @@ test("a push keeps showing in the status bar after the panel closes, and its res
   expect(bottom()).toContain("Pushing…")
   await until(() => !bottom().includes("Pushing…"), 8000)
   expect(bottom()).toMatch(/no thanks|Could not read|fatal/)
+})
+
+test("several repositories: a tab each; staging and committing act on the one shown; the status bar follows the open file", async () => {
+  const root = await fixture({ "front/a.ts": "a\n", "back/b.ts": "b\n" })
+  for (const d of ["front", "back"]) {
+    sh(join(root, d), "init", "-q", "-b", "main")
+    sh(join(root, d), "add", ".")
+    sh(join(root, d), "commit", "-qm", "init")
+  }
+  writeFileSync(join(root, "front/a.ts"), "a changed\n")
+  writeFileSync(join(root, "back/b.ts"), "b changed\n")
+  Object.assign(process.env, ENV)
+  const ws = createWorkspace(root)
+  const repos = new GitRepos(root, { activePath: () => ws.buffers.active?.path ?? null })
+  await repos.start(50)
+  ws.git = repos
+  try {
+    await ws.buffers.open("front/a.ts")
+    h = await renderApp(ws, { tree: <text>TREE</text> })
+    await until(() => h!.frame().includes("front main"))
+    // Opened from the editor: the open file's repository.
+    await h.step(() => h!.keys.pressKey("d", { ctrl: true, meta: true }))
+    await until(() => h!.frame().includes("+a changed"))
+    expect(h.frame()).toContain("Source control  front")
+    expect(h.frame()).toContain("back 1")
+    await h.step(() => h!.keys.pressKey(" "))
+    await until(() => sh(join(root, "front"), "diff", "--cached", "--name-only").includes("a.ts"))
+    expect(sh(join(root, "back"), "diff", "--cached", "--name-only")).toBe("")
+    await h.step(() => h!.keys.pressKey("c"))
+    await h.step(() => h!.keys.typeText("front only"))
+    await h.step(() => h!.keys.pressEnter())
+    await until(() => sh(join(root, "front"), "log", "--oneline").includes("front only"))
+    expect(sh(join(root, "back"), "log", "--oneline")).not.toContain("front only")
+    // n: the next repository's tab.
+    // A lone Esc then n would read as Alt+N (ESC n): wait for the Esc to land first.
+    await h.step(() => h!.keys.pressEscape())
+    await until(() => h!.frame().includes("(c or Tab to write)"))
+    await h.step(() => h!.keys.pressKey("n"))
+    await until(() => h!.frame().includes("+b changed"))
+    expect(h.frame()).toContain("Source control  back")
+  } finally {
+    repos.stop()
+  }
 })

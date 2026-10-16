@@ -24,7 +24,7 @@ import { SearchPanel } from "./files/SearchPanel"
 import { setStyleOwner } from "./editor/syntaxStyle"
 import { Sidebar } from "./app/Sidebar"
 import { TreeModel } from "./files/TreeModel"
-import { GitStatus } from "./files/gitStatus"
+import { GitRepos } from "./git/repos"
 import { keepBlames } from "./git/blame"
 import { LspManager } from "./lsp/LspManager"
 import { applyFileEdits } from "./lsp/lspActions"
@@ -121,7 +121,12 @@ onShutdown(saveBeforeAi(ws))
 const tree = new TreeModel(ws.root, { showIgnored: ws.config.tree.showIgnored })
 // Build the Ctrl+P index in the background once the first screen is up, so the picker opens instantly.
 setTimeout(() => void tree.files(), 1500).unref?.()
-const git = new GitStatus(ws.root)
+// Every repository in the project: the one it is in, and the ones in its folders (git.scanDepth).
+const git = new GitRepos(ws.root, {
+  scanDepth: config.git.scanDepth,
+  submodules: config.git.detectSubmodules,
+  activePath: () => ws.buffers.active?.path ?? null,
+})
 ws.git = git
 const lsp = new LspManager(ws.root, config.lsp)
 ws.lsp = lsp
@@ -148,7 +153,11 @@ if (warning) setTimeout(() => ws.notify(warning, "warn"), 100)
 
 // Files changed by the AI CLI (or anything else) flow back into open buffers and the tree.
 // What the AI changes per prompt, for review and undo (Ctrl+Alt+Z).
-const turns = new TurnLog(ws.root, () => git.repo, async () => ((await git.repo?.status()) ?? []).filter((e) => e.untracked).map((e) => e.path))
+const turns = new TurnLog(
+  ws.root,
+  () => git.list().map((s) => s.repo!),
+  async () => (await Promise.all(git.list().map((s) => s.repo!.status().catch(() => [])))).flat().filter((e) => e.untracked).map((e) => e.path),
+)
 ws.turns = turns
 // Files the AI changed stay marked for review until accepted (Alt+N).
 const review = new AiReview(ws.buffers)

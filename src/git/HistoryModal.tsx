@@ -16,7 +16,8 @@ import { clipCols } from "../editor/CodeEditorRenderable"
 export function HistoryModal({ path, sha, back }: { path: string | null; sha?: string; back?: ModalState }) {
   const ws = useWorkspace()
   const dims = useTerminalDimensions()
-  const repo = ws.git?.repo ?? null
+  // A file's history comes from its own repository; the project's from the current one.
+  const repo = (path ? ws.git?.for(path)?.repo : ws.git?.repo) ?? null
   const [commits, setCommits] = useState<LogEntry[] | null>(null)
   const [sel, setSel] = useState(0)
   const [diff, setDiff] = useState<string[]>([])

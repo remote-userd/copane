@@ -5,7 +5,7 @@ import { createUiStore, type Notice, type UiState } from "./state"
 import type { Store } from "./store"
 import { configSchema, type Config } from "../config/schema"
 import { createClipboard, type Clipboard } from "./clipboard"
-import type { GitStatus } from "../files/gitStatus"
+import type { GitRepos } from "../git/repos"
 import type { LspManager } from "../lsp/LspManager"
 import type { TurnLog } from "../ai/turns"
 import type { AiReview } from "../ai/review"
@@ -20,7 +20,7 @@ export interface Workspace {
   /** Set by the AI pane once mounted; used by "send to AI" and shutdown. */
   ai: AiHandle | null
   /** Git status of the workspace (null outside the app, e.g. in tests). */
-  git: GitStatus | null
+  git: GitRepos | null
   /** Language servers (diagnostics, completion, hover, definition); null in tests. */
   lsp: LspManager | null
   /** What the AI changed per turn (prompt), for review and undo; null in tests. */

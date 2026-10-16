@@ -120,7 +120,7 @@ export class AiReview {
    * was checked out) has no AI changes left to review. Untracked and ignored files have no HEAD
    * text, so they stay until committed.
    */
-  followGit(git: GitStatus): () => void {
+  followGit(git: Pick<GitStatus, "headText" | "subscribe">): () => void {
     let timer: ReturnType<typeof setTimeout> | null = null
     const sweep = async () => {
       timer = null

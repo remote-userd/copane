@@ -2,6 +2,7 @@ import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { GitStatus } from "../../src/files/gitStatus"
+import { GitRepos } from "../../src/git/repos"
 import { createWorkspace, fixture, renderApp, type Harness, waitUntil, GIT_ENV } from "../helpers"
 
 // Several waits on the UI and git per test: more room than the default 5 s.
@@ -32,7 +33,7 @@ test("Alt+H peeks a change; s stages only that hunk; r reverts; Alt+F5 moves bet
   const ws = createWorkspace(root)
   git = new GitStatus(root)
   await git.start(50)
-  ws.git = git
+  ws.git = GitRepos.single(git)
   await ws.buffers.open("a.txt")
   h = await renderApp(ws, { tree: <text>TREE</text> })
   const ta = ws.buffers.active!.textarea!

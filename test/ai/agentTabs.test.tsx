@@ -4,6 +4,7 @@ import { join } from "node:path"
 import { TerminalPane, worktreeFor, type AiConfig } from "../../src/ai/TerminalPane"
 import type { MenuItem } from "../../src/app/state"
 import { GitStatus } from "../../src/files/gitStatus"
+import { GitRepos } from "../../src/git/repos"
 import { parseWorktrees } from "../../src/git/repo"
 import { createWorkspace, editorShown, fixture, renderApp, type Harness, waitUntil, GIT_ENV } from "../helpers"
 
@@ -75,7 +76,7 @@ test("an agent in a git worktree works on its own branch; closing can remove the
   const ws = await pane(root)
   git = new GitStatus(root)
   await git.start(60_000)
-  ws.git = git
+  ws.git = GitRepos.single(git)
   await h!.step(() => ws.agents!.openMenu())
   await until(() => ws.ui.get().modal?.kind === "menu")
   await h!.step(() => menuItem(ws, "New second in a git worktree").run())
@@ -134,7 +135,7 @@ async function worktreeAgent() {
   const ws = await pane(root)
   git = new GitStatus(root)
   await git.start(60_000)
-  ws.git = git
+  ws.git = GitRepos.single(git)
   await h!.step(() => ws.agents!.openMenu())
   await until(() => ws.ui.get().modal?.kind === "menu")
   await h!.step(() => menuItem(ws, "New second in a git worktree").run())
@@ -233,7 +234,7 @@ test("a new worktree agent skips a number whose branch was kept after its worktr
   const ws = await pane(root)
   git = new GitStatus(root)
   await git.start(60_000)
-  ws.git = git
+  ws.git = GitRepos.single(git)
   await h!.step(() => ws.agents!.openMenu())
   await until(() => ws.ui.get().modal?.kind === "menu")
   await h!.step(() => menuItem(ws, "New second in a git worktree").run())

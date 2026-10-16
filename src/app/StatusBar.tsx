@@ -77,14 +77,17 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
   const usage = useResourceUsage(ui.resources ?? ws.config.statusBar.resources)
   const usageText = usage ? `${g.cpu} ${formatBytes(usage.total.rss)} ${Math.round(usage.total.cpu)}%` : ""
 
-  const branch = ws.git?.branch
+  // The open file's repository (as VS Code), named when the project holds several.
+  const repo = ws.git ? (ws.git.for(buf?.path) ?? ws.git.current()) : null
+  const branch = repo?.branch
+  const repoName = repo && ws.git!.list().length > 1 ? `${ws.git!.name(repo)} ` : ""
   // A push, pull or commit from Source control keeps running when the panel closes: show it here.
   const activity = useGitActivity()
   const working = activity?.kind === "busy"
   const spin = useSpinner(working)
   const progress = working ? ` ${spin} ${activity.text.length > 32 ? activity.text.slice(0, 31) + "…" : activity.text}` : ""
   const branchText = branch
-    ? `${g.branch} ${branch.name}${branch.ahead ? ` ↑${branch.ahead}` : ""}${branch.behind ? ` ↓${branch.behind}` : ""}${progress}`
+    ? `${g.branch} ${repoName}${branch.name}${branch.ahead ? ` ↑${branch.ahead}` : ""}${branch.behind ? ` ↓${branch.behind}` : ""}${progress}`
     : ""
   const lspStatus = ws.lsp?.status() ?? ""
   const counts = ws.lsp?.counts() ?? { errors: 0, warnings: 0 }

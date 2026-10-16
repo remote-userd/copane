@@ -18,6 +18,9 @@ export function BranchPicker({ mode = "switch", back }: { mode?: "switch" | "del
   const ws = useWorkspace()
   const dims = useTerminalDimensions()
   const repo = ws.git?.repo ?? null
+  // Several repositories: say which one (Source Control's tab, else the open file's).
+  const shown = ws.git && ws.git.list().length > 1 ? ws.git.current() : null
+  const inRepo = shown ? ` in ${ws.git!.name(shown)}` : ""
   const [branches, setBranches] = useState<Branch[] | null>(null)
   const [query, setQuery] = useState("")
   const [sel, setSel] = useState(0)
@@ -124,7 +127,7 @@ export function BranchPicker({ mode = "switch", back }: { mode?: "switch" | "del
   const listH = Math.max(3, Math.min(14, dims.height - 9))
   const start = Math.max(0, Math.min(sel - listH + 1, items.length - listH))
   return (
-    <Modal title={deleting ? "Delete branch" : "Switch branch"} width={Math.min(64, dims.width - 4)} height={listH + 6} onClose={close}>
+    <Modal title={`${deleting ? "Delete branch" : "Switch branch"}${inRepo}`} width={Math.min(64, dims.width - 4)} height={listH + 6} onClose={close}>
       <input
         cursorStyle={cursorStyle}
         focused={!confirm}

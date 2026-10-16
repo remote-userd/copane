@@ -8,7 +8,7 @@
  * are untouched), plus the contents of untracked files, so each changed file's "before" is exact.
  * Outside git, an open tab's last known disk text is the fallback. Binary files can't be undone.
  */
-import { relative } from "node:path"
+import { relative, sep } from "node:path"
 import { Store } from "../app/store"
 import type { GitRepo } from "../git/repo"
 import { hunks, revertHunk } from "../editor/hunks"
@@ -33,7 +33,8 @@ export interface Turn {
 }
 
 interface Snapshot {
-  sha: string | null
+  /** Per repository (by its top): the commit holding its files at the turn's start, or null before its first commit. */
+  shas: Map<string, string | null>
   /** Untracked files at the start, by path, with their contents (small text files only). */
   untracked: Map<string, string | null>
 }
@@ -54,7 +55,8 @@ export class TurnLog {
 
   constructor(
     private root: string,
-    private repo: () => GitRepo | null,
+    /** The project's repositories (several when it holds more than one: see git/repos.ts). */
+    private repo: () => GitRepo | GitRepo[] | null,
     private untrackedFiles: () => Promise<string[]> = async () => [],
   ) {}
 
@@ -169,10 +171,15 @@ export class TurnLog {
   }
 
   private async takeSnapshot(): Promise<Snapshot> {
-    const repo = this.repo()
+    const repos = this.repos()
     const untracked = new Map<string, string | null>()
-    if (!repo) return { sha: null, untracked }
-    const [sha, files] = await Promise.all([repo.snapshot().catch(() => null), this.untrackedFiles().catch(() => [])])
+    const shas = new Map<string, string | null>()
+    if (!repos.length) return { shas, untracked }
+    const [list, files] = await Promise.all([
+      Promise.all(repos.map((r) => r.snapshot().catch(() => null))),
+      this.untrackedFiles().catch(() => []),
+    ])
+    repos.forEach((r, i) => shas.set(r.top, list[i]!))
     let total = 0
     for (const p of files) {
       const f = Bun.file(p)
@@ -185,20 +192,33 @@ export class TurnLog {
       const text = await f.text().catch(() => null)
       untracked.set(p, text !== null && !text.includes("\0") ? text : null)
     }
-    return { sha, untracked }
+    return { shas, untracked }
+  }
+
+  private repos(): GitRepo[] {
+    const r = this.repo()
+    return r ? (Array.isArray(r) ? r : [r]) : []
+  }
+
+  /** The repository a file belongs to: the innermost one containing it. */
+  private repoFor(path: string): GitRepo | null {
+    let best: GitRepo | null = null
+    for (const r of this.repos()) if ((path === r.top || path.startsWith(r.top + sep)) && (!best || r.top.length > best.top.length)) best = r
+    return best
   }
 
   private async before(path: string, snap: Snapshot | null, hint: string | undefined): Promise<TurnFile> {
     const unknown = { path, before: null, known: false }
-    const repo = this.repo()
+    const repo = this.repoFor(path)
+    const sha = repo ? snap?.shas.get(repo.top) : null
     if (repo && snap?.untracked.has(path)) {
       const text = snap.untracked.get(path)!
       return text === null ? unknown : { path, before: text, known: true }
     }
     // Without a commit to compare with (a repo before its first commit), git can't say what a
     // tracked file held: fall back as without git, so a staged file is never taken for a new one.
-    if (repo && snap?.sha) {
-      const atStart = await repo.showAt(snap.sha, path)
+    if (repo && sha) {
+      const atStart = await repo.showAt(sha, path)
       if (atStart !== null) return atStart.includes("\0") || atStart.length > MAX_FILE_BYTES ? unknown : { path, before: atStart, known: true }
       // Not tracked, not untracked: new in this turn, unless git ignores it (then we can't tell).
       if (await repo.isIgnored(path)) return hint !== undefined ? { path, before: hint, known: true } : unknown

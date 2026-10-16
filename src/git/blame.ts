@@ -54,7 +54,7 @@ export function keepBlames(open: ReadonlySet<string>): void {
 }
 
 export function blameFor(ws: Workspace, path: string, text: string, textKey: string): Promise<BlameLine[]> {
-  const repo = ws.git?.repo
+  const repo = ws.git?.for(path)?.repo
   if (!repo) return Promise.resolve([])
   // Blame only changes with the text or with HEAD/the index, not with every status change.
   const key = `${textKey}:${ws.git!.contentsVersion}`
@@ -85,7 +85,7 @@ export function useLineBlameAt(ws: Workspace, on: boolean): { bufId: number; row
   const row = buf?.cursor.row ?? -1
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const blamed = useRef<{ id: number; row: number; text: string } | null>(null)
-  const enabled = on && !!ws.git?.repo && buf?.kind === "text"
+  const enabled = on && !!ws.git?.for(buf?.path) && buf?.kind === "text"
   const setLine = (line: BlameLine | undefined) => setAt(buf && line ? { bufId: buf.id, row, line } : undefined)
   const line = at?.line
   useEffect(() => {

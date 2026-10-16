@@ -14,7 +14,8 @@ import { setGitActivity, useGitActivity, useSpinner, type GitActivity } from "./
 /**
  * Source control (Ctrl+Alt+D): conflicts, staged and unstaged files with a diff of the
  * selection, a commit message, commit / amend / AI message, push / pull, branch switch.
- * In the diff, single changes (hunks) can be staged, unstaged or discarded.
+ * In the diff, single changes (hunks) can be staged, unstaged or discarded. A project with several
+ * repositories gets a tab per repository (VS Code's REPOSITORIES); everything acts on the one shown.
  */
 
 const none = { subscribe: () => () => {}, getSnapshot: () => 0 }
@@ -102,13 +103,14 @@ export async function aiCommitMessage(ws: Workspace): Promise<string | { error: 
   const cmd = ws.config.ai.command
   if (!ws.config.git.aiCommitMessage) return { error: "AI commit messages are off (git.aiCommitMessage)" }
   if (basename(cmd) !== "claude") return { error: `AI messages need claude as ai.command (now ${cmd})` }
-  const diff = await ws.git!.repo!.stagedDiff()
+  const repo = ws.git!.repo!
+  const diff = await repo.stagedDiff()
   if (!diff.trim()) return { error: "Stage something first" }
   const prompt =
     "Write a git commit message for the staged diff on stdin. First line: imperative summary under 72 characters. " +
     "Then a blank line and a few short lines only if the change needs explaining. Output only the message, no quotes or code fences."
   try {
-    const p = Bun.spawn([cmd, "-p", prompt], { cwd: ws.root, stdin: new TextEncoder().encode(diff), stdout: "pipe", stderr: "pipe" })
+    const p = Bun.spawn([cmd, "-p", prompt], { cwd: repo.top, stdin: new TextEncoder().encode(diff), stdout: "pipe", stderr: "pipe" })
     const timer = setTimeout(() => p.kill(), 90_000)
     const [out, code] = await Promise.all([Bun.readableStreamToText(p.stdout), p.exited])
     clearTimeout(timer)
@@ -136,10 +138,13 @@ function wrappedRows(labels: string[], width: number): number {
 export function SourceControlPanel() {
   const cursorStyle = useCursorStyle()
   const ws = useWorkspace()
-  const git = ws.git
-  const repo = git?.repo ?? null
+  const repos = ws.git
   const dims = useTerminalDimensions()
-  const snap = useSyncExternalStore(git?.subscribe ?? none.subscribe, git?.getSnapshot ?? none.getSnapshot)
+  const snap = useSyncExternalStore(repos?.subscribe ?? none.subscribe, repos?.getSnapshot ?? none.getSnapshot)
+  // The repository shown: picked with the tabs, else the open file's (see GitRepos.current).
+  const git = repos?.current() ?? null
+  const repo = git?.repo ?? null
+  const all = repos?.list() ?? []
   useSyncExternalStore(ws.review?.store.subscribe ?? none.subscribe, ws.review ? () => ws.review!.store.get().version : none.getSnapshot)
   const ai = aiMarks(ws)
   const entries = git?.entries ?? []
@@ -238,6 +243,14 @@ export function SourceControlPanel() {
   const hunks = diffHunks(rawDiff)
 
   const close = () => ws.ui.set({ modal: null })
+  const showRepo = (i: number) => {
+    const s = all[(i + all.length) % all.length]
+    if (!s || s === git) return
+    repos!.pick(s.repo!.top)
+    lastCursor = null
+    setCursor(null)
+    setFocus(s.entries.some((e) => e.staged) ? "message" : "list")
+  }
   const setMsg = (m: string) => {
     draft = m // the panel may have closed meanwhile (an AI message, a commit)
     setMessage(m)
@@ -454,7 +467,8 @@ export function SourceControlPanel() {
   // Layout: the dialog's inner height (border and padding), less the status line.
   const w = Math.min(dims.width - 4, 170)
   const leftW = Math.min(52, Math.max(30, Math.floor(w * 0.36)))
-  const innerH = Math.max(6, dims.height - 2 - 4 - 1)
+  // One more row for the repository tabs.
+  const innerH = Math.max(6, dims.height - 2 - 4 - 1 - (all.length > 1 ? 1 : 0))
   const msgLines = Math.min(6, Math.max(1, message.split("\n").length))
   const b = git?.branch ?? null
   const buttons = [
@@ -588,6 +602,9 @@ export function SourceControlPanel() {
       case "g":
         ws.ui.set({ modal: { kind: "history", path: null, back: { kind: "scm" } } })
         break
+      case "n":
+        showRepo(all.indexOf(git!) + (key.shift ? -1 : 1))
+        break
       case "pagedown":
         setTop((t) => Math.min(maxTop, t + viewH - 2))
         break
@@ -718,10 +735,31 @@ export function SourceControlPanel() {
   const hint =
     focus === "diff"
       ? "↑↓ change · Space stage/unstage it · r discard it · ⏎ open · ← files · Esc back"
-      : "Space stage · a/A all · r/R discard · → changes · ⏎ open · Alt+⏎ commit · P/U push/pull · m AI message · Esc"
+      : `Space stage · a/A all · r/R discard · → changes · ⏎ open · Alt+⏎ commit · P/U push/pull · m AI message${all.length > 1 ? " · n/N repository" : ""} · Esc`
+
+  // Several repositories: a tab each, with how many files changed.
+  const repoTabs =
+    all.length > 1 ? (
+      <box height={1} flexShrink={0} flexDirection="row" overflow="hidden" gap={1}>
+        {all.map((s, i) => {
+          const on = s === git
+          const n = s.entries.length
+          return (
+            <HoverBox key={s.repo!.top} onPress={() => showRepo(i)} paddingX={1} bg={on ? colors.accentDim : colors.segmentBg}>
+              <text selectable={false} fg={on ? colors.text : colors.dim}>
+                {on ? <strong>{repos!.name(s)}</strong> : repos!.name(s)}
+                {n ? <span fg={colors.warn}>{` ${n}`}</span> : null}
+              </text>
+            </HoverBox>
+          )
+        })}
+      </box>
+    ) : null
+  const repoTitle = all.length > 1 && git ? `${repos!.name(git)}  ` : ""
 
   return (
-    <Modal title={`Source control  ${header}`} width={w} height={dims.height - 2} onClose={close}>
+    <Modal title={`Source control  ${repoTitle}${header}`} width={w} height={dims.height - 2} onClose={close}>
+      {repoTabs}
       <box flexDirection="row" flexGrow={1} gap={2}>
         <box width={leftW} flexShrink={0} flexDirection="column">
           <box height={1} flexDirection="row">

@@ -547,7 +547,7 @@ export function EditorPane() {
             setPaneWidth(this.width)
           }}
         >
-          {ui.fileBlame && active?.kind === "text" && ws.git?.repo ? <BlameColumn key={active.id} buf={active} width={paneWidth >= 110 ? 44 : 30} /> : null}
+          {ui.fileBlame && active?.kind === "text" && ws.git?.for(active.path) ? <BlameColumn key={active.id} buf={active} width={paneWidth >= 110 ? 44 : 30} /> : null}
           <box flexGrow={1} flexBasis={0} flexDirection="column">
             {list.map((b) => {
               const on = b.id === active?.id

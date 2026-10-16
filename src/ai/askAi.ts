@@ -2,7 +2,7 @@
  * "Ask the AI" actions that hand it a ready-made prompt: fix these problems, review these changes.
  * Like Ctrl+L, they type into the AI's prompt and leave submitting to you.
  */
-import { relative } from "node:path"
+import { relative, sep } from "node:path"
 import type { Workspace } from "../app/workspace"
 import { formatChangesForAgent, formatProblemsForAgent, type Problem } from "./sendToAgent"
 
@@ -47,10 +47,21 @@ export function sendProblems(ws: Workspace, opts: { at?: { path: string; line: n
 export async function sendChangesForReview(ws: Workspace): Promise<void> {
   const ai = ws.ai
   if (!ai) return ws.notify("AI terminal is not running", "warn")
-  const repo = ws.git?.repo
-  if (!repo) return ws.notify("Not a git repository", "warn")
-  const changes = await repo.changesForReview()
-  const text = formatChangesForAgent(changes)
+  const git = ws.git
+  const repos = git?.list() ?? []
+  if (!git || !repos.length) return ws.notify("Not a git repository", "warn")
+  // Several repositories (see git/repos.ts): each one's changes, under its folder's name.
+  const parts = await Promise.all(
+    repos.map(async (s) => {
+      const changes = await s.repo!.changesForReview()
+      const dir = relative(ws.root, s.repo!.top).split(sep).join("/")
+      // New files are named from the project, where the AI runs.
+      if (dir && !dir.startsWith("..")) changes.untracked = changes.untracked.map((p) => `${dir}/${p}`)
+      const text = formatChangesForAgent(changes)
+      return text && repos.length > 1 ? `In the repository ${git.name(s)} (its diff paths are relative to ${dir || "."}):\n${text}` : text
+    }),
+  )
+  const text = parts.filter(Boolean).join("\n\n")
   if (!text) return ws.notify("No changes to review")
   ai.type("Review these changes for bugs, risky edits and missing tests. Don't change anything yet: ")
   ai.paste(text)

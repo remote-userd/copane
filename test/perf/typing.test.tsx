@@ -9,6 +9,7 @@ import { testRender } from "@opentui/react/test-utils"
 import { App } from "../../src/app/App"
 import { createWorkspace, WorkspaceContext } from "../../src/app/workspace"
 import { GitStatus } from "../../src/files/gitStatus"
+import { GitRepos } from "../../src/git/repos"
 import { fixture } from "../helpers"
 
 const LINES = 11_000
@@ -21,7 +22,7 @@ async function session(keys: number) {
   const ws = createWorkspace(root)
   const git = new GitStatus(root)
   await git.start(60_000)
-  ws.git = git
+  ws.git = GitRepos.single(git)
   const setup = await testRender(
     <WorkspaceContext.Provider value={ws}>
       <App slots={{ tree: <text>T</text> }} />

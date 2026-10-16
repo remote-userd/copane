@@ -2,6 +2,7 @@ import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { GitStatus } from "../../src/files/gitStatus"
+import { GitRepos } from "../../src/git/repos"
 import { ago, describeBlame } from "../../src/git/blame"
 import { createWorkspace, fixture, renderApp, type Harness, waitUntil } from "../helpers"
 
@@ -38,7 +39,7 @@ test("status bar shows blame for the cursor line; history and commit views open"
   const ws = createWorkspace(root)
   git = new GitStatus(root)
   await git.start(50)
-  ws.git = git
+  ws.git = GitRepos.single(git)
   await ws.buffers.open("a.ts")
   h = await renderApp(ws, { tree: <text>TREE</text> })
   const ta = ws.buffers.active!.textarea!
@@ -97,7 +98,7 @@ test("blames of one file run one at a time; one replaced by a newer request is s
       active--
     }
   }
-  const ws = { git: { repo, contentsVersion: 0 } } as never
+  const ws = { git: { for: () => ({ repo }), contentsVersion: 0 } } as never
   const path = join(root, "a.ts")
   const first = blameFor(ws, path, "one\ntwo\n", "1:1")
   await waitUntil(() => calls === 1, 2000) // running

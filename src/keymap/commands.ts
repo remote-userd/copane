@@ -309,6 +309,15 @@ function openSearch(ws: Workspace, replace: boolean): void {
   })
 }
 
+/**
+ * Repository actions started from the editor (not from Source Control's repository tabs) go to
+ * the open file's repository, as in VS Code. Returns whether there is one to act on.
+ */
+function followFile(ws: Workspace): boolean {
+  ws.git?.pick(null)
+  return !!ws.git?.repo
+}
+
 function setFocus(ws: Workspace, focus: "tree" | "editor" | "ai"): void {
   const ui = ws.ui.get()
   // From the SEARCH tab, focusing the tree switches to FILES (as VS Code's Ctrl+Shift+E).
@@ -476,10 +485,10 @@ export const commands = {
   "conflict.acceptCurrent": { title: "Merge conflict: accept current", run: (ws) => acceptConflict(ws, "current") },
   "conflict.acceptIncoming": { title: "Merge conflict: accept incoming", run: (ws) => acceptConflict(ws, "incoming") },
   "conflict.acceptBoth": { title: "Merge conflict: accept both", run: (ws) => acceptConflict(ws, "both") },
-  "git.branches": { title: "Switch or create a branch", run: (ws) => (ws.git?.repo ? ws.ui.set({ modal: { kind: "branches" } }) : ws.notify("Not a git repository", "warn")) },
+  "git.branches": { title: "Switch or create a branch", run: (ws) => (followFile(ws) ? ws.ui.set({ modal: { kind: "branches" } }) : ws.notify("Not a git repository", "warn")) },
   "git.deleteBranch": {
     title: "Delete a branch",
-    run: (ws) => (ws.git?.repo ? ws.ui.set({ modal: { kind: "branches", mode: "delete" } }) : ws.notify("Not a git repository", "warn")),
+    run: (ws) => (followFile(ws) ? ws.ui.set({ modal: { kind: "branches", mode: "delete" } }) : ws.notify("Not a git repository", "warn")),
   },
   "git.stageHunk": {
     title: "Stage the change at the cursor",
@@ -502,33 +511,40 @@ export const commands = {
   "git.fileHistory": {
     title: "File history (git log)",
     run(ws) {
-      if (!ws.git?.repo) return ws.notify("Not a git repository", "warn")
       const buf = ws.buffers.active
-      ws.ui.set({ modal: { kind: "history", path: buf ? (buf.source ?? buf.path) : null } })
+      const path = buf ? (buf.source ?? buf.path) : null
+      if (!(path ? ws.git?.for(path) : followFile(ws))) return ws.notify("Not a git repository", "warn")
+      ws.ui.set({ modal: { kind: "history", path } })
     },
   },
   "git.history": {
     title: "Commit history (git log of the whole project)",
-    run: (ws) => (ws.git?.repo ? ws.ui.set({ modal: { kind: "history", path: null } }) : ws.notify("Not a git repository", "warn")),
+    run: (ws) => (followFile(ws) ? ws.ui.set({ modal: { kind: "history", path: null } }) : ws.notify("Not a git repository", "warn")),
   },
   "git.blameLine": {
     title: "Show the commit that last changed this line",
     run: async (ws) => {
       const buf = ws.buffers.active
-      if (!buf || !ws.git?.repo) return ws.notify("Not a git repository", "warn")
+      if (!buf || !ws.git?.for(buf.path)) return ws.notify("Not a git repository", "warn")
       const lines = await blameFor(ws, buf.path, ws.buffers.textOf(buf), `${buf.id}:${buf.version}`)
       const b = lines[buf.cursor.row]
       if (!b || b.sha === NOT_COMMITTED) return ws.notify("This line is not committed yet")
       ws.ui.set({ modal: { kind: "history", path: buf.path, sha: b.sha } })
     },
   },
-  "git.changes": { title: "Source control: stage, commit, push", run: (ws) => ws.ui.set({ modal: { kind: "scm" } }) },
+  "git.changes": {
+    title: "Source control: stage, commit, push",
+    run: (ws) => {
+      followFile(ws)
+      ws.ui.set({ modal: { kind: "scm" } })
+    },
+  },
   "search.files": { title: "Search in all files", run: (ws) => openSearch(ws, false) },
   "search.replace": { title: "Replace in all files", run: (ws) => openSearch(ws, true) },
   "git.toggleFileBlame": {
     title: "Toggle file blame (who changed each line, as in GitLens)",
     run(ws) {
-      if (!ws.git?.repo) return ws.notify("Not a git repository", "warn")
+      if (!ws.git?.enabled) return ws.notify("Not a git repository", "warn")
       const on = !ws.ui.get().fileBlame
       ws.ui.set({ fileBlame: on })
       ws.notify(on ? "File blame on: click a block for its commit (Alt+B hides it)" : "File blame off")

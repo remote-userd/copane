@@ -77,6 +77,14 @@ export const configSchema = z
         inlineBlame: z.boolean().default(true),
         /** The AI message button in Source Control (uses `claude -p`). */
         aiCommitMessage: z.boolean().default(true),
+        /**
+         * How many folder levels below the project to look for more repositories (as VS Code's
+         * git.repositoryScanMaxDepth): each gets its own section in Source Control. 0 = only the
+         * repository the project is in.
+         */
+        scanDepth: z.number().int().min(0).max(5).default(1),
+        /** Count submodules (and other folders with a .git file) found that way as repositories too. */
+        detectSubmodules: z.boolean().default(true),
       })
       .prefault({}),
     tree: z

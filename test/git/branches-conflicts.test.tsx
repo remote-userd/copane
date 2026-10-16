@@ -2,6 +2,7 @@ import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { GitStatus } from "../../src/files/gitStatus"
+import { GitRepos } from "../../src/git/repos"
 import { createWorkspace, fixture, renderApp, type Harness, waitUntil, GIT_ENV } from "../helpers"
 
 // Several waits on the UI and git per test: more room than the default 5 s.
@@ -22,7 +23,7 @@ async function app(root: string, open?: string) {
   const ws = createWorkspace(root)
   git = new GitStatus(root)
   await git.start(50)
-  ws.git = git
+  ws.git = GitRepos.single(git)
   if (open) await ws.buffers.open(open)
   h = await renderApp(ws, { tree: <text>TREE</text> })
   return ws

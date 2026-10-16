@@ -722,7 +722,7 @@ function terminalSession(cwd: string, target?: Service): Omit<Session, "id"> {
  */
 async function openNewMenu(ws: Workspace, config: AiConfig, x: number | undefined, y: number | undefined, add: (s: Omit<Session, "id">) => void, runOnly = false): Promise<void> {
   const choices: AgentChoice[] = [{ name: basename(config.command), command: config.command, args: config.args }, ...(config.agents ?? [])]
-  const repo = ws.git?.repo ?? null
+  const repo = ws.git?.main.repo ?? null
   const count = (name: string) => tabs.get().sessions.filter((s) => s.name === name || s.name.startsWith(`${name} `)).length
   const inWorktree = async (c: AgentChoice) => {
     if (!repo) return
@@ -819,7 +819,7 @@ function closeTab(id: number): void {
 /** How many files a worktree agent changed since its branch split off; stored for its tab. */
 async function recount(ws: Workspace, id: number): Promise<void> {
   const session = tabs.get().sessions.find((s) => s.id === id)
-  const repo = ws.git?.repo
+  const repo = ws.git?.main.repo
   if (!session?.branch || !repo) return
   // Counts can overlap (the agent goes quiet again before one finishes): only the latest one lands.
   const seq = (recounts.get(id) ?? 0) + 1
@@ -840,7 +840,7 @@ function closeSession(ws: Workspace, id: number): void {
   if (!session) return
   const close = () => closeTab(id)
   if (!session.branch) return close()
-  const repo = ws.git?.repo
+  const repo = ws.git?.main.repo
   ws.ui.set({
     modal: {
       kind: "confirm",

@@ -106,6 +106,8 @@ test("change markers: lines differing from the index get a sign; reloads flash",
   const listeners = new Set<() => void>()
   ws.git = {
     indexText: async () => "one\nTWO\nthree\n",
+    for: () => null,
+    current: () => null,
     subscribe: (l: () => void) => (listeners.add(l), () => listeners.delete(l)),
   } as never
   await ws.buffers.open("a.txt")

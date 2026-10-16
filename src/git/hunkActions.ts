@@ -23,7 +23,7 @@ export interface HunkContext {
 export async function hunkContext(ws: Workspace, row: number): Promise<HunkContext | null> {
   const ed = editorOf(ws)
   const buf = ws.buffers.active
-  if (!ed || !buf || !ws.git?.repo) return null
+  if (!ed || !buf || !ws.git?.for(buf.path)) return null
   const base = await baseText(ws, buf.path)
   if (base === null) return null
   const current = ed.plainText
@@ -34,7 +34,7 @@ export async function hunkContext(ws: Workspace, row: number): Promise<HunkConte
 
 export async function stageHunk(ws: Workspace, row: number): Promise<string | null> {
   const buf = ws.buffers.active
-  const repo = ws.git?.repo
+  const repo = ws.git?.for(buf?.path)?.repo
   if (!buf || !repo) return "Not a git repository"
   const base = await baseText(ws, buf.path)
   if (base === null) {

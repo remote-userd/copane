@@ -36,7 +36,7 @@ export function FileTree({
 }: {
   tree: TreeModel
   height: number
-  git?: GitStatus
+  git?: Pick<GitStatus, "mark" | "dirMark" | "subscribe" | "getSnapshot">
   icons?: IconStyle
   /** Off inside the left pane, whose tab strip names it instead. */
   header?: boolean
