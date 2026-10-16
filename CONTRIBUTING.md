@@ -41,6 +41,13 @@ Agent-written pull requests are welcome. copane is built that way itself.
 
 Match the style of the code around you. Comments explain *why*, not *what*.
 
+## Performance and memory
+
+- `bun run test/perf/typing.bench.tsx`: keystroke latency and CPU in a big file.
+- `bun run test/perf/startup.bench.ts`: the watcher crawl and Ctrl+P index on a generated tree.
+- `bun run test/perf/memory.bench.tsx`: private memory and JS heap after each part of a window (tree, Ctrl+P index, a highlighted file, git, an AI terminal). `FILE=path` opens another file, `HL=1` turns highlighting off.
+- `CE_PERF=log` and `CE_MEM=log` on a running `ce` log keystroke timings and memory.
+
 ## Releasing (maintainers)
 
 1. Bump `version` in `package.json`, and move the `Unreleased` notes in `CHANGELOG.md` under the new version.

@@ -12,7 +12,7 @@ import { Welcome } from "./app/Welcome"
 import { loadConfig } from "./config/load"
 import { createClipboard } from "./app/clipboard"
 import { loadLayout, persistLayout } from "./app/layoutState"
-import { installPerfLog, perfCommit } from "./app/perf"
+import { installMemLog, installPerfLog, perfCommit } from "./app/perf"
 import { Profiler } from "react"
 
 const noop = () => {}
@@ -29,6 +29,7 @@ import { Sidebar } from "./app/Sidebar"
 import { TreeModel } from "./files/TreeModel"
 import { GitRepos } from "./git/repos"
 import { keepBlames } from "./git/blame"
+import { configureHighlighterRecycling, highlighterIdleSoon } from "./editor/highlighter"
 import { LspManager } from "./lsp/LspManager"
 import { applyFileEdits } from "./lsp/lspActions"
 import { aiStatusSource, TerminalPane } from "./ai/TerminalPane"
@@ -90,6 +91,7 @@ renderer.on("blur", () => windowFocus.set({ focused: false }))
 // Every pane, popup and preview listens for keys; Node's leak warning at 10 would print over the UI.
 renderer.keyInput.setMaxListeners(100)
 installPerfLog(renderer)
+installMemLog()
 const reactRoot = createRoot(renderer)
 
 /** No folder given: the welcome page picks one (or quits). */
@@ -151,7 +153,17 @@ lsp.attach(ws.buffers)
 onShutdown(() => lsp.stop())
 void git.start()
 // Back from another app: catch up on git (polling paused meanwhile; the file watcher didn't).
-windowFocus.subscribe(() => windowFocused() && git.refresh(0))
+// Gone to another app: give memory back (the parser worker, then freed heap).
+let idleGc: ReturnType<typeof setTimeout> | null = null
+windowFocus.subscribe(() => {
+  if (windowFocused()) return void git.refresh(0)
+  highlighterIdleSoon()
+  if (idleGc) clearTimeout(idleGc)
+  idleGc = setTimeout(() => !windowFocused() && Bun.gc(true), 15_000)
+  idleGc.unref?.()
+})
+// Markdown previews hold on to the parser worker: it isn't stopped while one shows.
+configureHighlighterRecycling({ canStop: () => !ws.ui.get().mdSide && !ws.buffers.list().some((b) => b.kind === "preview") })
 onShutdown(() => git.stop())
 // Per-file git caches follow the open tabs, so a long session doesn't keep every file it touched.
 let openCount = 0

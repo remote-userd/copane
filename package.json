@@ -27,7 +27,7 @@
     "dev": "bun run src/main.tsx",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "build": "bun build --compile --minify --bytecode --format=esm --define process.env.NODE_ENV='\"production\"' src/main.tsx --outfile dist/copane",
+    "build": "bun build --compile --compile-exec-argv=--smol --minify --bytecode --format=esm --define process.env.NODE_ENV='\"production\"' src/main.tsx --outfile dist/copane",
     "install:cli": "sh scripts/install.sh"
   },
   "dependencies": {

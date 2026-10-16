@@ -142,6 +142,7 @@ With `"ai": { "notify": "desktop" }` you also get a system notification: a Windo
 - **Smooth scrolling:** the mouse wheel and PageUp/PageDown glide, in the editor and the Markdown preview, so your eyes can follow where the text goes. A key stops the motion at once, so typing never waits. `editor.smoothScrolling: false` makes scrolling jump instead.
 - **Long files:** stay responsive. Syntax colours and indent guides are computed for the whole file, but only lines near the screen are drawn. An 11,000-line file takes about 30 ms per keystroke.
 - **`CE_PERF=/tmp/ce-perf.log ce`:** logs how long each keypress takes to reach the screen.
+- **Memory:** each `ce` window is its own process (one crashing never takes another down). An idle window uses about 60–90 MB of its own; the program's code is shared between windows. Syntax colouring needs a parser worker, which grows with the files it has read (about 40 MB after a typical file, a few hundred after a very large one), so it stops after a minute without highlighting, or soon after you switch to another app, and starts again on the next edit. The AI CLI in the pane (Claude: 400–500 MB) is usually the biggest part; click the memory figure in the status bar for the breakdown. `CE_MEM=/tmp/ce-mem.log ce` logs memory every 10 s.
 
 ## Look
 

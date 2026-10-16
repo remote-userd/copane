@@ -43,3 +43,24 @@ export function installPerfLog(renderer: CliRenderer): void {
     if (deltaMs > 50) writer.write(`gap ${deltaMs.toFixed(1)}ms at ${now.toFixed(0)}\n`)
   })
 }
+
+/**
+ * Opt-in memory log (CE_MEM=/path/to/log): every 10 s, the process's private memory (RssAnon on
+ * Linux, else RSS) and the JS heap, to see what a window costs over a session.
+ */
+export function installMemLog(): void {
+  const path = Bun.env.CE_MEM
+  if (!path) return
+  const writer = Bun.file(path).writer()
+  const mb = (n: number) => `${(n / 1048576).toFixed(1)}M`
+  const tick = setInterval(async () => {
+    const status = await Bun.file("/proc/self/status")
+      .text()
+      .catch(() => "")
+    const anon = /RssAnon:\s+(\d+) kB/.exec(status)?.[1]
+    const { rss, heapUsed } = process.memoryUsage()
+    writer.write(`${new Date().toISOString()} private ${anon ? mb(Number(anon) * 1024) : "?"} rss ${mb(rss)} heap ${mb(heapUsed)}\n`)
+    writer.flush()
+  }, 10_000)
+  tick.unref?.()
+}

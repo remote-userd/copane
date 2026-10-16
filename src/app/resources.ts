@@ -28,6 +28,40 @@ export function parseProcStat(text: string, pageSize: number, clockTicks: number
   }
 }
 
+/**
+ * `/proc/<pid>/statm`: memory the process has to itself (resident less shared pages), in bytes.
+ * RSS also counts the program's code, which every window running the same binary shares, so a
+ * window would look bigger than what it costs.
+ */
+export function parseStatmPrivate(text: string, pageSize: number): number | null {
+  const [, resident, shared] = text.trim().split(" ").map(Number)
+  return resident === undefined || shared === undefined || Number.isNaN(resident - shared) ? null : Math.max(0, resident - shared) * pageSize
+}
+
+/** On Linux: each process of copane's tree gets its private memory instead of RSS. */
+async function withPrivateMemory(procs: ProcInfo[], root: number): Promise<ProcInfo[]> {
+  if (process.platform !== "linux") return procs
+  const { pageSize } = linuxConsts()
+  const kids = new Map<number, number[]>()
+  for (const p of procs) kids.set(p.ppid, [...(kids.get(p.ppid) ?? []), p.pid])
+  const mine = new Set<number>()
+  const visit = (pid: number) => {
+    mine.add(pid)
+    for (const c of kids.get(pid) ?? []) visit(c)
+  }
+  visit(root)
+  return Promise.all(
+    procs.map(async (p) => {
+      if (!mine.has(p.pid)) return p
+      const own = await Bun.file(`/proc/${p.pid}/statm`)
+        .text()
+        .then((t) => parseStatmPrivate(t, pageSize))
+        .catch(() => null)
+      return own === null ? p : { ...p, rss: own }
+    }),
+  )
+}
+
 /** `ps -o time` / `cputime`: `[[dd-]hh:]mm:ss[.cc]`, in seconds. */
 export function parsePsTime(t: string): number {
   const [days, rest] = t.includes("-") ? [Number(t.split("-")[0]), t.split("-")[1]!] : [0, t]
@@ -135,7 +169,7 @@ export function createResourceSampler(root = process.pid) {
   let prevAt = 0
   const names = new Map<number, string>()
   return async function sample(): Promise<Usage> {
-    const procs = await listProcesses()
+    const procs = await withPrivateMemory(await listProcesses(), root)
     const now = performance.now()
     for (const p of procs) if (p.ppid === root && !names.has(p.pid)) names.set(p.pid, await commandName(p.pid, p.name))
     const usage = aggregate(procs, root, prev, prevAt ? (now - prevAt) / 1000 : 0, names)
@@ -163,7 +197,10 @@ export function describeUsage(u: Usage): string {
     ...rows.map((r) => line(r.name, r.rss, r.cpu)),
     line("total", u.total.rss, u.total.cpu),
     "",
-    "CPU is % of one core. Turn this off: “Toggle resource usage” (F1) or statusBar.resources.",
+    process.platform === "linux"
+      ? "Memory is each process's own (program code shared between windows isn't counted). CPU is % of one core."
+      : "CPU is % of one core.",
+    "Turn this off: “Toggle resource usage” (F1) or statusBar.resources.",
   ].join("\n")
 }
 

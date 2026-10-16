@@ -1,5 +1,5 @@
 import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
-import { aggregate, createResourceSampler, describeUsage, formatBytes, parseProcStat, parsePsTime, type ProcInfo } from "../../src/app/resources"
+import { aggregate, createResourceSampler, describeUsage, formatBytes, parseProcStat, parsePsTime, parseStatmPrivate, type ProcInfo } from "../../src/app/resources"
 import { runCommand } from "../../src/keymap/commands"
 import { configSchema } from "../../src/config/schema"
 import { createWorkspace, fixture, renderApp, waitUntil, type Harness } from "../helpers"
@@ -73,4 +73,14 @@ test("the status bar shows memory and CPU; the command and the setting turn it o
   expect(h.frame()).not.toMatch(/\d+(\.\d)?[GMK] \d+%/)
   await h.step(() => runCommand(off, "view.toggleResources"))
   await until(() => /\d+(\.\d)?[GMK] \d+%/.test(h!.frame()))
+})
+
+test("private memory from statm: resident less shared pages", async () => {
+  expect(parseStatmPrivate("120000 30000 10000 500 0 25000 0\n", 4096)).toBe(20000 * 4096)
+  expect(parseStatmPrivate("garbage", 4096)).toBeNull()
+  if (process.platform !== "linux") return
+  // This process: private memory is below RSS (the bun binary's code is shared).
+  const me = (await createResourceSampler()()).self.rss
+  expect(me).toBeGreaterThan(0)
+  expect(me).toBeLessThan(process.memoryUsage().rss)
 })

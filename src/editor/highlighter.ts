@@ -1,4 +1,4 @@
-import { getTreeSitterClient, type SimpleHighlight } from "@opentui/core"
+import { destroyTreeSitterClient, getTreeSitterClient, type SimpleHighlight } from "@opentui/core"
 import { registerGrammars } from "./grammars"
 
 // Before anything highlights: the parser worker reads the grammar list when it starts.
@@ -108,7 +108,49 @@ export function applyHighlights(target: HighlightTarget, highlights: LineHighlig
 
 /** Run tree-sitter on the text. Returns null when the filetype has no parser or highlighting fails. */
 export async function computeHighlights(text: string, filetype: string): Promise<SimpleHighlight[] | null> {
-  const result = await getTreeSitterClient().highlightOnce(text, filetype)
-  if (result.error || !result.highlights) return null
-  return result.highlights
+  inFlight++
+  workerUsed = true
+  if (stopTimer) clearTimeout(stopTimer)
+  try {
+    const result = await getTreeSitterClient().highlightOnce(text, filetype)
+    if (result.error || !result.highlights) return null
+    return result.highlights
+  } finally {
+    inFlight--
+    scheduleStop(recycle.idleMs)
+  }
+}
+
+/*
+ * The parser worker's memory (WASM) only grows: about 20 MB to start, ~40 MB after a typical
+ * source file, hundreds after a big one, and it kept that until the window closed. After a quiet
+ * spell it is stopped; the next highlight starts a fresh one (a few hundred ms, once). Not while
+ * a Markdown preview shows: its code blocks hold on to the worker.
+ */
+const recycle = { idleMs: 60_000, canStop: (): boolean => true }
+let inFlight = 0
+let workerUsed = false
+let stopTimer: ReturnType<typeof setTimeout> | null = null
+
+function scheduleStop(ms: number): void {
+  if (stopTimer) clearTimeout(stopTimer)
+  stopTimer = setTimeout(() => {
+    stopTimer = null
+    if (!workerUsed || inFlight > 0) return
+    if (!recycle.canStop()) return scheduleStop(recycle.idleMs)
+    workerUsed = false
+    void destroyTreeSitterClient().catch(() => {})
+  }, ms)
+  stopTimer.unref?.()
+}
+
+/** When to stop the idle parser worker (main.tsx: not while a Markdown preview is open). */
+export function configureHighlighterRecycling(opts: { idleMs?: number; canStop?: () => boolean }): void {
+  if (opts.idleMs !== undefined) recycle.idleMs = opts.idleMs
+  if (opts.canStop) recycle.canStop = opts.canStop
+}
+
+/** The window went to the background: stop the worker sooner. */
+export function highlighterIdleSoon(ms = 10_000): void {
+  if (workerUsed) scheduleStop(ms)
 }
