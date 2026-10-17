@@ -5,6 +5,8 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.9.9] - 2026-10-17
+
 ### Changed
 - In the AI pane, Ctrl+J and Ctrl+B go to the CLI: Ctrl+J is Claude's new line (terminals send Shift+Enter as plain Enter, so there was no way to type one), and Ctrl+B is its "run in background" (in a shell tab, cursor back). Ctrl+E goes back to the editor; Ctrl+J from the editor still focuses the pane. `keys.ai` brings the old keys back.
 
@@ -225,7 +227,8 @@ First public release.
 - VS Code keys and settings import.
 - Release binaries for Linux and macOS (x64 and arm64), and a one-line installer.
 
-[Unreleased]: https://github.com/sevheng/copane/compare/v0.9.8...HEAD
+[Unreleased]: https://github.com/sevheng/copane/compare/v0.9.9...HEAD
+[0.9.9]: https://github.com/sevheng/copane/compare/v0.9.8...v0.9.9
 [0.9.8]: https://github.com/sevheng/copane/compare/v0.9.7...v0.9.8
 [0.9.7]: https://github.com/sevheng/copane/compare/v0.9.6...v0.9.7
 [0.9.6]: https://github.com/sevheng/copane/compare/v0.9.5...v0.9.6
