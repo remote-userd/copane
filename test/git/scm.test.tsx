@@ -252,14 +252,16 @@ test("dismissing the right-click menu (Escape or a click outside) keeps the pane
   await until(() => !h!.frame().includes("Changes (1)"))
 })
 
-test("Branches (b) and a file's history, opened from the panel, go back to it on Escape", async () => {
-  await panel({ "a.ts": "a\n" }, { "a.ts": "b\n" })
+test("Branches (b) and a file's history, opened from the panel, show above it and go back to it on Escape", async () => {
+  const { ws } = await panel({ "a.ts": "a\n" }, { "a.ts": "b\n" })
   await until(() => h!.frame().includes("Changes (1)"))
   await press("b")
   await until(() => h!.frame().includes("Switch branch"))
+  // The panel stays on screen under the picker.
+  expect(h!.frame()).toContain("Changes (1)")
   await h!.step(() => h!.keys.pressEscape())
-  await until(() => h!.frame().includes("Changes (1)"))
-  expect(h!.frame()).not.toContain("Switch branch")
+  await until(() => !h!.frame().includes("Switch branch"))
+  expect(h!.frame()).toContain("Changes (1)")
 
   const at = h!.find(" M a.ts")
   await h!.step(() => h!.mouse.click(at.x + 3, at.y, MouseButtons.RIGHT))
@@ -267,8 +269,8 @@ test("Branches (b) and a file's history, opened from the panel, go back to it on
   await h!.step(() => h!.mouse.click(h!.find("File history").x, h!.find("File history").y))
   await until(() => h!.frame().includes("copy sha"))
   await h!.step(() => h!.keys.pressEscape())
-  await until(() => h!.frame().includes("Changes (1)"))
-  expect(h!.frame()).not.toContain("copy sha")
+  await until(() => !h!.frame().includes("copy sha"))
+  expect(ws.ui.get().modal?.kind).toBe("scm")
 })
 
 test("History (g) lists the project's commits, and Escape goes back to the panel", async () => {

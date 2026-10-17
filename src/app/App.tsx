@@ -108,6 +108,10 @@ export function App({ slots = {} }: { slots?: AppSlots }) {
 
   // A context menu can open over a dialog (Source control's file menu): the dialog stays under it.
   const modal = ui.modal?.kind === "menu" ? (ui.modal.back ?? null) : ui.modal
+  // Source control stays on screen under what it opened (branches, history, a question): one element,
+  // drawn before the other dialogs so they come above it and it keeps its state when it is back on top.
+  let scm = false
+  for (let m = ui.modal; m && !scm; m = m.back ?? null) scm = m.kind === "scm"
 
   const tooSmall = dims.width < 60 || dims.height < 12
   // Too small to draw a dialog, which then can't take its keys: Escape still closes it.
@@ -173,13 +177,13 @@ export function App({ slots = {} }: { slots?: AppSlots }) {
         ) : null}
       </box>
       <StatusBar aiStatus={aiStatus} />
+      {scm ? <SourceControlPanel /> : null}
       {modal?.kind === "confirm" ? <ConfirmModal modal={modal} /> : null}
       {modal?.kind === "help" ? <HelpModal bindings={bindings} /> : null}
       {modal?.kind === "prompt" ? <PromptModal key={modal.title + modal.initial} modal={modal} /> : null}
       {modal?.kind === "picker" ? slots.picker : null}
       {modal?.kind === "search" ? slots.search : null}
       {modal?.kind === "diff" ? <DiffModal bufId={modal.bufId} /> : null}
-      {modal?.kind === "scm" ? <SourceControlPanel /> : null}
       {modal?.kind === "branches" ? <BranchPicker mode={modal.mode ?? "switch"} /> : null}
       {modal?.kind === "history" ? <HistoryModal path={modal.path} sha={modal.sha} /> : null}
       {modal?.kind === "palette" ? <CommandPalette bindings={bindings} /> : null}
