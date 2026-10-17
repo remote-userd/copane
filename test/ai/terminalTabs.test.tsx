@@ -156,7 +156,8 @@ test("in the AI pane, Ctrl+J and Ctrl+B reach the CLI (Claude's new line / run i
   await until(() => h!.frame().includes("agent-ready"))
   await h.step(() => h!.keys.pressKey("LINEFEED"))
   await h.step(() => h!.keys.pressKey("b", { ctrl: true }))
-  await until(() => h!.frame().includes("0a 02"))
+  // BSD od (macOS) pads its columns wider than GNU od.
+  await until(() => /0a\s+02/.test(h!.frame()))
   expect(ws.ui.get().focus).toBe("ai")
 })
 
