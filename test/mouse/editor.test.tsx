@@ -108,6 +108,7 @@ test("change markers: lines differing from the index get a sign; reloads flash",
     indexText: async () => "one\nTWO\nthree\n",
     for: () => null,
     current: () => null,
+    list: () => [],
     main: { enabled: false },
     subscribe: (l: () => void) => (listeners.add(l), () => listeners.delete(l)),
   } as never

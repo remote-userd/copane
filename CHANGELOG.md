@@ -5,6 +5,9 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- A project folder that is not a repository but holds one (`ce .` in a folder with one clone inside): the status bar shows that repository's branch before any of its files is open.
+
 ## [0.9.9] - 2026-10-17
 
 ### Changed
