@@ -173,3 +173,22 @@ test("a reset --soft from outside (index untouched) still updates the status", a
   await waitUntil(() => gs.entries.some((e) => e.rel === "a.ts" && e.staged), 3000)
   gs.stop()
 })
+
+test("a detached HEAD is named by its short commit, and follows it to another one", async () => {
+  const root = await fixture({ "a.ts": "a" })
+  git(root, "init", "-q")
+  git(root, "add", ".")
+  git(root, "commit", "-qm", "one")
+  git(root, "commit", "-q", "--allow-empty", "-m", "two")
+  git(root, "checkout", "-q", "--detach")
+  const sha = (n: string) => Bun.spawnSync(["git", "rev-parse", "--short=7", n], { cwd: root }).stdout.toString().trim()
+  const gs = new GitStatus(root)
+  await gs.start(50)
+  try {
+    expect(gs.branch).toMatchObject({ name: sha("HEAD"), detached: true })
+    git(root, "checkout", "-q", "HEAD~1")
+    await waitUntil(() => gs.branch?.name === sha("HEAD"))
+  } finally {
+    gs.stop()
+  }
+})

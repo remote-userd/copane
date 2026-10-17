@@ -5,6 +5,12 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- A folder of several repositories with no file from one open: the status bar shows `2 repos ● 4` instead of nothing. Clicking it (or **Source control: choose repository** in the palette) lists each repository with its branch and changed files; picking one opens it in Source control.
+
+### Changed
+- A detached HEAD shows its short commit in the status bar and Source control, not the word "detached".
+
 ### Fixed
 - A project folder that is not a repository but holds one (`ce .` in a folder with one clone inside): the status bar shows that repository's branch before any of its files is open.
 

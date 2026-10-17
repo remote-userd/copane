@@ -23,6 +23,7 @@ export interface MenuItem {
 export type Modal = ModalKind & { back?: Modal }
 
 type ModalKind =
+  /** A negative `y` counts from the bottom (-2: just above the status bar). */
   | { kind: "menu"; x: number; y: number; items: MenuItem[] }
   | { kind: "confirm"; title: string; body: string; options: ConfirmOption[] }
   | {

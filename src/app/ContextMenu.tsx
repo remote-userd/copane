@@ -44,7 +44,8 @@ export function ContextMenu({ menu }: { menu: Menu }) {
   const height = menu.items.length + 2
   // Open at the pointer, flipped to stay on screen.
   const left = menu.x + width > dims.width ? Math.max(0, menu.x - width + 1) : menu.x
-  const top = menu.y + height > dims.height ? Math.max(0, menu.y - height + 1) : menu.y
+  const y = menu.y < 0 ? dims.height + menu.y : menu.y
+  const top = y + height > dims.height ? Math.max(0, y - height + 1) : y
 
   return (
     <>

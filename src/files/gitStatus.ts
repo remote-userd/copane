@@ -322,9 +322,17 @@ export class GitStatus {
       return
     }
     this.failures = 0
-    if (out === this.lastOut) return
-    this.lastOut = out
+    // Detached: the header names no commit, so HEAD says which (and moving to another one is a change).
+    const sha =
+      out.startsWith("## HEAD (no branch)") && this.gitDir
+        ? (await Bun.file(join(this.gitDir, "HEAD")).text().catch(() => "")).trim().slice(0, 7)
+        : ""
+    if (this.stopped) return
+    const key = sha + out
+    if (key === this.lastOut) return
+    this.lastOut = key
     this.branch = out.startsWith("## ") ? parseBranch(out.slice(0, out.indexOf("\0") >>> 0)) : null
+    if (sha && this.branch?.detached) this.branch.name = sha
     // Parsed once: the marks come from the entries (thousands of untracked files make this add up).
     const ex = this.excluded
     this.entries = parseEntries(out, top)

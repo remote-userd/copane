@@ -315,6 +315,28 @@ function followFile(ws: Workspace): boolean {
   return !!ws.git?.repo
 }
 
+/** A menu of the project's repositories (branch, changed files) above the status bar; one opens in Source control. */
+function pickRepo(ws: Workspace): void {
+  const all = ws.git?.list() ?? []
+  if (!all.length) return ws.notify("Not a git repository", "warn")
+  if (all.length === 1) return void runCommand(ws, "git.changes")
+  const names = all.map((s) => ws.git!.name(s))
+  const nameW = Math.max(...names.map((n) => n.length))
+  const items = all.map((s, i) => {
+    const b = s.branch
+    const branch = !b ? "" : b.detached ? `${b.name} (detached)` : `${b.name}${b.ahead ? ` ↑${b.ahead}` : ""}${b.behind ? ` ↓${b.behind}` : ""}`
+    return {
+      label: `${names[i]!.padEnd(nameW)}  ${branch}`,
+      hint: s.entries.length ? `● ${s.entries.length}` : "",
+      run: () => {
+        ws.git!.pick(s.repo!.top)
+        ws.ui.set({ modal: { kind: "scm" } })
+      },
+    }
+  })
+  ws.ui.set({ modal: { kind: "menu", x: 1, y: -2, items } })
+}
+
 function setFocus(ws: Workspace, focus: "tree" | "editor" | "ai"): void {
   const ui = ws.ui.get()
   // From the SEARCH tab, focusing the tree switches to FILES (as VS Code's Ctrl+Shift+E).
@@ -543,6 +565,7 @@ export const commands = {
       ws.ui.set({ modal: { kind: "scm" } })
     },
   },
+  "git.pickRepo": { title: "Source control: choose repository", run: (ws) => pickRepo(ws) },
   "search.files": { title: "Search in all files", run: (ws) => openSearch(ws, false) },
   "search.replace": { title: "Replace in all files", run: (ws) => openSearch(ws, true) },
   "git.toggleFileBlame": {

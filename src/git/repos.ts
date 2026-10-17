@@ -152,6 +152,11 @@ export class GitRepos {
     return this.list().length > 0
   }
 
+  /** Changed files over every repository. */
+  changedCount(): number {
+    return this.list().reduce((n, s) => n + s.entries.length, 0)
+  }
+
   /** The repository a file belongs to: the innermost one containing it. */
   for(path: string | null | undefined): GitStatus | null {
     if (!path) return null

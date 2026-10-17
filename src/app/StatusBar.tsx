@@ -89,9 +89,14 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
   const working = activity?.kind === "busy"
   const spin = useSpinner(working)
   const progress = working ? ` ${spin} ${activity.text.length > 32 ? activity.text.slice(0, 31) + "…" : activity.text}` : ""
+  // Several repositories and none of them the open file's: say so, and the click lists them.
+  const several = !repo && (ws.git?.list().length ?? 0) > 1
+  const changed = several ? ws.git!.changedCount() : 0
   const branchText = branch
     ? `${g.branch} ${repoName}${branch.name}${branch.ahead ? ` ↑${branch.ahead}` : ""}${branch.behind ? ` ↓${branch.behind}` : ""}${progress}`
-    : ""
+    : several
+      ? `${g.branch} ${ws.git!.list().length} repos${changed ? ` ● ${changed}` : ""}${progress}`
+      : ""
   const lspStatus = ws.lsp?.status() ?? ""
   const counts = ws.lsp?.counts() ?? { errors: 0, warnings: 0 }
   // Files with AI edits not reviewed yet (Alt+N goes through them).
@@ -144,7 +149,7 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
   return (
     <box flexDirection="row" height={1} flexShrink={0} backgroundColor={colors.statusBg} paddingRight={1} gap={2}>
       <box flexDirection="row" flexShrink={0} gap={1}>
-        {branchText ? <Segment bg={colors.segmentBg} onPress={() => void runCommand(ws, "git.changes")}>{branchText}</Segment> : null}
+        {branchText ? <Segment bg={colors.segmentBg} onPress={() => void runCommand(ws, several ? "git.pickRepo" : "git.changes")}>{branchText}</Segment> : null}
         {problemsText ? (
           <HoverBox onPress={() => void runCommand(ws, "lsp.problems")}>
             <text selectable={false} fg={counts.errors ? colors.error : counts.warnings ? colors.warn : colors.dim}>

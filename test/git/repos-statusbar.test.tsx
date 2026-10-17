@@ -35,12 +35,22 @@ test("a project folder that is not a repository but holds one: the status bar sh
   await until(() => h!.frame().includes("trunk"))
 })
 
-test("several repositories and no file open in one: no branch is picked at random", async () => {
+test("several repositories and no file open in one: the status bar counts them, and its menu opens one in Source control", async () => {
   const root = await fixture({ "front/a.ts": "a", "back/b.ts": "b" })
   repo(join(root, "front"), "front-main")
   repo(join(root, "back"), "back-main")
+  await Bun.write(join(root, "front/new.ts"), "n")
   await show(root)
-  await until(() => repos!.list().length === 2)
-  h!.setup.renderOnce()
+  await until(() => h!.frame().includes("2 repos ● 1"))
+  // No branch picked at random.
   expect(h!.frame()).not.toContain("-main")
+  const at = h!.find("2 repos")
+  await h!.step(() => h!.mouse.click(at.x, at.y))
+  await until(() => h!.frame().includes("front  front-main"))
+  expect(h!.frame()).toContain("back   back-main")
+  // The menu sits above the status bar.
+  expect(h!.find("front  front-main").y).toBeLessThan(at.y)
+  await h!.step(() => h!.keys.pressArrow("down"))
+  await h!.step(() => h!.keys.pressEnter())
+  await until(() => h!.frame().includes("Source control  front"))
 })
