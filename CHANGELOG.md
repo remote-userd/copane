@@ -5,6 +5,8 @@ All notable changes to copane are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.9.11] - 2026-10-24
+
 ### Added
 - **Mac keys** (`keyStyle`, on by default on macOS): ⌘ works for every Ctrl shortcut (⌘S, ⌘P, ⌘⇧P, ⌘K chords…) in terminals that send it (Ghostty, kitty, WezTerm, iTerm2), ⌘A selects all, ⌘1–9 and ⌘⇧[ / ⌘⇧] switch tabs. ⌥←/→ jumps a word, ⌘←/→ goes to the line's start and end, ⌘⌫ deletes to the line's start, also as Ghostty and iTerm2 send them (Ctrl+A / Ctrl+E / Ctrl+U, ESC b / ESC f). The palette, cheat sheet, menus and notices show ⌘⇧P-style keys (⌃ where the terminal can't send ⌘). The first start on a Mac says how to set up the terminal; the README has a macOS section.
 - `cmd+…` in `keys` config bindings (also `command+` / `super+`).
@@ -247,7 +249,8 @@ First public release.
 - VS Code keys and settings import.
 - Release binaries for Linux and macOS (x64 and arm64), and a one-line installer.
 
-[Unreleased]: https://github.com/sevheng/copane/compare/v0.9.10...HEAD
+[Unreleased]: https://github.com/sevheng/copane/compare/v0.9.11...HEAD
+[0.9.11]: https://github.com/sevheng/copane/compare/v0.9.10...v0.9.11
 [0.9.10]: https://github.com/sevheng/copane/compare/v0.9.9...v0.9.10
 [0.9.9]: https://github.com/sevheng/copane/compare/v0.9.8...v0.9.9
 [0.9.8]: https://github.com/sevheng/copane/compare/v0.9.7...v0.9.8
