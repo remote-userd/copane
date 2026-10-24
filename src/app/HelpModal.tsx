@@ -3,12 +3,11 @@ import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import { Modal } from "./Modal"
 import { useWorkspace } from "./workspace"
 import { commands, type CommandId } from "../keymap/commands"
-import type { buildBindings, Layer } from "../keymap/bindings"
+import { bindingLabel, shownBindings, type buildBindings, type Layer } from "../keymap/bindings"
+import { keyStyleOf } from "../keymap/platform"
 import { ui as colors } from "../config/theme"
-import { prettyKeys } from "../keymap/keys"
+import { keyText } from "../keymap/keys"
 import { closeModal } from "./modalStack"
-
-const pretty = prettyKeys
 
 type Line = { kind: "head"; text: string } | { kind: "row"; key: string; text: string } | { kind: "gap" }
 
@@ -55,13 +54,20 @@ export function HelpModal({ bindings }: { bindings: ReturnType<typeof buildBindi
   const dims = useTerminalDimensions()
   const [top, setTop] = useState(0)
 
+  const style = keyStyleOf(ws.config)
+  const pretty = (layer: Layer, key: string) => bindingLabel(bindings, layer, key, style)
   // Alt+1..9 share one row.
-  const keys = (layer: Layer): [string, string][] =>
-    [...bindings[layer]]
-      .filter(([, id]) => !/^buffer\.goto[2-9]$/.test(id))
-      .map(([key, id]) => (id === "buffer.goto1" ? [`${pretty(key)}…9`, "Go to tab 1–9 (9: the last)"] : [pretty(key), commands[id as CommandId].title]))
+  const keys = (layer: Layer, only: (key: string) => boolean = () => true): [string, string][] =>
+    shownBindings(bindings, layer, style)
+      .filter(([key, id]) => only(key) && !/^buffer\.goto[2-9]$/.test(id))
+      .map(([key, id]) =>
+        id === "buffer.goto1"
+          ? [`${pretty(layer, key)}…9`, "Go to tab 1–9 (9: the last)"]
+          : [pretty(layer, key), keyText(commands[id as CommandId].title, style)],
+      )
   // The AI pane only lets a few keys through; list just the ones that differ from General.
-  const aiOnly = keys("ai").filter(([k]) => !bindings.global.has(k.toLowerCase()))
+  const aiOnly = keys("ai", (k) => !bindings.global.has(k))
+  const text = (rows: [string, string][]): [string, string][] => rows.map(([k, t]) => [keyText(k, style), keyText(t, style)])
 
   const section = (title: string, rows: [string, string][]): Line[] => [
     { kind: "head", text: title },
@@ -70,11 +76,11 @@ export function HelpModal({ bindings }: { bindings: ReturnType<typeof buildBindi
   ]
   const left = [...section("General", keys("global")), ...section("Editor", keys("editor"))]
   const right = [
-    ...section("File tree (when focused)", TREE),
+    ...section("File tree (when focused)", text(TREE)),
     ...section("AI pane (other keys go to the AI)", aiOnly),
-    ...section("Mouse", MOUSE),
+    ...section("Mouse", text(MOUSE)),
     ...section("Tips", TIPS),
-    ...section("From VS Code (keys terminals can't send)", VSCODE),
+    ...section("From VS Code (keys terminals can't send)", text(VSCODE)),
   ]
 
   const twoCols = dims.width >= 124

@@ -14,6 +14,7 @@ import { resetConflicts } from "../src/git/conflictActions"
 import { resetCommitDraft } from "../src/git/SourceControlPanel"
 import { resetGitActivity } from "../src/git/activity"
 import { resetCompletion } from "../src/lsp/CompletionPopup"
+import { resetKeyPlatform } from "../src/keymap/platform"
 
 /**
  * Environment for git commands in tests: a fixed author, and no optional locks (a test's own
@@ -87,6 +88,7 @@ export function resetModuleState(): void {
   resetMultiEdit()
   resetCompletion()
   windowFocus.set({ focused: true })
+  resetKeyPlatform()
 }
 
 export async function renderApp(ws: Workspace, slots: AppSlots = {}, size = { width: 140, height: 30 }, extra?: ReactNode) {

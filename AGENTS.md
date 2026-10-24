@@ -45,6 +45,7 @@ These apply to legacy terminal input, which is what most users have:
 - **Ctrl+Shift+letter** arrives as Ctrl+letter.
 - **Shift+Enter** is Enter.
 - **Alt+Shift+F** parses as Alt+→ (it is `ESC F`); `keyToString` maps it back by its raw sequence.
+- **Cmd (Mac)** arrives only from kitty-protocol terminals, as `cmd+…`. Every `ctrl+…` binding also answers to Cmd (`cmdAsCtrl` in `keys.ts`), so don't add Cmd duplicates; Mac-only changes go in `macBindings` (`bindings.ts`), and UI text with key names goes through `keyText`/`useKeyText` so Macs see ⌘.
 
 Use Alt or Ctrl+Alt combinations instead, and check new bindings with a quick key-parse test (see `test/` and how existing bindings were chosen).
 

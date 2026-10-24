@@ -2,7 +2,7 @@ import { useState } from "react"
 import { safely } from "./safely"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import type { Modal as ModalState } from "./state"
-import { useWorkspace } from "./workspace"
+import { useWorkspace, useKeyText } from "./workspace"
 import { ui as colors } from "../config/theme"
 import { closeModal } from "./modalStack"
 
@@ -10,6 +10,7 @@ type Menu = Extract<ModalState, { kind: "menu" }>
 
 export function ContextMenu({ menu }: { menu: Menu }) {
   const ws = useWorkspace()
+  const kt = useKeyText()
   const dims = useTerminalDimensions()
   const enabled = menu.items.map((it, i) => (it.disabled ? -1 : i)).filter((i) => i >= 0)
   const [sel, setSel] = useState(enabled[0] ?? 0)
@@ -39,7 +40,7 @@ export function ContextMenu({ menu }: { menu: Menu }) {
   })
 
   const labelW = Math.max(...menu.items.map((i) => i.label.length))
-  const hintW = Math.max(0, ...menu.items.map((i) => i.hint?.length ?? 0))
+  const hintW = Math.max(0, ...menu.items.map((i) => (i.hint ? kt(i.hint).length : 0)))
   const width = labelW + hintW + 6
   const height = menu.items.length + 2
   // Open at the pointer, flipped to stay on screen.
@@ -101,7 +102,7 @@ export function ContextMenu({ menu }: { menu: Menu }) {
             </text>
             {item.hint ? (
               <text fg={colors.dim} selectable={false}>
-                {item.hint}
+                {kt(item.hint)}
               </text>
             ) : null}
           </box>

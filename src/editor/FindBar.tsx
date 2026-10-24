@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useKeyboard } from "@opentui/react"
 import type { InputRenderable } from "@opentui/core"
-import { useBuffers, useUi, useWorkspace, useCursorStyle } from "../app/workspace"
+import { useBuffers, useUi, useWorkspace, useCursorStyle, useKeyText } from "../app/workspace"
 import { HoverBox } from "../app/Modal"
 import { ui as colors } from "../config/theme"
 import type { Workspace } from "../app/workspace"
@@ -63,6 +63,7 @@ function closeFind(ws: Workspace): void {
 export function FindBar() {
   const cursorStyle = useCursorStyle()
   const ws = useWorkspace()
+  const kt = useKeyText()
   const ui = useUi()
   const buffers = useBuffers()
   const find = ui.find!
@@ -245,7 +246,7 @@ export function FindBar() {
               key={`r${find.seed}`}
               ref={replaceInput}
               value={ui.replaceWith}
-              placeholder="replacement (Enter: one, Alt+Enter: all)"
+              placeholder={kt("replacement (Enter: one, Alt+Enter: all)")}
               focused={find.active && field === "replace" && !ui.modal}
               {...inputStyle}
               onInput={(v: string) => ws.ui.set({ replaceWith: v })}

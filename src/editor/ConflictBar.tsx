@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useKeyboard, useTerminalDimensions } from "@opentui/react"
 import { structuredPatch } from "diff"
-import { useWorkspace, type Workspace } from "../app/workspace"
+import { useWorkspace, type Workspace, useKeyText } from "../app/workspace"
 import { HoverBox, Modal } from "../app/Modal"
 import { ui as colors } from "../config/theme"
 import type { Buffer } from "./BufferStore"
@@ -47,11 +47,12 @@ export function ControlCharsBar() {
 
 export function ConflictBar({ buf }: { buf: Buffer }) {
   const ws = useWorkspace()
+  const kt = useKeyText()
   if (!buf.conflict) {
     return (
       <box height={1} flexShrink={0} backgroundColor={colors.warnBarBg} paddingLeft={1} overflow="hidden">
         <text selectable={false} fg={colors.warn}>
-          {buf.deleted ? "⚠ Not on disk. Ctrl+S creates it." : "⚠ Changed on disk."}
+          {buf.deleted ? kt("⚠ Not on disk. Ctrl+S creates it.") : "⚠ Changed on disk."}
         </text>
       </box>
     )
@@ -144,6 +145,7 @@ export function DiffModal({ bufId }: { bufId: number }) {
 /** Shown while the file has merge-conflict markers: count, accept buttons, next. */
 export function MergeConflictBar({ bufId }: { bufId: number }) {
   const ws = useWorkspace()
+  const kt = useKeyText()
   const list = useConflicts(bufId)
   if (!list.length) return null
   return (
@@ -153,10 +155,10 @@ export function MergeConflictBar({ bufId }: { bufId: number }) {
           ⚠ {list.length} merge conflict{list.length === 1 ? "" : "s"}
         </text>
       </box>
-      <Btn strong label="Accept current (Alt+1)" onPress={() => acceptConflict(ws, "current")} />
-      <Btn strong label="Accept incoming (Alt+2)" onPress={() => acceptConflict(ws, "incoming")} />
-      <Btn label="Both (Alt+3)" onPress={() => acceptConflict(ws, "both")} />
-      <Btn label="Next (Alt+F5)" onPress={() => gotoConflict(ws, 1)} />
+      <Btn strong label={kt("Accept current (Alt+1)")} onPress={() => acceptConflict(ws, "current")} />
+      <Btn strong label={kt("Accept incoming (Alt+2)")} onPress={() => acceptConflict(ws, "incoming")} />
+      <Btn label={kt("Both (Alt+3)")} onPress={() => acceptConflict(ws, "both")} />
+      <Btn label={kt("Next (Alt+F5)")} onPress={() => gotoConflict(ws, 1)} />
     </box>
   )
 }

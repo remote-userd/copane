@@ -27,6 +27,7 @@ import { configPath } from "../config/load"
 import { importVSCodeSettings } from "../config/vscode"
 import { revealInFileManager } from "../files/reveal"
 import { closeModal, openOver } from "../app/modalStack"
+import { macKeys } from "./platform"
 
 /**
  * Alt+1..9 go to that tab (Alt+9 the last), as in VS Code. In a merge conflict Alt+1/2/3
@@ -574,7 +575,7 @@ export const commands = {
       if (!ws.git?.enabled) return ws.notify("Not a git repository", "warn")
       const on = !ws.ui.get().fileBlame
       ws.ui.set({ fileBlame: on })
-      ws.notify(on ? "File blame on: click a block for its commit (Alt+B hides it)" : "File blame off")
+      ws.notify(on ? `File blame on: click a block for its commit (${macKeys(ws.config) ? "Alt+Shift+B" : "Alt+B"} hides it)` : "File blame off")
     },
   },
   "view.wordWrap": {
@@ -692,6 +693,9 @@ export const commands = {
       if (ta) ws.buffers.onCursorChange(ws.buffers.active!.id)
     },
   },
+  // Mac: Cmd+←/→ (sent as Ctrl+A / Ctrl+E by Ghostty and iTerm2).
+  "edit.lineStart": { title: "Move cursor to line start", run: (ws) => lineEdge(ws, -1) },
+  "edit.lineEnd": { title: "Move cursor to line end", run: (ws) => lineEdge(ws, 1) },
   "edit.toggleComment": { title: "Toggle line comment", run: (ws) => toggleLineComment(ws) },
   "edit.addComment": { title: "Add line comment", run: (ws) => toggleLineComment(ws, "add") },
   "edit.removeComment": { title: "Remove line comment", run: (ws) => toggleLineComment(ws, "remove") },
@@ -783,6 +787,17 @@ async function stepAiChange(ws: Workspace, dir: 1 | -1): Promise<void> {
 }
 
 export type CommandId = keyof typeof commands
+
+function lineEdge(ws: Workspace, dir: -1 | 1): void {
+  const buf = ws.buffers.active
+  const ta = buf?.textarea
+  if (!buf || !ta) return
+  const edge = (ta as { gotoLineEdge?: (dir: -1 | 1) => void }).gotoLineEdge
+  if (edge) edge.call(ta, dir)
+  else if (dir < 0) ta.gotoLineHome()
+  else ta.gotoLineEnd()
+  ws.buffers.onCursorChange(buf.id)
+}
 
 export async function runCommand(ws: Workspace, id: CommandId): Promise<void> {
   try {

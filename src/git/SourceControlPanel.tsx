@@ -11,6 +11,8 @@ import { sendChangesForReview } from "../ai/askAi"
 import { aiMarks } from "../ai/review"
 import { setGitActivity, useGitActivity, useSpinner, type GitActivity } from "./activity"
 import { closeModal, openOver } from "../app/modalStack"
+import { keyText } from "../keymap/keys"
+import { keyStyleOf } from "../keymap/platform"
 
 /**
  * Source control (Ctrl+Alt+D): conflicts, staged and unstaged files with a diff of the
@@ -731,7 +733,7 @@ export function SourceControlPanel() {
   const hint =
     focus === "diff"
       ? "↑↓ change · Space stage/unstage it · r discard it · ⏎ open · ← files · Esc back"
-      : `Space stage · a/A all · r/R discard · → changes · ⏎ open · Alt+⏎ commit · P/U push/pull · m AI message${all.length > 1 ? " · n/N repository" : ""} · Esc`
+      : `Space stage · a/A all · r/R discard · → changes · ⏎ open · ${keyText("Alt+⏎", keyStyleOf(ws.config))} commit · P/U push/pull · m AI message${all.length > 1 ? " · n/N repository" : ""} · Esc`
 
   // Several repositories: a tab each, with how many files changed.
   const repoTabs =

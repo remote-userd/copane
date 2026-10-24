@@ -9,7 +9,7 @@ import { setConflicts } from "../git/conflictActions"
 import { ControlCharsBar, MergeConflictBar } from "./ConflictBar"
 import "./CodeEditorRenderable"
 import { lineAt, type CodeEditorRenderable, type LayerHighlight } from "./CodeEditorRenderable"
-import { useBuffers, useUi, useWorkspace, useCursorStyle } from "../app/workspace"
+import { useBuffers, useUi, useWorkspace, useCursorStyle, useKeyText } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import type { Buffer } from "./BufferStore"
 import { extraStyle, useSyntaxStyle } from "./syntaxStyle"
@@ -489,6 +489,7 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
 
 export function EditorPane() {
   const ws = useWorkspace()
+  const kt = useKeyText()
   const ui = useUi()
   const buffers = useBuffers()
   const list = buffers.list()
@@ -529,7 +530,7 @@ export function EditorPane() {
               <box key={k} height={1} flexDirection="row">
                 <box width={12} flexShrink={0}>
                   <text selectable={false} fg={colors.accent}>
-                    {k}
+                    {kt(k)}
                   </text>
                 </box>
                 <text selectable={false} fg={colors.dim}>

@@ -122,6 +122,11 @@ export const configSchema = z
      * "off" never checks. Only for the installed binary, not `bun run dev`.
      */
     update: z.enum(["auto", "notify", "off"]).default("auto"),
+    /**
+     * Mac keys: Cmd works for every Ctrl shortcut, Option+←/→ and Cmd+←/→ move by word and to the
+     * line ends, and shortcuts show as ⌘⇧P. "auto" = on macOS; "mac" or "pc" force one.
+     */
+    keyStyle: z.enum(["auto", "mac", "pc"]).default("auto"),
     /** Extra key bindings per layer, e.g. { "global": { "ctrl+o": "file.picker" } }. null removes one. */
     keys: z
       .partialRecord(z.enum(["global", "editor", "tree", "ai"]), z.record(z.string(), z.string().nullable()))

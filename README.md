@@ -265,6 +265,26 @@ Settings that match VS Code's: `editor.cursorStyle` (`"line"`, the default, `"bl
 
 Rebind anything in `~/.config/copane/config.json` under `keys` (command names are in `src/keymap/commands.ts`), including two-key chords: `{ "keys": { "editor": { "ctrl+k ctrl+w": "buffer.close" } } }`.
 
+## macOS
+
+On a Mac, keys work the Mac way (`"keyStyle": "auto"`; `"mac"` or `"pc"` forces one):
+
+- **⌘ works for every Ctrl shortcut**: ⌘S, ⌘P, ⌘⇧P, ⌘F, ⌘Z / ⌘⇧Z, ⌘D, ⌘/, and the chords (⌘K ⌘C, ⌘K S…). ⌘A selects all, ⌘1–9 go to a tab, ⌘⇧[ / ⌘⇧] or ⌘⌥←/→ switch tabs. Ctrl keys keep working too.
+- **Text navigation**: ⌥←/→ jumps a word, ⌥⌫ deletes one, ⌘←/→ goes to the line's start (its indent first) and end, ⌘↑/↓ to the file's, ⌘⌫ deletes to the line's start. Add ⇧ to select.
+- **Moved for that**: back / forward are ⌃⌥←/→ (or ⌃- / ⌃⇧-, as in VS Code for Mac), and file blame is ⌥⇧B (⌥B is a word back in most Mac terminals).
+- **Labels**: the palette, the cheat sheet and notices show ⌘⇧P, not Ctrl+Shift+P.
+
+A terminal only passes ⌘ to programs that ask for it with the kitty keyboard protocol, and only for keys it doesn't use itself. The first start on a Mac says whether yours does. Setup per terminal:
+
+| Terminal | ⌥ as Alt (needed for ⌥ shortcuts like ⌥N) | ⌘ shortcuts |
+| --- | --- | --- |
+| [Ghostty](https://ghostty.org) | `macos-option-as-alt = true` | Yes. Ghostty keeps ⌘C/⌘V (copy and paste work as usual), ⌘K, ⌘D, ⌘F, ⌘W, ⌘T and ⌘1–9 for itself; free the ones you want with `keybind = super+k=unbind` (one line each) |
+| kitty, WezTerm | kitty: `macos_option_as_alt yes`; WezTerm: `send_composed_key_when_left_alt_is_pressed = false` | Yes, for keys not bound in their config |
+| iTerm2 | Profiles › Keys › Left Option key: Esc+ | Profiles › Keys: turn on "Apps can change how keys are reported"; ⌘ keys iTerm2's menus use stay with iTerm2 |
+| Terminal.app | Profiles › Keyboard › Use Option as Meta key | No: use the Ctrl keys (labels then show ⌃) |
+
+Ghostty and iTerm2 send ⌘←/→ and ⌘⌫ as the shell keys Ctrl+A / Ctrl+E / Ctrl+U, and ⌥←/→ as ESC b / ESC f; copane reads them as the Mac keys they stand for.
+
 ## Keys
 
 Press **F1** for the command palette: every command, searchable, with its shortcut. Press **Ctrl+Alt+K** for a grouped cheat sheet.
@@ -423,6 +443,7 @@ Optional file at `~/.config/copane/config.json`. **Open settings (JSON)** in the
   "statusBar": { "resources": true },
   "preview": { "imageProtocol": "auto" },
   "update": "auto",
+  "keyStyle": "auto",
   "keys": { "global": { "ctrl+o": "file.picker", "ctrl+l": null } }
 }
 ```

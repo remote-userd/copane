@@ -506,6 +506,12 @@ export class CodeEditorRenderable extends TextareaRenderable {
       if (ctrl && shift && name === "right") return this.moveWordForward({ select: true })
       if (!ctrl && (name === "pageup" || name === "pagedown")) return this.page(name === "pageup" ? -1 : 1, shift)
     }
+    // Mac: Cmd+Backspace / Cmd+Delete clear to the line's start / end (Cmd+arrows are the textarea's).
+    if (key.super && !ctrl && !alt && (name === "backspace" || name === "delete")) {
+      if (name === "backspace") this.deleteToLineStart()
+      else this.deleteToLineEnd()
+      return true
+    }
     if (ctrl || alt || key.super) return false
     if (name === "escape" && this.hasSelection()) {
       this.clearSelection()
@@ -543,6 +549,12 @@ export class CodeEditorRenderable extends TextareaRenderable {
     const eol = this.editBuffer.getEOL()
     const line = this.getTextRangeByCoords(row, 0, row, eol.col)
     return { row, col, line, index: colToIndex(line, col) }
+  }
+
+  /** Line start (smart: the indent first) or end; Mac's Cmd+←/→ when they arrive as Ctrl+A / Ctrl+E. */
+  gotoLineEdge(dir: -1 | 1): void {
+    if (dir < 0) this.smartHome(false)
+    else this.lineEnd(false)
   }
 
   private smartHome(select: boolean): boolean {

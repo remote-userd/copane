@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { HoverBox } from "../app/Modal"
-import { useWorkspace } from "../app/workspace"
+import { useWorkspace, useKeyText } from "../app/workspace"
 import { ui as colors } from "../config/theme"
 import { runCommand } from "../keymap/commands"
 
@@ -20,6 +20,7 @@ const Btn = ({ label, onPress, strong }: { label: string; onPress: () => void; s
  */
 export function AiReviewBar({ path }: { path: string }) {
   const ws = useWorkspace()
+  const kt = useKeyText()
   const review = ws.review
   const version = useSyncExternalStore(review?.store.subscribe ?? noSubscribe, () => review?.store.get().version ?? 0)
   // Edits (an undo, your typing) change the count too: recount after a pause.
@@ -53,7 +54,7 @@ export function AiReviewBar({ path }: { path: string }) {
           {`✦ ${count} AI change${count === 1 ? "" : "s"}${others ? ` (+${others} file${others === 1 ? "" : "s"})` : ""}`}
         </text>
       </box>
-      <Btn strong label="Review Alt+N" onPress={run("ai.nextChange")} />
+      <Btn strong label={kt("Review Alt+N")} onPress={run("ai.nextChange")} />
       <Btn label="Accept file" onPress={run("ai.acceptFile")} />
       <Btn label="Undo file" onPress={run("ai.undoFile")} />
       {others ? <Btn label="Accept all" onPress={run("ai.acceptAll")} /> : null}

@@ -4,12 +4,10 @@ import { Modal } from "./Modal"
 import { useWorkspace, useCursorStyle } from "./workspace"
 import { ui as colors } from "../config/theme"
 import { commands, runCommand, type CommandId } from "../keymap/commands"
-import type { buildBindings } from "../keymap/bindings"
+import { commandKeys, type buildBindings } from "../keymap/bindings"
+import { keyStyleOf } from "../keymap/platform"
 import { fuzzyFilter } from "../files/fuzzy"
-import { prettyKeys } from "../keymap/keys"
 import { closeModal } from "./modalStack"
-
-const pretty = prettyKeys
 
 // Not useful from a list (they act on a selection or are pane-specific navigation).
 const HIDDEN = new Set<CommandId>(["app.palette"])
@@ -23,14 +21,12 @@ export function CommandPalette({ bindings }: { bindings: ReturnType<typeof build
   const [sel, setSel] = useState(0)
 
   const items = useMemo(() => {
-    const keys = new Map<CommandId, string>()
-    for (const layer of ["global", "editor", "tree", "ai"] as const)
-      for (const [k, id] of bindings[layer]) if (!keys.has(id as CommandId)) keys.set(id as CommandId, pretty(k))
+    const keys = commandKeys(bindings, keyStyleOf(ws.config))
     return (Object.keys(commands) as CommandId[])
       .filter((id) => !HIDDEN.has(id))
       .map((id) => ({ id, title: commands[id].title, key: keys.get(id) ?? "" }))
       .sort((a, b) => a.title.localeCompare(b.title))
-  }, [bindings])
+  }, [bindings, ws])
   const titles = useMemo(() => items.map((i) => i.title), [items])
   const matches = useMemo(() => fuzzyFilter(query, titles, 100), [query, titles])
   const byTitle = useMemo(() => new Map(items.map((i) => [i.title, i])), [items])

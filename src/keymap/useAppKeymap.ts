@@ -2,9 +2,10 @@ import { useMemo, useRef } from "react"
 import { useKeyboard } from "@opentui/react"
 import type { KeyEvent } from "@opentui/core"
 import { useWorkspace } from "../app/workspace"
-import { buildBindings, sanitizeOverrides, type Layer } from "./bindings"
+import { buildBindings, lookup, sanitizeOverrides, startsChord, type Layer } from "./bindings"
 import { runCommand } from "./commands"
-import { keyToString, prettyKeys } from "./keys"
+import { cmdAsCtrl, keyLabel, keyToString } from "./keys"
+import { isCmdReachable, macKeys } from "./platform"
 import { completionVisible } from "../lsp/CompletionPopup"
 import { SEARCH_PANEL_KEYS } from "../files/SearchPanel"
 
@@ -22,8 +23,9 @@ export function useAppKeymap(): ReturnType<typeof buildBindings> {
   const bindings = useMemo(() => {
     const { overrides, unknown } = sanitizeOverrides(ws.config.keys)
     if (unknown.length) setTimeout(() => ws.notify(`Unknown commands in config keys: ${unknown.join(", ")}`, "warn"), 0)
-    return buildBindings(overrides)
+    return buildBindings(overrides, { mac: macKeys(ws.config) })
   }, [ws])
+  const pretty = (keys: string) => keyLabel(keys, { mac: macKeys(ws.config), cmd: isCmdReachable() })
 
   const chord = useRef<string | null>(null)
 
@@ -32,7 +34,7 @@ export function useAppKeymap(): ReturnType<typeof buildBindings> {
     if (ui.modal) {
       chord.current = null
       // Quit works under any dialog (it still asks about unsaved files), as the too-small screen promises.
-      if (bindings.global.get(keyToString(key)) === "app.quit") {
+      if (lookup(bindings.global, keyToString(key)) === "app.quit") {
         key.preventDefault()
         key.stopPropagation()
         ws.ui.set({ modal: null })
@@ -58,13 +60,13 @@ export function useAppKeymap(): ReturnType<typeof buildBindings> {
       key.stopPropagation()
       // The chord is done: drop "waiting for the second key" (quiet commands would leave it up).
       if (ws.ui.get().notice?.text.endsWith(WAITING)) ws.ui.set({ notice: null })
-      const id = layers.map((l) => bindings[l].get(keys)).find(Boolean)
+      const id = layers.map((l) => lookup(bindings[l], keys)).find(Boolean)
       if (id) void runCommand(ws, id)
-      else if (k !== "escape") ws.notify(`${prettyKeys(keys)} is not a command`)
+      else if (k !== "escape") ws.notify(`${pretty(keys)} is not a command`)
       return
     }
     for (const layer of layers) {
-      const id = bindings[layer].get(k)
+      const id = lookup(bindings[layer], k)
       if (id) {
         key.preventDefault()
         key.stopPropagation()
@@ -72,12 +74,17 @@ export function useAppKeymap(): ReturnType<typeof buildBindings> {
         return
       }
     }
-    const prefix = `${k} `
-    if (layers.some((l) => [...bindings[l].keys()].some((b) => b.startsWith(prefix)))) {
+    if (layers.some((l) => startsChord(bindings[l], k))) {
       key.preventDefault()
       key.stopPropagation()
       chord.current = k
-      ws.notify(`${prettyKeys(k)} was pressed. ${WAITING}`)
+      ws.notify(`${pretty(k)} was pressed. ${WAITING}`)
+      return
+    }
+    // An unbound Cmd+letter would reach the tree's single-letter keys (A: new file) as the letter.
+    if (key.super && ui.focus === "tree" && !inSearch && cmdAsCtrl(k) !== null) {
+      key.preventDefault()
+      key.stopPropagation()
     }
   })
 

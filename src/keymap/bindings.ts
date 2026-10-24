@@ -1,5 +1,5 @@
 import { commands, type CommandId } from "./commands"
-import { normalizeBinding } from "./keys"
+import { cmdAsCtrl, keyLabel, normalizeBinding } from "./keys"
 
 export type Layer = "global" | "editor" | "tree" | "ai"
 
@@ -154,14 +154,53 @@ const defaultBindings: Record<Layer, Record<string, CommandId>> = {
   },
 }
 
+/**
+ * What changes on a Mac (keyStyle). Every Ctrl key also works with Cmd (see cmdAsCtrl); these are
+ * the keys Mac terminals send for text navigation, and Mac-only extras. null removes a default.
+ */
+const macBindings: Partial<Record<Layer, Record<string, CommandId | null>>> = {
+  global: {
+    // Option+←/→ jumps a word (the textarea does it); Back/Forward stay on Ctrl+Option+←/→.
+    "alt+left": null,
+    "alt+right": null,
+    // VS Code for Mac's Back/Forward (only from terminals that send CSI-u: Ctrl+- is Ctrl+_ otherwise).
+    "ctrl+-": "nav.back",
+    "ctrl+shift+-": "nav.forward",
+    "cmd+1": "buffer.goto1",
+    "cmd+2": "buffer.goto2",
+    "cmd+3": "buffer.goto3",
+    "cmd+4": "buffer.goto4",
+    "cmd+5": "buffer.goto5",
+    "cmd+6": "buffer.goto6",
+    "cmd+7": "buffer.goto7",
+    "cmd+8": "buffer.goto8",
+    "cmd+9": "buffer.goto9",
+    "cmd+shift+[": "buffer.prev",
+    "cmd+shift+]": "buffer.next",
+    "cmd+alt+left": "buffer.prev",
+    "cmd+alt+right": "buffer.next",
+  },
+  editor: {
+    // Option+← arrives as ESC b in Terminal.app and iTerm2: a word back, so blame moves to Alt+Shift+B.
+    "alt+b": null,
+    "alt+shift+b": "git.toggleFileBlame",
+    // Ghostty and iTerm2 send Cmd+←/→ as Ctrl+A / Ctrl+E (as the shell reads them).
+    "ctrl+a": "edit.lineStart",
+    "ctrl+e": "edit.lineEnd",
+    "cmd+a": "edit.selectAll",
+  },
+}
+
 export function buildBindings(
   overrides: Partial<Record<Layer, Record<string, CommandId | null>>> = {},
+  opts: { mac?: boolean } = {},
 ): Record<Layer, Map<string, CommandId>> {
   const out = {} as Record<Layer, Map<string, CommandId>>
   for (const layer of Object.keys(defaultBindings) as Layer[]) {
     const map = new Map<string, CommandId>()
     for (const [k, v] of Object.entries(defaultBindings[layer])) map.set(normalizeBinding(k), v)
-    for (const [k, v] of Object.entries(overrides[layer] ?? {})) {
+    const mac = opts.mac ? (macBindings[layer] ?? {}) : {}
+    for (const [k, v] of [...Object.entries(mac), ...Object.entries(overrides[layer] ?? {})]) {
       if (v === null) map.delete(normalizeBinding(k))
       else map.set(normalizeBinding(k), v)
     }
@@ -185,4 +224,54 @@ export function sanitizeOverrides(
     overrides[layer] = out
   }
   return { overrides, unknown }
+}
+
+/** The command a key runs in a layer: its own binding, else (Cmd held) the Ctrl one it stands for. */
+export function lookup(map: Map<string, CommandId>, keys: string): CommandId | undefined {
+  const id = map.get(keys)
+  if (id) return id
+  const ctrl = cmdAsCtrl(keys)
+  return ctrl ? map.get(ctrl) : undefined
+}
+
+/** Whether a key starts a chord in a layer ("ctrl+k", or Cmd+K standing for it). */
+export function startsChord(map: Map<string, CommandId>, key: string): boolean {
+  const ctrl = cmdAsCtrl(key)
+  return [...map.keys()].some((b) => b.startsWith(`${key} `) || (ctrl !== null && b.startsWith(`${ctrl} `)))
+}
+
+type Bindings = Record<Layer, Map<string, CommandId>>
+const LAYERS: Layer[] = ["global", "editor", "tree", "ai"]
+
+// What the Mac's terminals send these for (Ghostty, iTerm2): the key to show.
+const MAC_SENT: Record<string, string> = { "ctrl+a": "⌘←", "ctrl+e": "⌘→" }
+
+/** A binding as shown in the palette and help (⌘ on a Mac when Cmd reaches it). */
+export function bindingLabel(
+  bindings: Bindings,
+  layer: Layer,
+  keys: string,
+  style: { mac: boolean; cmd: boolean },
+): string {
+  if (style.mac && layer === "editor" && MAC_SENT[keys]) return MAC_SENT[keys]
+  return keyLabel(keys, { ...style, taken: (cmd) => LAYERS.some((l) => bindings[l].has(cmd)) })
+}
+
+/** A layer's bindings worth showing: Cmd ones only when the terminal sends Cmd. */
+export function shownBindings(bindings: Bindings, layer: Layer, style: { cmd: boolean }): [string, CommandId][] {
+  return [...bindings[layer]].filter(([k]) => style.cmd || !k.split(/[ +]/).includes("cmd"))
+}
+
+/** Each command's shortcut for the palette: on a Mac, a Cmd one first. */
+export function commandKeys(bindings: Bindings, style: { mac: boolean; cmd: boolean }): Map<CommandId, string> {
+  const out = new Map<CommandId, string>()
+  const cmdFirst = style.mac && style.cmd
+  for (const pass of cmdFirst ? [true, false] : [false])
+    for (const layer of LAYERS)
+      for (const [k, id] of shownBindings(bindings, layer, style)) {
+        if (out.has(id)) continue
+        const label = bindingLabel(bindings, layer, k, style)
+        if (!pass || label.includes("⌘")) out.set(id, label)
+      }
+  return out
 }

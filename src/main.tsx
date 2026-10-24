@@ -38,6 +38,8 @@ import { TurnLog } from "./ai/turns"
 import { AiReview, reviewStatePath } from "./ai/review"
 import { windowFocus, windowFocused } from "./app/windowFocus"
 import pkg from "../package.json"
+import { setCmdReachable } from "./keymap/platform"
+import { showMacTip } from "./app/macTip"
 
 const USAGE = `Usage: copane [file|directory]   (no argument: the welcome page with recent folders; . opens this one)
        copane --upgrade        install the latest release
@@ -84,6 +86,9 @@ installSignalHandlers()
 
 const renderer = await createCliRenderer({ exitOnCtrlC: false })
 registerRenderer(renderer)
+// Cmd keys only arrive from terminals that answer the kitty keyboard query (the reply comes later).
+setCmdReachable(!!renderer.capabilities?.kitty_keyboard)
+renderer.on("capabilities", (caps: { kitty_keyboard?: boolean }) => setCmdReachable(!!caps.kitty_keyboard))
 setStyleOwner(renderer.nativeScene)
 // Polling and animations pause while the terminal window is in the background.
 renderer.on("focus", () => windowFocus.set({ focused: true }))
@@ -177,6 +182,8 @@ ws.buffers.subscribe(() => {
 })
 onShutdown(() => ws.buffers.dispose())
 if (warning) setTimeout(() => ws.notify(warning, "warn"), 100)
+// After the terminal has answered the kitty keyboard query, so the tip knows whether ⌘ gets through.
+else setTimeout(() => void showMacTip(ws).catch(() => null), 2000).unref?.()
 
 // Files changed by the AI CLI (or anything else) flow back into open buffers and the tree.
 // What the AI changes per prompt, for review and undo (Ctrl+Alt+Z).

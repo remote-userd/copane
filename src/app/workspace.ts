@@ -10,6 +10,8 @@ import type { LspManager } from "../lsp/LspManager"
 import type { TurnLog } from "../ai/turns"
 import type { AiReview } from "../ai/review"
 import type { RestoreState } from "./update"
+import { keyText } from "../keymap/keys"
+import { keyStyleOf } from "../keymap/platform"
 
 export interface Workspace {
   root: string
@@ -93,7 +95,7 @@ export function createWorkspace(
     review: null,
     agents: null,
     notify(text, kind = "info") {
-      uiStore.set({ notice: { text, kind } })
+      uiStore.set({ notice: { text: keyText(text, keyStyleOf(config)), kind } })
       if (noticeTimer) clearTimeout(noticeTimer)
       noticeTimer = setTimeout(() => uiStore.set({ notice: null }), kind === "error" ? 8000 : 4000)
     },
@@ -116,6 +118,12 @@ export function useCursorStyle(): CursorStyleOptions {
   let opts = cursorStyles.get(style)
   if (!opts) cursorStyles.set(style, (opts = { style, blinking: true }))
   return opts
+}
+
+/** Key names in UI text ("Ctrl+Z undoes") as this keyboard writes them (⌘Z on a Mac). */
+export function useKeyText(): (text: string) => string {
+  const ws = useWorkspace()
+  return (text) => keyText(text, keyStyleOf(ws.config))
 }
 
 export function useUi(): UiState {
