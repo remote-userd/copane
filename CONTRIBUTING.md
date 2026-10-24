@@ -4,7 +4,7 @@ Thanks for helping. Bug reports, ideas and pull requests are all welcome.
 
 ## Setup
 
-You need [Bun](https://bun.sh) 1.4.3 or later, git, and a Linux or macOS terminal (WSL works).
+You need [Bun](https://bun.sh) 1.4.4 or later, git, and a Linux or macOS terminal (WSL works).
 
 ```sh
 git clone https://github.com/sevheng/copane.git
@@ -15,7 +15,7 @@ bun run dev [path]   # run from source; Ctrl+Alt+R restarts it with your changes
 
 ## Before you open a pull request
 
-- `bun run typecheck` passes.
+- `bun run typecheck` and `bun run format:check` pass.
 - `bun test` passes. Tests use real temporary git repos and the project's TypeScript 7 `tsc --lsp`, so they take about a minute.
 - New behaviour has a test next to the existing ones in `test/`, mirroring `src/`.
 - Walk through the items in [`scripts/smoke.md`](scripts/smoke.md) your change touches. They cover what tests can't, such as a real terminal, tmux and the clipboard.

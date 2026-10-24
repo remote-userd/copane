@@ -69,7 +69,7 @@ Uninstall: `rm -r ~/.local/bin/copane ~/.local/bin/ce ~/.local/lib/copane`.
 
 ### From source
 
-Needs [Bun](https://bun.sh) 1.4.3 or later (`curl -fsSL https://bun.sh/install | bash`).
+Needs [Bun](https://bun.sh) 1.4.4 or later (`curl -fsSL https://bun.sh/install | bash`).
 
 ```sh
 git clone https://github.com/sevheng/copane.git

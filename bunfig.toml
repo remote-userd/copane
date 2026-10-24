@@ -1,2 +1,7 @@
 [test]
 preload = []
+
+# `bun run format` (bun fmt); the editor's Shift+Alt+F uses the same settings here.
+[fmt]
+semi = false
+printWidth = 130

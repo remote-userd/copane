@@ -11,6 +11,7 @@ All notable changes to copane are listed here. The format follows
 - **Format with Bun's formatter** (`bun fmt`, built into `ce`): Shift+Alt+F uses it in projects with a Prettier config or bunfig.toml `[fmt]` but no Prettier installed, and for files the language server can't format (Markdown, YAML, CSS, JSON…), which used to say "No language server". Projects with Prettier keep Prettier. `"editor": { "formatter": "bun" }` always uses it.
 
 ### Changed
+- Built with and needs Bun 1.4.4 (for its formatter).
 - On a Mac, back / forward move from ⌥←/→ to ⌃⌥←/→ (also ⌃- / ⌃⇧-), and file blame from ⌥B to ⌥⇧B, since Mac terminals use those keys for word movement.
 
 ## [0.9.10] - 2026-10-17

@@ -9,6 +9,7 @@ Human-facing docs: `README.md`; contribution process: `CONTRIBUTING.md`.
 - `bun run dev [path]`: run from source
 - `bun test`: all tests (they use real temp git repos and the project's TypeScript 7 `tsc --lsp`)
 - `bun run typecheck`: `tsc --noEmit`
+- `bun run format`: `bun fmt src test` (settings in `bunfig.toml`; CI runs `format:check`)
 - `bun run install:cli`: build the binary and install `ce` (a running `ce` then offers a restart)
 
 ## Bun first
@@ -82,7 +83,7 @@ Main flows:
 
 ## Checking your work
 
-1. `bun run typecheck` and `bun test` pass. Add tests next to the existing ones: unit tests for logic, and `renderApp()` + `h.frame()` for what appears on screen (see `test/preview/preview.test.tsx` for the pattern). From `test/helpers.tsx`:
+1. `bun run typecheck`, `bun run format:check` and `bun test` pass. Add tests next to the existing ones: unit tests for logic, and `renderApp()` + `h.frame()` for what appears on screen (see `test/preview/preview.test.tsx` for the pattern). From `test/helpers.tsx`:
    - `waitUntil(cond, ms, render)` waits for async results and throws when they never come; never synchronise with a fixed `Bun.sleep`. Files wrap it as a local `until` that renders their harness.
    - `GIT_ENV` for git commands in tests (fixed author, no optional locks: a test's own `git status` must not take the index lock while the app commits).
    - `renderApp()` resets module-level state first (`resetModuleState()`); a new module-level store or cache gets a reset there too.
