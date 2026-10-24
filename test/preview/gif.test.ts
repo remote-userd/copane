@@ -5,13 +5,20 @@ import { makeGif } from "../support/gif"
 
 const RED: [number, number, number] = [255, 0, 0]
 const BLUE: [number, number, number] = [0, 0, 255]
-const pixel = (p: GifPlayer, x: number, y: number) => [...p.canvas.subarray((y * p.gif.width + x) * 4, (y * p.gif.width + x) * 4 + 4)]
+const pixel = (p: GifPlayer, x: number, y: number) => [
+  ...p.canvas.subarray((y * p.gif.width + x) * 4, (y * p.gif.width + x) * 4 + 4),
+]
 
 test("frames, delays and disposal are read; the first frame matches OpenTUI's decoder", () => {
-  const bytes = makeGif(4, 3, [RED, BLUE], [
-    { width: 4, height: 3, pixels: Array(12).fill(0), delayCs: 25 },
-    { left: 1, top: 1, width: 2, height: 1, pixels: [1, 1], delayCs: 0, disposal: 2 },
-  ])
+  const bytes = makeGif(
+    4,
+    3,
+    [RED, BLUE],
+    [
+      { width: 4, height: 3, pixels: Array(12).fill(0), delayCs: 25 },
+      { left: 1, top: 1, width: 2, height: 1, pixels: [1, 1], delayCs: 0, disposal: 2 },
+    ],
+  )
   expect(imageInfo(bytes).format).toBe("gif")
   const gif = parseGif(bytes)
   expect(gif.frames.map((f) => [f.delay, f.disposal])).toEqual([
@@ -26,11 +33,16 @@ test("frames, delays and disposal are read; the first frame matches OpenTUI's de
 test("later frames composite: transparency keeps what's under, disposal 2 clears the area", () => {
   const p = new GifPlayer(
     parseGif(
-      makeGif(3, 1, [RED, BLUE, [0, 255, 0]], [
-        { width: 3, height: 1, pixels: [0, 0, 0] },
-        { width: 3, height: 1, pixels: [1, 2, 1], transparent: 2, disposal: 2 },
-        { left: 2, width: 1, height: 1, pixels: [2] },
-      ]),
+      makeGif(
+        3,
+        1,
+        [RED, BLUE, [0, 255, 0]],
+        [
+          { width: 3, height: 1, pixels: [0, 0, 0] },
+          { width: 3, height: 1, pixels: [1, 2, 1], transparent: 2, disposal: 2 },
+          { left: 2, width: 1, height: 1, pixels: [2] },
+        ],
+      ),
     ),
   )
   p.next()

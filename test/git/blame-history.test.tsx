@@ -9,7 +9,13 @@ import { createWorkspace, fixture, renderApp, type Harness, waitUntil } from "..
 // Several waits on the UI and git per test: more room than the default 5 s.
 setDefaultTimeout(15_000)
 
-const ENV = { GIT_AUTHOR_NAME: "Ann Dev", GIT_AUTHOR_EMAIL: "a@d", GIT_COMMITTER_NAME: "Ann Dev", GIT_COMMITTER_EMAIL: "a@d", GIT_OPTIONAL_LOCKS: "0" }
+const ENV = {
+  GIT_AUTHOR_NAME: "Ann Dev",
+  GIT_AUTHOR_EMAIL: "a@d",
+  GIT_COMMITTER_NAME: "Ann Dev",
+  GIT_COMMITTER_EMAIL: "a@d",
+  GIT_OPTIONAL_LOCKS: "0",
+}
 let h: Harness | null = null
 let git: GitStatus | null = null
 afterEach(() => {

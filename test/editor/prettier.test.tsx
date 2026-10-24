@@ -12,7 +12,8 @@ afterEach(() => {
 })
 
 // A stand-in Prettier: upper-cases its input, and fails on "syntax error".
-const FAKE = '#!/bin/sh\nin=$(cat)\ncase "$in" in *"syntax error"*) echo "[error] a.ts: SyntaxError: bad (1:1)" >&2; exit 2;; esac\nprintf "%s\\n" "$in" | tr a-z A-Z\n'
+const FAKE =
+  '#!/bin/sh\nin=$(cat)\ncase "$in" in *"syntax error"*) echo "[error] a.ts: SyntaxError: bad (1:1)" >&2; exit 2;; esac\nprintf "%s\\n" "$in" | tr a-z A-Z\n'
 
 async function project(text: string, editor: Record<string, unknown> = {}) {
   const root = await fixture({ "src/a.ts": text, "node_modules/.bin/prettier": FAKE })

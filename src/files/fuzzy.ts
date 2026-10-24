@@ -5,7 +5,8 @@ export interface FuzzyMatch {
   positions: number[]
 }
 
-const isBoundary = (s: string, i: number) => i === 0 || "/\\_-. ".includes(s[i - 1]!) || (s[i]! >= "A" && s[i]! <= "Z" && s[i - 1]! >= "a" && s[i - 1]! <= "z")
+const isBoundary = (s: string, i: number) =>
+  i === 0 || "/\\_-. ".includes(s[i - 1]!) || (s[i]! >= "A" && s[i]! <= "Z" && s[i - 1]! >= "a" && s[i - 1]! <= "z")
 
 /**
  * Subsequence match with bonuses for word/path boundaries, consecutive runs,

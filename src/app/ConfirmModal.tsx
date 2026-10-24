@@ -17,7 +17,9 @@ export function ConfirmModal({ modal }: { modal: Extract<ModalState, { kind: "co
   })
   return (
     <Modal title={modal.title} height={modal.options.length + 6} onClose={() => closeModal(ws)}>
-      <text selectable={false} fg={colors.text}>{modal.body}</text>
+      <text selectable={false} fg={colors.text}>
+        {modal.body}
+      </text>
       <box height={1} />
       {modal.options.map((o) => (
         <HoverBox key={o.key} onPress={() => void safely(ws, o.run)} paddingX={1}>

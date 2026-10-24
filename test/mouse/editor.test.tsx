@@ -15,7 +15,11 @@ async function open(lines = 80) {
   return h
 }
 
-const status = (h: Harness) => h.lines().at(-2)!.match(/Ln \d+, Col \d+/)?.[0]
+const status = (h: Harness) =>
+  h
+    .lines()
+    .at(-2)!
+    .match(/Ln \d+, Col \d+/)?.[0]
 
 test("clicking in the editor moves the cursor and updates the status bar", async () => {
   const h = await open()

@@ -95,7 +95,13 @@ export class RpcConnection {
     if (this.data.length > 1024 * 1024) this.data = new Uint8Array(64 * 1024)
   }
 
-  private dispatch(msg: { id?: number | string; method?: string; params?: unknown; result?: unknown; error?: { message: string } }): void {
+  private dispatch(msg: {
+    id?: number | string
+    method?: string
+    params?: unknown
+    result?: unknown
+    error?: { message: string }
+  }): void {
     if (msg.method !== undefined && msg.id !== undefined) {
       let result: unknown = null
       try {

@@ -22,7 +22,10 @@ export function shortenPaths(text: string, root: string, home = homedir()): stri
 }
 
 /** The facts for the report, as plain lines. */
-export async function reportContext(ws: Workspace, opts: { env?: Record<string, string | undefined>; logPath?: string; home?: string } = {}): Promise<string> {
+export async function reportContext(
+  ws: Workspace,
+  opts: { env?: Record<string, string | undefined>; logPath?: string; home?: string } = {},
+): Promise<string> {
   const env = opts.env ?? Bun.env
   const terminal = env.TERM_PROGRAM ?? (env.WT_SESSION ? "Windows Terminal" : undefined) ?? "unknown"
   const lines = [

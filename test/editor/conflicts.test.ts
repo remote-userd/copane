@@ -1,7 +1,23 @@
 import { expect, test } from "bun:test"
 import { conflictAt, findConflicts, resolveConflict } from "../../src/editor/conflicts"
 
-const text = ["a", "<<<<<<< HEAD", "mine", "=======", "theirs", ">>>>>>> feature", "b", "<<<<<<< HEAD", "x", "||||||| base", "orig", "=======", "y", ">>>>>>> feature", ""].join("\n")
+const text = [
+  "a",
+  "<<<<<<< HEAD",
+  "mine",
+  "=======",
+  "theirs",
+  ">>>>>>> feature",
+  "b",
+  "<<<<<<< HEAD",
+  "x",
+  "||||||| base",
+  "orig",
+  "=======",
+  "y",
+  ">>>>>>> feature",
+  "",
+].join("\n")
 
 test("finds two-way and diff3 conflicts", () => {
   expect(findConflicts(text)).toEqual([

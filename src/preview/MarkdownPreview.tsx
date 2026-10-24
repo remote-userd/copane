@@ -26,7 +26,17 @@ function ScrollKeys({ scroll }: { scroll: React.RefObject<SmoothScrollBoxRendera
  * The rendered view of a Markdown file. Follows the open tab's text as you type (and when the AI
  * edits it), or the file on disk when it isn't open.
  */
-export const MarkdownPreview = memo(function MarkdownPreview({ path, active, focused, version = 0 }: { path: string; active: boolean; focused: boolean; version?: number }) {
+export const MarkdownPreview = memo(function MarkdownPreview({
+  path,
+  active,
+  focused,
+  version = 0,
+}: {
+  path: string
+  active: boolean
+  focused: boolean
+  version?: number
+}) {
   const ws = useWorkspace()
   // Only whether (and in which tab) the file is open matters, not every store change.
   const liveId = useBufferSelector((b) => {

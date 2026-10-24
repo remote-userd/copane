@@ -98,7 +98,12 @@ function utf16Base64(text: string): string {
 }
 
 /** The command that shows a desktop notification on this system, or null to use the terminal's (OSC 9). */
-export function notifyCommand(title: string, body: string, platform: "wsl" | "mac" | "linux", has: (cmd: string) => boolean): string[] | null {
+export function notifyCommand(
+  title: string,
+  body: string,
+  platform: "wsl" | "mac" | "linux",
+  has: (cmd: string) => boolean,
+): string[] | null {
   if (platform === "wsl" && has("powershell.exe")) {
     // A Windows toast through WinRT: no module to install. The app id is PowerShell's, so Windows shows it.
     const script = [

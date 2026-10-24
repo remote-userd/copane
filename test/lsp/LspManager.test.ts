@@ -46,7 +46,9 @@ test("TypeScript 7 server: diagnostics follow edits; completion, hover, definiti
   expect(lsp.diagnostics(buf.path)[0]!.message).toContain("toFixed")
 
   // A typed character, then completion: the server gets the new text once.
-  const rpc = (lsp as unknown as { docs: Map<string, { client: { rpc: { notify: (m: string, p: unknown) => void } } }> }).docs.get(buf.path)!.client.rpc
+  const rpc = (
+    lsp as unknown as { docs: Map<string, { client: { rpc: { notify: (m: string, p: unknown) => void } } }> }
+  ).docs.get(buf.path)!.client.rpc
   const sent: string[] = []
   const notify = rpc.notify.bind(rpc)
   rpc.notify = (m, p) => (sent.push(m), notify(m, p))
@@ -77,7 +79,11 @@ test("hoverText flattens markup and fences", () => {
 test("a missing server command fails quietly", async () => {
   const root = await fixture({ "a.ts": "x" })
   const buffers = new BufferStore({ root, highlightDelayMs: 0 })
-  const lsp = new LspManager(root, {}, () => ({ key: "nope", command: ["definitely-not-a-real-lsp"], languages: { typescript: "typescript" } }))
+  const lsp = new LspManager(root, {}, () => ({
+    key: "nope",
+    command: ["definitely-not-a-real-lsp"],
+    languages: { typescript: "typescript" },
+  }))
   lsp.attach(buffers)
   await buffers.open("a.ts")
   await until(() => lsp.status().includes("✗"), 3000)
@@ -151,13 +157,24 @@ test("a language server that dies is started again; one that keeps dying is left
   const root = await fixture({ "a.ts": "x\n" })
   const starts = join(root, "starts.log")
   // A "server" that counts its starts and dies at once.
-  const crashing = { key: "crashy", command: ["sh", "-c", `echo start >> ${starts}; exit 1`], languages: { typescript: "typescript" } }
+  const crashing = {
+    key: "crashy",
+    command: ["sh", "-c", `echo start >> ${starts}; exit 1`],
+    languages: { typescript: "typescript" },
+  }
   const buffers = new BufferStore({ root })
   const lsp = new LspManager(root, {}, () => crashing)
   lsp.attach(buffers)
   const buf = await buffers.open("a.ts")
   buffers.attach(buf.id, new Ta() as unknown as TextareaRenderable)
-  const count = async () => ((await Bun.file(starts).text().catch(() => "")).match(/start/g) ?? []).length
+  const count = async () =>
+    (
+      (
+        await Bun.file(starts)
+          .text()
+          .catch(() => "")
+      ).match(/start/g) ?? []
+    ).length
   for (let i = 0; i < 100 && (await count()) < 3; i++) await Bun.sleep(50)
   await Bun.sleep(300)
   expect(await count()).toBe(3) // restarted twice, then given up
@@ -189,7 +206,10 @@ test("a slow answer to an older diagnostics request doesn't overwrite a newer on
   let late: Promise<unknown> | null = null
   rpc.request = (m, p) => {
     if (m !== "textDocument/diagnostic" || late) return request(m, p)
-    late = stale.promise.then(() => ({ kind: "full", items: [{ message: "stale", severity: 1, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } }] }))
+    late = stale.promise.then(() => ({
+      kind: "full",
+      items: [{ message: "stale", severity: 1, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } }],
+    }))
     return late
   }
   ta.plainText = "export const n: number = 1\n"

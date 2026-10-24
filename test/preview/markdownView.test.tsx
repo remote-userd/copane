@@ -7,7 +7,10 @@ let destroy: (() => void) | null = null
 afterEach(() => destroy?.())
 
 async function render(md: string, width = 80): Promise<string> {
-  const setup = await testRender(<MarkdownView text={md} path="/tmp/x.md" width={width} protocol="blocks" animate={false} />, { width, height: 60 })
+  const setup = await testRender(<MarkdownView text={md} path="/tmp/x.md" width={width} protocol="blocks" animate={false} />, {
+    width,
+    height: 60,
+  })
   destroy = () => setup.renderer.destroy()
   for (let i = 0; i < 5; i++) await setup.renderOnce()
   return captureFrame(setup)
@@ -49,7 +52,10 @@ test("GitHub alerts, quotes and footnotes", async () => {
 })
 
 test("README-style HTML: centred blocks, inline tags, <br>, <details>, comments", async () => {
-  const f = await render('<div align="center">\n\n# Name\n\n</div>\n\nA <b>bold</b> word<br>next <!-- hidden -->\n\n<details><summary>More</summary>Inside</details>\n', 60)
+  const f = await render(
+    '<div align="center">\n\n# Name\n\n</div>\n\nA <b>bold</b> word<br>next <!-- hidden -->\n\n<details><summary>More</summary>Inside</details>\n',
+    60,
+  )
   expect(f).not.toMatch(/<\/?(div|b|br|details|summary)/)
   expect(f).not.toContain("hidden")
   const name = f.split("\n").find((l) => l.includes("Name"))!
@@ -87,7 +93,9 @@ test("emoji shortcodes become emoji, except in code", async () => {
 })
 
 test("HTML tables render like Markdown tables, with alignment", async () => {
-  const f = await render('<table>\n<tr><th>Name</th><th align="right">Price</th></tr>\n<tr><td><b>Cable</b></td><td style="text-align: right">9</td></tr>\n<tr><td>Keyboard</td><td>49</td></tr>\n</table>\n')
+  const f = await render(
+    '<table>\n<tr><th>Name</th><th align="right">Price</th></tr>\n<tr><td><b>Cable</b></td><td style="text-align: right">9</td></tr>\n<tr><td>Keyboard</td><td>49</td></tr>\n</table>\n',
+  )
   expect(f).toContain("┌")
   expect(f).toMatch(/│ Name\s+│\s+Price │/)
   expect(f).toMatch(/│ Cable\s+│\s+9 │/)

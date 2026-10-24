@@ -18,7 +18,8 @@ export const isImagePath = (path: string) => IMAGE_EXTS.has(extname(path).toLowe
  */
 const PREVIEW_SUFFIX = "\0preview"
 export const previewPath = (source: string) => source + PREVIEW_SUFFIX
-export const previewSource = (path: string): string | null => (path.endsWith(PREVIEW_SUFFIX) ? path.slice(0, -PREVIEW_SUFFIX.length) : null)
+export const previewSource = (path: string): string | null =>
+  path.endsWith(PREVIEW_SUFFIX) ? path.slice(0, -PREVIEW_SUFFIX.length) : null
 
 export interface ImageMeta {
   format: string
@@ -448,7 +449,9 @@ export class BufferStore {
    * telling us. If so, the buffer is put in conflict (as a reported change would) and true returned.
    */
   private async changedUnseen(buf: Buffer): Promise<boolean> {
-    const stat = await Bun.file(buf.path).stat().catch(() => null)
+    const stat = await Bun.file(buf.path)
+      .stat()
+      .catch(() => null)
     if (!stat || stat.mtimeMs === buf.diskMtimeMs) return false
     const loaded = await loadFile(buf.path).catch(() => null)
     if (!loaded || loaded.hash === buf.diskHash) {

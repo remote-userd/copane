@@ -1,4 +1,3 @@
-
 /** Control characters the native edit buffer rejects (everything but \t \n \r). */
 const CONTROL_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\x80-\x9F]/g
 

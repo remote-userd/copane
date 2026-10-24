@@ -132,7 +132,10 @@ test("mouse: tabs, ▸ replace, toggles, × dismisses, ⇄ on a match and on a f
 test("the sidebar does not show the project folder name", async () => {
   const { h, root } = await app({ "a.ts": "x\n" })
   const name = root.split("/").pop()!
-  const top = h.frame().split("\n").find((l) => l.includes("FILES") || l.includes("\u{f02dc}"))!
+  const top = h
+    .frame()
+    .split("\n")
+    .find((l) => l.includes("FILES") || l.includes("\u{f02dc}"))!
   // The temp folder's random tail: nothing else on the row could contain it.
   expect(top).not.toContain(name.slice(-4))
 })

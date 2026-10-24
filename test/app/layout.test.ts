@@ -39,7 +39,12 @@ test("dragged pane widths are saved after the drag and loaded next time", async 
 test("maximize AI hides the tree, takes focus, and the second press brings the tree back", async () => {
   const ws = createWorkspace("/tmp", { focus: "editor", treeVisible: true })
   await runCommand(ws, "view.maximizeAi")
-  expect(ws.ui.get()).toMatchObject({ aiMaximized: { tree: true, editor: false }, treeVisible: false, aiVisible: true, focus: "ai" })
+  expect(ws.ui.get()).toMatchObject({
+    aiMaximized: { tree: true, editor: false },
+    treeVisible: false,
+    aiVisible: true,
+    focus: "ai",
+  })
   await runCommand(ws, "view.maximizeAi")
   expect(ws.ui.get()).toMatchObject({ aiMaximized: null, treeVisible: true })
 })

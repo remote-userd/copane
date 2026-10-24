@@ -5,7 +5,18 @@ import { GitStatus, parsePorcelain } from "../../src/files/gitStatus"
 import { fixture, waitUntil } from "../helpers"
 
 test("parsePorcelain maps XY codes to marks, skipping rename sources", () => {
-  const out = [" M src/a.ts", "M  src/b.ts", "A  new.ts", "?? notes.md", " D gone.ts", "R  to.ts", "from.ts", "UU conflict.ts", "AA both.ts", ""].join("\0")
+  const out = [
+    " M src/a.ts",
+    "M  src/b.ts",
+    "A  new.ts",
+    "?? notes.md",
+    " D gone.ts",
+    "R  to.ts",
+    "from.ts",
+    "UU conflict.ts",
+    "AA both.ts",
+    "",
+  ].join("\0")
   const m = parsePorcelain(out, "/repo")
   expect(Object.fromEntries(m)).toEqual({
     "/repo/src/a.ts": "M",
@@ -20,7 +31,12 @@ test("parsePorcelain maps XY codes to marks, skipping rename sources", () => {
 })
 
 function git(cwd: string, ...args: string[]) {
-  const r = Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } })
+  const r = Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...args], {
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+    env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
+  })
   if (r.exitCode !== 0) throw new Error(r.stderr.toString())
 }
 
@@ -64,8 +80,18 @@ test("GitStatus outside a repo is disabled and quiet", async () => {
 test("parseBranch reads name, upstream and ahead/behind", async () => {
   const { parseBranch } = await import("../../src/files/gitStatus")
   expect(parseBranch("## main")).toEqual({ name: "main", ahead: 0, behind: 0 })
-  expect(parseBranch("## main...origin/main [ahead 2, behind 1]")).toEqual({ name: "main", ahead: 2, behind: 1, upstream: "origin/main" })
-  expect(parseBranch("## feat/x...origin/feat/x [behind 3]")).toEqual({ name: "feat/x", ahead: 0, behind: 3, upstream: "origin/feat/x" })
+  expect(parseBranch("## main...origin/main [ahead 2, behind 1]")).toEqual({
+    name: "main",
+    ahead: 2,
+    behind: 1,
+    upstream: "origin/main",
+  })
+  expect(parseBranch("## feat/x...origin/feat/x [behind 3]")).toEqual({
+    name: "feat/x",
+    ahead: 0,
+    behind: 3,
+    upstream: "origin/feat/x",
+  })
   expect(parseBranch("## No commits yet on master")).toEqual({ name: "master", ahead: 0, behind: 0 })
   expect(parseBranch("## HEAD (no branch)")).toEqual({ name: "detached", ahead: 0, behind: 0, detached: true })
 })

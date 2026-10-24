@@ -137,7 +137,9 @@ export function prettyKeys(keys: string, mac = false): string {
         const parts = k.split("+")
         const name = parts.pop()!
         const mods = MAC_MODS.filter(([m]) => parts.includes(m)).map(([, sym]) => sym)
-        return mods.join("") + (MAC_NAMES[name] ?? (name.length === 1 ? name.toUpperCase() : name[0]!.toUpperCase() + name.slice(1)))
+        return (
+          mods.join("") + (MAC_NAMES[name] ?? (name.length === 1 ? name.toUpperCase() : name[0]!.toUpperCase() + name.slice(1)))
+        )
       })
       .join(" ")
   return keys
@@ -164,7 +166,8 @@ export function keyLabel(keys: string, opts: { mac: boolean; cmd: boolean; taken
 /** Key names in a sentence ("Ctrl+Z undoes", "Ctrl+K E") written the Mac way, as keyLabel does. */
 export function keyText(text: string, opts: { mac: boolean; cmd: boolean }): string {
   if (!opts.mac) return text
-  return text.replace(/\b(?:(?:Ctrl|Alt|Shift|Cmd)\+)+(?:[A-Za-z0-9]+\b|[^\sA-Za-z0-9])(?: (?:Ctrl\+|Alt\+|Shift\+)*[A-Z](?![A-Za-z]))?/g, (m) =>
-    keyLabel(normalizeBinding(m), opts),
+  return text.replace(
+    /\b(?:(?:Ctrl|Alt|Shift|Cmd)\+)+(?:[A-Za-z0-9]+\b|[^\sA-Za-z0-9])(?: (?:Ctrl\+|Alt\+|Shift\+)*[A-Z](?![A-Za-z]))?/g,
+    (m) => keyLabel(normalizeBinding(m), opts),
   )
 }

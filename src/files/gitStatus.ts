@@ -325,7 +325,13 @@ export class GitStatus {
     // Detached: the header names no commit, so HEAD says which (and moving to another one is a change).
     const sha =
       out.startsWith("## HEAD (no branch)") && this.gitDir
-        ? (await Bun.file(join(this.gitDir, "HEAD")).text().catch(() => "")).trim().slice(0, 7)
+        ? (
+            await Bun.file(join(this.gitDir, "HEAD"))
+              .text()
+              .catch(() => "")
+          )
+            .trim()
+            .slice(0, 7)
         : ""
     if (this.stopped) return
     const key = sha + out
@@ -388,7 +394,14 @@ async function run(cmd: string[], cwd: string): Promise<string | null> {
   try {
     // No optional locks: see GIT_OPTIONAL_LOCKS in git/repo.ts.
     // A git that hangs (a network mount, a stuck lock) must not stop status updates for good.
-    const p = Bun.spawn(cmd, { cwd, stdout: "pipe", stderr: "ignore", stdin: "ignore", env: { ...Bun.env, GIT_OPTIONAL_LOCKS: "0" }, timeout: 30_000 })
+    const p = Bun.spawn(cmd, {
+      cwd,
+      stdout: "pipe",
+      stderr: "ignore",
+      stdin: "ignore",
+      env: { ...Bun.env, GIT_OPTIONAL_LOCKS: "0" },
+      timeout: 30_000,
+    })
     const [out, code] = await Promise.all([Bun.readableStreamToText(p.stdout), p.exited])
     return code === 0 ? out : null
   } catch {

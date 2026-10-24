@@ -56,7 +56,8 @@ test("a deleted folder leaves nothing cached behind", async () => {
   await tree.load()
   await tree.expand(join(root, "tmp"))
   await tree.expand(join(root, "tmp/deep"))
-  const cached = () => [...(tree as unknown as { children: Map<string, unknown> }).children.keys()].filter((d) => d.startsWith(join(root, "tmp")))
+  const cached = () =>
+    [...(tree as unknown as { children: Map<string, unknown> }).children.keys()].filter((d) => d.startsWith(join(root, "tmp")))
   expect(cached().length).toBe(2)
   await rm(join(root, "tmp"), { recursive: true })
   await tree.onFsChanges([join(root, "tmp")])

@@ -3,7 +3,14 @@ import { createCliRenderer } from "@opentui/core"
 import { createRoot, useTerminalDimensions } from "@opentui/react"
 import { App } from "./app/App"
 import { ErrorBoundary } from "./app/ErrorBoundary"
-import { installSignalHandlers, onShutdown, prepareTerminal, registerRenderer, setInternalErrorHandler, shutdown } from "./app/shutdown"
+import {
+  installSignalHandlers,
+  onShutdown,
+  prepareTerminal,
+  registerRenderer,
+  setInternalErrorHandler,
+  shutdown,
+} from "./app/shutdown"
 import { restoreRecovery, saveRecovery } from "./app/recovery"
 import { createWorkspace, WorkspaceContext } from "./app/workspace"
 import { pathArg } from "./app/args"
@@ -103,7 +110,16 @@ const reactRoot = createRoot(renderer)
 async function chooseFolder(): Promise<string> {
   const recent = await loadRecent()
   const path = await new Promise<string | null>((done) =>
-    reactRoot.render(<Welcome version={pkg.version} recent={recent} cwd={process.cwd()} onOpen={done} onForget={(p) => void forgetRecent(p)} onQuit={() => done(null)} />),
+    reactRoot.render(
+      <Welcome
+        version={pkg.version}
+        recent={recent}
+        cwd={process.cwd()}
+        onOpen={done}
+        onForget={(p) => void forgetRecent(p)}
+        onQuit={() => done(null)}
+      />,
+    ),
   )
   if (path === null) return shutdown(0)
   return path
@@ -135,7 +151,10 @@ setInternalErrorHandler(
   async (err) => {
     const n = await saveRecovery(ws)
     const message = err instanceof Error ? err.message : String(err)
-    ws.notify(`Internal error: ${message}${n ? ` (unsaved changes backed up)` : ""}. F1 › Report a problem sends it to the AI to file`, "error")
+    ws.notify(
+      `Internal error: ${message}${n ? ` (unsaved changes backed up)` : ""}. F1 › Report a problem sends it to the AI to file`,
+      "error",
+    )
   },
   () => saveRecovery(ws),
 )
@@ -153,7 +172,8 @@ ws.git = git
 const lsp = new LspManager(ws.root, config.lsp)
 ws.lsp = lsp
 lsp.onApplyEdit = (files) => applyFileEdits(ws, files)
-lsp.onMissing = (ft, hint) => ws.notify(`No ${ft} language server: install it with  ${hint}  (or set lsp.${ft} in the config)`, "warn")
+lsp.onMissing = (ft, hint) =>
+  ws.notify(`No ${ft} language server: install it with  ${hint}  (or set lsp.${ft} in the config)`, "warn")
 lsp.attach(ws.buffers)
 onShutdown(() => lsp.stop())
 void git.start()
@@ -190,7 +210,11 @@ else setTimeout(() => void showMacTip(ws).catch(() => null), 2000).unref?.()
 const turns = new TurnLog(
   ws.root,
   () => git.list().map((s) => s.repo!),
-  async () => (await Promise.all(git.list().map((s) => s.repo!.status().catch(() => [])))).flat().filter((e) => e.untracked).map((e) => e.path),
+  async () =>
+    (await Promise.all(git.list().map((s) => s.repo!.status().catch(() => []))))
+      .flat()
+      .filter((e) => e.untracked)
+      .map((e) => e.path),
 )
 ws.turns = turns
 // Files the AI changed stay marked for review until accepted (Alt+N).
@@ -206,7 +230,9 @@ ws.review = review
 // One batch at a time: two reloads of the same file must not interleave. A failure is a notice.
 let batches = Promise.resolve()
 const onFsBatch = (batch: FsBatch) => {
-  batches = batches.then(() => handleFsBatch(batch)).catch((err: Error) => ws.notify(`Reloading changed files failed: ${err.message}`, "error"))
+  batches = batches
+    .then(() => handleFsBatch(batch))
+    .catch((err: Error) => ws.notify(`Reloading changed files failed: ${err.message}`, "error"))
   return batches
 }
 const handleFsBatch = async (batch: FsBatch) => {
@@ -230,7 +256,9 @@ const handleFsBatch = async (batch: FsBatch) => {
   if (turns.open) {
     for (const path of batch.paths) {
       if (handled.has(path)) continue
-      const info = await Bun.file(path).stat().catch(() => null)
+      const info = await Bun.file(path)
+        .stat()
+        .catch(() => null)
       if (!info?.isDirectory()) void turns.fileChanged(path)
     }
   }
@@ -239,7 +267,8 @@ const handleFsBatch = async (batch: FsBatch) => {
 }
 const watcher = new FileWatcher(ws.root, onFsBatch, undefined, tree.matcher) // the tree's matcher: each .gitignore is read once
 void watcher.start().then(() => {
-  if (watcher.limitHit) ws.notify(`Watching the first ${FileWatcher.MAX_DIRS} folders only; changes deeper in may not reload`, "warn")
+  if (watcher.limitHit)
+    ws.notify(`Watching the first ${FileWatcher.MAX_DIRS} folders only; changes deeper in may not reload`, "warn")
 })
 onShutdown(() => watcher.stop())
 
@@ -287,7 +316,12 @@ if (isCompiled()) {
       {
         available: (tag, why) => {
           ws.ui.set({ updateAvailable: tag })
-          ws.notify(why ? `copane ${tag} is out, but installing it failed: ${why}` : `copane ${tag} is out (click it in the status bar to install)`, why ? "warn" : "info")
+          ws.notify(
+            why
+              ? `copane ${tag} is out, but installing it failed: ${why}`
+              : `copane ${tag} is out (click it in the status bar to install)`,
+            why ? "warn" : "info",
+          )
         },
         installed: (tag) => ws.notify(`copane ${tag} installed in the background (Ctrl+Alt+R restarts, or it starts next time)`),
       },

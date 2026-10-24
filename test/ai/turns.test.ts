@@ -9,10 +9,19 @@ const ENV = GIT_ENV
 
 async function repo(files: Record<string, string>, untracked: Record<string, string> = {}) {
   const root = await fixture(files)
-  for (const args of [["init", "-q"], ["add", "."], ["commit", "-qm", "init"]]) Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
+  for (const args of [
+    ["init", "-q"],
+    ["add", "."],
+    ["commit", "-qm", "init"],
+  ])
+    Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
   for (const [p, c] of Object.entries(untracked)) writeFileSync(join(root, p), c)
   const git = new GitRepo(root)
-  const log = new TurnLog(root, () => git, async () => (await git.status()).filter((e) => e.untracked).map((e) => e.path))
+  const log = new TurnLog(
+    root,
+    () => git,
+    async () => (await git.status()).filter((e) => e.untracked).map((e) => e.path),
+  )
   const p = (rel: string) => join(root, rel)
   /** The AI writes a file, and the watcher reports it. */
   const aiWrites = async (rel: string, text: string | null) => {
@@ -101,13 +110,22 @@ test("without git, an open tab's last disk text is the 'before'; otherwise it ca
 
 test("in a CRLF checkout, undo writes the file back with CRLF (the repo stores LF)", async () => {
   const root = await fixture({ ".gitattributes": "*.txt text eol=crlf\n", "a.txt": "one\ntwo\n" })
-  for (const args of [["init", "-q"], ["add", "."], ["commit", "-qm", "init"]]) Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
+  for (const args of [
+    ["init", "-q"],
+    ["add", "."],
+    ["commit", "-qm", "init"],
+  ])
+    Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
   // Check out again so the working file gets CRLF, as git would on clone.
   unlinkSync(join(root, "a.txt"))
   Bun.spawnSync(["git", "checkout", "--", "a.txt"], { cwd: root, env: ENV })
   expect(readFileSync(join(root, "a.txt"), "utf8")).toBe("one\r\ntwo\r\n")
   const git = new GitRepo(root)
-  const log = new TurnLog(root, () => git, async () => [])
+  const log = new TurnLog(
+    root,
+    () => git,
+    async () => [],
+  )
   await log.begin("p")
   writeFileSync(join(root, "a.txt"), "AI\r\n")
   await log.fileChanged(join(root, "a.txt"))
@@ -119,9 +137,17 @@ test("in a CRLF checkout, undo writes the file back with CRLF (the repo stores L
 
 test("before the first commit, a staged file the AI edits is unknown, never 'new' (undo would delete it)", async () => {
   const root = await fixture({ "a.ts": "staged work\n" })
-  for (const args of [["init", "-q"], ["add", "."]]) Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
+  for (const args of [
+    ["init", "-q"],
+    ["add", "."],
+  ])
+    Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
   const git = new GitRepo(root)
-  const log = new TurnLog(root, () => git, async () => (await git.status()).filter((e) => e.untracked).map((e) => e.path))
+  const log = new TurnLog(
+    root,
+    () => git,
+    async () => (await git.status()).filter((e) => e.untracked).map((e) => e.path),
+  )
   await log.begin("p")
   writeFileSync(join(root, "a.ts"), "AI\n")
   await log.fileChanged(join(root, "a.ts"))

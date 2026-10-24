@@ -17,7 +17,12 @@ afterEach(() => {
   h = null
 })
 const sh = (cwd: string, ...args: string[]) =>
-  Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, ...ENV, GIT_OPTIONAL_LOCKS: "0" } }).stdout.toString()
+  Bun.spawnSync(["git", ...args], {
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+    env: { ...process.env, ...ENV, GIT_OPTIONAL_LOCKS: "0" },
+  }).stdout.toString()
 const until = (cond: () => boolean | Promise<boolean>, ms = 3000) => waitUntil(cond, ms, () => h?.setup.renderOnce())
 
 test("Alt+H peeks a change; s stages only that hunk; r reverts; Alt+F5 moves between changes", async () => {

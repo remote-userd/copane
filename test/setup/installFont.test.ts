@@ -78,7 +78,9 @@ test("windowsFontScript installs per user and registers each font", () => {
 })
 
 test("the face name matches the bundled font's family name", async () => {
-  const bytes = new Uint8Array(await Bun.file(join(import.meta.dir, "../../assets/fonts/CaskaydiaMonoNerdFont-Regular.ttf")).arrayBuffer())
+  const bytes = new Uint8Array(
+    await Bun.file(join(import.meta.dir, "../../assets/fonts/CaskaydiaMonoNerdFont-Regular.ttf")).arrayBuffer(),
+  )
   expect(fontNames(bytes).get(16)).toBe(FACE)
 })
 

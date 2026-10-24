@@ -8,7 +8,19 @@ let h: Harness | null = null
 beforeEach(() => resetNavHistory())
 afterEach(() => h?.setup.renderer.destroy())
 
-const code = ["import x from 'y'", "", "export function alpha() {", "  return 1", "}", "", "class Beta {", "  gamma(a) {", "  }", "}", ...numbered(60).split("\n")].join("\n")
+const code = [
+  "import x from 'y'",
+  "",
+  "export function alpha() {",
+  "  return 1",
+  "}",
+  "",
+  "class Beta {",
+  "  gamma(a) {",
+  "  }",
+  "}",
+  ...numbered(60).split("\n"),
+].join("\n")
 
 async function app() {
   const root = await fixture({ "a.ts": code, "b.ts": "b\n", "c.ts": "c\n" })

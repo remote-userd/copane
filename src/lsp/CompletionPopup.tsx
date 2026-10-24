@@ -8,8 +8,25 @@ import { colToIndex, indexToCol, wordBefore } from "./positions"
 
 /** LSP CompletionItemKind → a short tag. */
 const KIND: Record<number, string> = {
-  1: "txt", 2: "fn", 3: "fn", 4: "new", 5: "fld", 6: "var", 7: "cls", 8: "int", 9: "mod", 10: "prop",
-  12: "val", 13: "enum", 14: "kw", 15: "snip", 17: "file", 20: "enum", 21: "const", 22: "type", 25: "T",
+  1: "txt",
+  2: "fn",
+  3: "fn",
+  4: "new",
+  5: "fld",
+  6: "var",
+  7: "cls",
+  8: "int",
+  9: "mod",
+  10: "prop",
+  12: "val",
+  13: "enum",
+  14: "kw",
+  15: "snip",
+  17: "file",
+  20: "enum",
+  21: "const",
+  22: "type",
+  25: "T",
 }
 
 interface State {
@@ -160,7 +177,13 @@ export function CompletionPopup() {
   if (!pos) return null
   const height = Math.min(10, items.length)
   const top = Math.max(0, Math.min(sel - height + 1, items.length - height))
-  const width = Math.min(60, Math.max(24, ...items.slice(top, top + height).map((i) => i.label.length + 8 + (i.detail ? Math.min(24, i.detail.length) : 0))))
+  const width = Math.min(
+    60,
+    Math.max(
+      24,
+      ...items.slice(top, top + height).map((i) => i.label.length + 8 + (i.detail ? Math.min(24, i.detail.length) : 0)),
+    ),
+  )
   // Under the cursor when it fits, else above it; aligned with the word's start.
   const below = pos.y + 1 + height <= dims.height - 1
   const y = below ? pos.y + 1 : Math.max(0, pos.y - height)
@@ -169,7 +192,16 @@ export function CompletionPopup() {
   const x = Math.max(0, Math.min(wordX - 5, dims.width - width))
 
   return (
-    <box position="absolute" left={x} top={y} width={width} height={height} zIndex={150} backgroundColor={colors.panelBg} flexDirection="column">
+    <box
+      position="absolute"
+      left={x}
+      top={y}
+      width={width}
+      height={height}
+      zIndex={150}
+      backgroundColor={colors.panelBg}
+      flexDirection="column"
+    >
       {items.slice(top, top + height).map((it, i) => {
         const idx = top + i
         const active = idx === sel

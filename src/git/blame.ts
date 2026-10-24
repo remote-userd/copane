@@ -79,7 +79,10 @@ export function useLineBlame(ws: Workspace, on = ws.config.git.blame): BlameLine
 }
 
 /** The same, with the line it is for: the cursor may have moved on before the next blame arrives. */
-export function useLineBlameAt(ws: Workspace, on: boolean): { bufId: number; row: number; line: BlameLine | undefined } | undefined {
+export function useLineBlameAt(
+  ws: Workspace,
+  on: boolean,
+): { bufId: number; row: number; line: BlameLine | undefined } | undefined {
   const [at, setAt] = useState<{ bufId: number; row: number; line: BlameLine | undefined } | undefined>(undefined)
   const buf = ws.buffers.active
   const row = buf?.cursor.row ?? -1

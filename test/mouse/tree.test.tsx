@@ -40,7 +40,17 @@ test("right-click a row opens the file menu; right-click empty space offers New 
   const b = h.find("b.txt")
   await h.step(() => h.mouse.click(b.x, b.y, MouseButtons.RIGHT))
   const f = h.frame()
-  for (const item of ["New File…", "New Folder…", "Rename…", "Delete…", revealLabel(), "Copy Path", "Copy Relative Path", "Send to AI"]) expect(f).toContain(item)
+  for (const item of [
+    "New File…",
+    "New Folder…",
+    "Rename…",
+    "Delete…",
+    revealLabel(),
+    "Copy Path",
+    "Copy Relative Path",
+    "Send to AI",
+  ])
+    expect(f).toContain(item)
   expect(tree.selected).toBe(join(root, "b.txt"))
   await h.step(() => h.keys.pressEscape())
   await settle(150)

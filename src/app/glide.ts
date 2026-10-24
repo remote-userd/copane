@@ -10,7 +10,10 @@ export class Glide {
   private timer: ReturnType<typeof setInterval> | null = null
 
   /** Whether to glide at all; off, `by` moves at once. */
-  constructor(public enabled = true, private frameMs = 16) {}
+  constructor(
+    public enabled = true,
+    private frameMs = 16,
+  ) {}
 
   get active(): boolean {
     return this.timer !== null

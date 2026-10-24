@@ -28,7 +28,11 @@ export function matchBracket(lines: string[], row: number, index: number, limit 
     const l = lines[r] ?? ""
     const c = l[i]
     if (c === ch) depth++
-    else if (c === pair && --depth === 0) return [{ line: row, index: at }, { line: r, index: i }]
+    else if (c === pair && --depth === 0)
+      return [
+        { line: row, index: at },
+        { line: r, index: i },
+      ]
     if (++seen > limit) return null
     if (open) {
       i++
@@ -50,7 +54,12 @@ export function matchBracket(lines: string[], row: number, index: number, limit 
 const isWord = (c: string | undefined) => !!c && /[\w$]/.test(c)
 
 /** Other whole-word occurrences of the identifier under the cursor (at most `limit`). */
-export function wordOccurrences(lines: string[], row: number, index: number, limit = 500): { line: number; start: number; end: number }[] {
+export function wordOccurrences(
+  lines: string[],
+  row: number,
+  index: number,
+  limit = 500,
+): { line: number; start: number; end: number }[] {
   const line = lines[row] ?? ""
   let s = index
   let e = index

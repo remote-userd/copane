@@ -119,13 +119,21 @@ export function FilePicker({ tree }: { tree: TreeModel }) {
       const ed = active?.textarea as CodeEditorRenderable | null | undefined
       if (!ed) return []
       const r = parseGoto(term || "x", ed.lineCount)
-      if (typeof r === "string") return [{ key: "hint", label: term ? r : `Type a line number (1–${ed.lineCount})`, positions: [], run: () => {} }]
-      return [{ key: "line", label: `Go to line ${r.row + 1}${r.col ? `, column ${r.col + 1}` : ""}`, positions: [], run: () => {
-        close()
-        recordJump(ws)
-        ed.goTo(r.row, r.col)
-        ws.buffers.onCursorChange(active!.id)
-      } }]
+      if (typeof r === "string")
+        return [{ key: "hint", label: term ? r : `Type a line number (1–${ed.lineCount})`, positions: [], run: () => {} }]
+      return [
+        {
+          key: "line",
+          label: `Go to line ${r.row + 1}${r.col ? `, column ${r.col + 1}` : ""}`,
+          positions: [],
+          run: () => {
+            close()
+            recordJump(ws)
+            ed.goTo(r.row, r.col)
+            ws.buffers.onCursorChange(active!.id)
+          },
+        },
+      ]
     }
     if (mode === "symbol" || mode === "workspace") {
       const list = (mode === "symbol" ? symbols : wsSymbols) ?? []
@@ -137,18 +145,39 @@ export function FilePicker({ tree }: { tree: TreeModel }) {
         const i = list.findIndex((s, j) => s.name === m.item && !used.has(j))
         used.add(i)
         const s = list[i]!
-        const where = mode === "workspace" ? `${rel(s.path)}:${s.line + 1}` : `${s.container ? s.container + " · " : ""}line ${s.line + 1}`
-        return { key: `${s.path}:${s.line}:${i}`, label: s.name, positions: m.positions, detail: `${KIND_TAG[s.kind] ?? ""} ${where}`.trim(), run: () => jumpTo(s) }
+        const where =
+          mode === "workspace" ? `${rel(s.path)}:${s.line + 1}` : `${s.container ? s.container + " · " : ""}line ${s.line + 1}`
+        return {
+          key: `${s.path}:${s.line}:${i}`,
+          label: s.name,
+          positions: m.positions,
+          detail: `${KIND_TAG[s.kind] ?? ""} ${where}`.trim(),
+          run: () => jumpTo(s),
+        }
       })
     }
     if (!files) return []
     if (!term) {
       // Recently opened files first (not the current one), then the rest.
-      const recent = ws.buffers.recent.filter((p) => p !== active?.path).map(rel).filter((r) => !r.startsWith(".."))
+      const recent = ws.buffers.recent
+        .filter((p) => p !== active?.path)
+        .map(rel)
+        .filter((r) => !r.startsWith(".."))
       const rest = files.filter((f) => !recent.includes(f))
-      return [...recent, ...rest].slice(0, 200).map((f, i) => ({ key: f, label: f, positions: [], detail: i < recent.length ? "recent" : undefined, run: () => openFile(f) }))
+      return [...recent, ...rest].slice(0, 200).map((f, i) => ({
+        key: f,
+        label: f,
+        positions: [],
+        detail: i < recent.length ? "recent" : undefined,
+        run: () => openFile(f),
+      }))
     }
-    return fuzzyFilter(term, files, 200).map((m) => ({ key: m.item, label: m.item, positions: m.positions, run: () => openFile(m.item) }))
+    return fuzzyFilter(term, files, 200).map((m) => ({
+      key: m.item,
+      label: m.item,
+      positions: m.positions,
+      run: () => openFile(m.item),
+    }))
   }, [mode, term, files, symbols, wsSymbols, active?.id])
 
   const listH = Math.max(3, Math.min(20, dims.height - 10))
@@ -159,7 +188,8 @@ export function FilePicker({ tree }: { tree: TreeModel }) {
     let handled = true
     if (key.name === "escape" || (key.ctrl && key.name === "p")) close()
     else if (key.name === "up" || (key.ctrl && key.name === "k")) setSel((s) => Math.max(0, s - 1))
-    else if (key.name === "down" || (key.ctrl && key.name === "n") || key.name === "tab") setSel((s) => Math.min(items.length - 1, s + 1))
+    else if (key.name === "down" || (key.ctrl && key.name === "n") || key.name === "tab")
+      setSel((s) => Math.min(items.length - 1, s + 1))
     else if (key.name === "return") void items[sel]?.run()
     else handled = false
     if (handled) {

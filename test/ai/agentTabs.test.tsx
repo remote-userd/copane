@@ -72,7 +72,12 @@ test("a second agent opens in its own tab; text goes to the visible tab; tabs sw
 
 test("an agent in a git worktree works on its own branch; closing can remove the worktree", async () => {
   const root = await fixture({ "a.txt": "a" })
-  for (const args of [["init", "-q", "-b", "main"], ["add", "."], ["commit", "-qm", "init"]]) Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
+  for (const args of [
+    ["init", "-q", "-b", "main"],
+    ["add", "."],
+    ["commit", "-qm", "init"],
+  ])
+    Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
   const ws = await pane(root)
   git = new GitStatus(root)
   await git.start(60_000)
@@ -94,11 +99,17 @@ test("an agent in a git worktree works on its own branch; closing can remove the
   await h!.step(() => modal.options.find((o) => o.key === "r")!.run())
   await until(() => !existsSync(wt.path))
   expect(existsSync(wt.path)).toBe(false)
-  expect(Bun.spawnSync(["git", "branch", "--list", "copane/second-1"], { cwd: root, env: ENV }).stdout.toString()).toContain("copane/second-1")
+  expect(Bun.spawnSync(["git", "branch", "--list", "copane/second-1"], { cwd: root, env: ENV }).stdout.toString()).toContain(
+    "copane/second-1",
+  )
 })
 
 test("worktree paths sit beside the project, with a branch per agent", () => {
-  expect(worktreeFor("/work/app", "Claude Code", 2)).toEqual({ path: "/work/app-claude-code-2", branch: "copane/claude-code-2", cwd: "/work/app-claude-code-2" })
+  expect(worktreeFor("/work/app", "Claude Code", 2)).toEqual({
+    path: "/work/app-claude-code-2",
+    branch: "copane/claude-code-2",
+    cwd: "/work/app-claude-code-2",
+  })
   // Opened in a subfolder of the repo: the worktree goes beside the repo, the agent starts in the same subfolder.
   expect(worktreeFor("/work/mono/pkg/app", "claude", 1, "/work/mono")).toEqual({
     path: "/work/mono-claude-1",
@@ -131,7 +142,12 @@ test("× on a tab closes it, and so does a middle-click; a single tab has neithe
 
 async function worktreeAgent() {
   const root = await fixture({ "a.txt": "a\n", "b.txt": "b\n" })
-  for (const args of [["init", "-q", "-b", "main"], ["add", "."], ["commit", "-qm", "init"]]) Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
+  for (const args of [
+    ["init", "-q", "-b", "main"],
+    ["add", "."],
+    ["commit", "-qm", "init"],
+  ])
+    Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
   const ws = await pane(root)
   git = new GitStatus(root)
   await git.start(60_000)
@@ -230,7 +246,13 @@ test("discarding a worktree agent's work removes its worktree, branch and tab", 
 
 test("a new worktree agent skips a number whose branch was kept after its worktree was removed", async () => {
   const root = await fixture({ "a.txt": "a" })
-  for (const args of [["init", "-q", "-b", "main"], ["add", "."], ["commit", "-qm", "init"], ["branch", "copane/second-1"]]) Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
+  for (const args of [
+    ["init", "-q", "-b", "main"],
+    ["add", "."],
+    ["commit", "-qm", "init"],
+    ["branch", "copane/second-1"],
+  ])
+    Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
   const ws = await pane(root)
   git = new GitStatus(root)
   await git.start(60_000)
@@ -281,7 +303,8 @@ test("a worktree agent whose tab closed can be resumed from the + menu", async (
 })
 
 test("git worktree list --porcelain: each folder and its branch", () => {
-  const out = "worktree /p/app\nHEAD 1111\nbranch refs/heads/main\n\nworktree /p/app-claude-4\nHEAD 2222\nbranch refs/heads/copane/claude-4\n\nworktree /p/x\nHEAD 3333\ndetached\n"
+  const out =
+    "worktree /p/app\nHEAD 1111\nbranch refs/heads/main\n\nworktree /p/app-claude-4\nHEAD 2222\nbranch refs/heads/copane/claude-4\n\nworktree /p/x\nHEAD 3333\ndetached\n"
   expect(parseWorktrees(out)).toEqual([
     { path: "/p/app", branch: "main" },
     { path: "/p/app-claude-4", branch: "copane/claude-4" },
@@ -327,15 +350,32 @@ test("tabs open before a restart come back: each claude tab in its conversation,
   Bun.env.CLAUDE_CONFIG_DIR = home
   try {
     // Stand-ins for claude that print the args they got ($0 is the tab's name).
-    const agent = (name: string) => ({ name, command: "/bin/sh", args: ["-c", 'echo "$0 args:$*"; exec cat', name], cwd: root, branch: null })
-    const web = { name: "web", command: "/bin/sh", args: [], cwd: join(root, "web"), branch: null, terminal: { run: "echo web-is-up" } }
+    const agent = (name: string) => ({
+      name,
+      command: "/bin/sh",
+      args: ["-c", 'echo "$0 args:$*"; exec cat', name],
+      cwd: root,
+      branch: null,
+    })
+    const web = {
+      name: "web",
+      command: "/bin/sh",
+      args: [],
+      cwd: join(root, "web"),
+      branch: null,
+      terminal: { run: "echo web-is-up" },
+    }
     const tabs = [{ ...agent("one"), claudeSession: saved1 }, { ...agent("two"), claudeSession: fresh2 }, web]
     // A worktree removed meanwhile: its tab stays closed.
     const restored = await restorableTabs({ tabs: [...tabs, { ...agent("gone"), cwd: join(root, "removed") }], active: 1 })
     expect(restored).toEqual({ tabs, active: 1 })
 
     const ws = createWorkspace(root, {}, editorShown())
-    h = await renderApp(ws, { tree: <text>TREE</text>, ai: <TerminalPane config={config()} restored={restored} /> }, { width: 240, height: 24 })
+    h = await renderApp(
+      ws,
+      { tree: <text>TREE</text>, ai: <TerminalPane config={config()} restored={restored} /> },
+      { width: 240, height: 24 },
+    )
     // The shown tab: never talked to, so a new conversation under its id.
     await until(() => h!.frame().includes(`two args:--session-id ${fresh2}`))
     expect(ws.agents!.snapshot()).toEqual({ tabs, active: 1 })

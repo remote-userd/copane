@@ -17,7 +17,12 @@ export function revealLabel(platform: RevealPlatform = revealPlatform()): string
  * Windows form of the path (from `wslpath -w`); on Linux the file manager is asked over D-Bus to
  * select it, and without D-Bus its folder is opened.
  */
-export function revealCommand(path: string, isDir: boolean, platform: RevealPlatform, opts: { winPath?: string; hasDbus?: boolean } = {}): string[] {
+export function revealCommand(
+  path: string,
+  isDir: boolean,
+  platform: RevealPlatform,
+  opts: { winPath?: string; hasDbus?: boolean } = {},
+): string[] {
   if (platform === "wsl") return ["explorer.exe", `/select,${opts.winPath ?? path}`]
   if (platform === "mac") return ["open", "-R", path]
   if (opts.hasDbus) {

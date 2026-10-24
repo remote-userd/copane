@@ -74,12 +74,18 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
     if ("error" in r && r.blocked) {
       setBlocked(r.blocked)
       const names = r.blocked.slice(0, 3).join(", ") + (r.blocked.length > 3 ? ` +${r.blocked.length - 3} more` : "")
-      return setStatus({ text: `Not merged: your uncommitted changes to ${names} would be overwritten. c commit them and merge · s Source control`, kind: "error" })
+      return setStatus({
+        text: `Not merged: your uncommitted changes to ${names} would be overwritten. c commit them and merge · s Source control`,
+        kind: "error",
+      })
     }
     if ("error" in r) return setStatus({ text: `Merge failed: ${r.error}`, kind: "error" })
     if ("conflicts" in r) {
       close()
-      return ws.notify(`Merge has conflicts in ${r.conflicts} file${r.conflicts === 1 ? "" : "s"}: resolve them with the bar in each file (Alt+1/2/3), then commit`, "warn")
+      return ws.notify(
+        `Merge has conflicts in ${r.conflicts} file${r.conflicts === 1 ? "" : "s"}: resolve them with the bar in each file (Alt+1/2/3), then commit`,
+        "warn",
+      )
     }
     afterMerge(ws, sessionId, worktreeOf(session), session.branch, changes?.length ?? 0)
   }
@@ -152,7 +158,9 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
   if (!session?.branch) {
     return (
       <Modal title="Review & merge" height={6} onClose={close}>
-        <text fg={colors.dim}>This agent doesn't work in its own git worktree, so there is nothing to merge: its changes are already in your project.</text>
+        <text fg={colors.dim}>
+          This agent doesn't work in its own git worktree, so there is nothing to merge: its changes are already in your project.
+        </text>
       </Modal>
     )
   }
@@ -167,7 +175,12 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
     </HoverBox>
   )
   return (
-    <Modal title={`Review & merge ${session.name} (${session.branch}) into ${into}`} width={w} height={dims.height - 2} onClose={close}>
+    <Modal
+      title={`Review & merge ${session.name} (${session.branch}) into ${into}`}
+      width={w}
+      height={dims.height - 2}
+      onClose={close}
+    >
       <box flexDirection="row" flexGrow={1} gap={2}>
         <box width={leftW} flexShrink={0} flexDirection="column">
           <box flexDirection="row" gap={1} height={1}>
@@ -228,7 +241,12 @@ export function MergeAgentModal({ sessionId }: { sessionId: number }) {
         </box>
       </box>
       <box height={1} flexDirection="row" overflow="hidden">
-        <text selectable={false} fg={confirm ? colors.warn : status?.kind === "error" ? colors.error : status?.kind === "busy" ? colors.warn : colors.dim}>
+        <text
+          selectable={false}
+          fg={
+            confirm ? colors.warn : status?.kind === "error" ? colors.error : status?.kind === "busy" ? colors.warn : colors.dim
+          }
+        >
           {confirm?.text ?? status?.text ?? "↑↓ file · Enter open · m merge into your branch · d discard · Esc close"}
         </text>
       </box>

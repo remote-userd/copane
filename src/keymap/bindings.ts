@@ -210,9 +210,10 @@ export function buildBindings(
 }
 
 /** Validate user overrides from config; unknown command ids are reported, not applied. */
-export function sanitizeOverrides(
-  keys: Partial<Record<Layer, Record<string, string | null>>>,
-): { overrides: Partial<Record<Layer, Record<string, CommandId | null>>>; unknown: string[] } {
+export function sanitizeOverrides(keys: Partial<Record<Layer, Record<string, string | null>>>): {
+  overrides: Partial<Record<Layer, Record<string, CommandId | null>>>
+  unknown: string[]
+} {
   const overrides: Partial<Record<Layer, Record<string, CommandId | null>>> = {}
   const unknown: string[] = []
   for (const [layer, map] of Object.entries(keys) as [Layer, Record<string, string | null>][]) {
@@ -247,12 +248,7 @@ const LAYERS: Layer[] = ["global", "editor", "tree", "ai"]
 const MAC_SENT: Record<string, string> = { "ctrl+a": "⌘←", "ctrl+e": "⌘→" }
 
 /** A binding as shown in the palette and help (⌘ on a Mac when Cmd reaches it). */
-export function bindingLabel(
-  bindings: Bindings,
-  layer: Layer,
-  keys: string,
-  style: { mac: boolean; cmd: boolean },
-): string {
+export function bindingLabel(bindings: Bindings, layer: Layer, keys: string, style: { mac: boolean; cmd: boolean }): string {
   if (style.mac && layer === "editor" && MAC_SENT[keys]) return MAC_SENT[keys]
   return keyLabel(keys, { ...style, taken: (cmd) => LAYERS.some((l) => bindings[l].has(cmd)) })
 }

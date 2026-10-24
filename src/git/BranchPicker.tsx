@@ -127,7 +127,12 @@ export function BranchPicker({ mode = "switch" }: { mode?: "switch" | "delete" }
   const listH = Math.max(3, Math.min(14, dims.height - 9))
   const start = Math.max(0, Math.min(sel - listH + 1, items.length - listH))
   return (
-    <Modal title={`${deleting ? "Delete branch" : "Switch branch"}${inRepo}`} width={Math.min(64, dims.width - 4)} height={listH + 6} onClose={close}>
+    <Modal
+      title={`${deleting ? "Delete branch" : "Switch branch"}${inRepo}`}
+      width={Math.min(64, dims.width - 4)}
+      height={listH + 6}
+      onClose={close}
+    >
       <input
         cursorStyle={cursorStyle}
         focused={!confirm}
@@ -163,7 +168,12 @@ export function BranchPicker({ mode = "switch" }: { mode?: "switch" | "delete" }
                   else void run(item)
                 }}
               >
-                <text selectable={false} wrapMode="none" flexGrow={1} fg={item === CREATE ? colors.ok : b?.current ? colors.accent : colors.text}>
+                <text
+                  selectable={false}
+                  wrapMode="none"
+                  flexGrow={1}
+                  fg={item === CREATE ? colors.ok : b?.current ? colors.accent : colors.text}
+                >
                   {item === CREATE ? `+ Create branch "${name}"` : `${b?.current ? "● " : "  "}${item}`}
                 </text>
                 {idx === sel && item !== CREATE && !b?.current && !deleting ? (
@@ -189,7 +199,10 @@ export function BranchPicker({ mode = "switch" }: { mode?: "switch" | "delete" }
       </box>
       <box height={1}>
         <text selectable={false} fg={confirm ? colors.warn : error ? colors.error : colors.dim}>
-          {confirm ? confirm.text : (error ?? (deleting ? "Enter or click deletes · Esc closes" : "Enter switches · Shift+Del or right-click deletes · Esc"))}
+          {confirm
+            ? confirm.text
+            : (error ??
+              (deleting ? "Enter or click deletes · Esc closes" : "Enter switches · Shift+Del or right-click deletes · Esc"))}
         </text>
       </box>
     </Modal>

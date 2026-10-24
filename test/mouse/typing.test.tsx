@@ -86,17 +86,25 @@ test("PageDown/PageUp move the cursor a screen", async () => {
   // Smooth scrolling glides a few lines per frame: wait until the cursor stops moving.
   const settled = () => {
     let last = -1
-    return waitUntil(() => {
-      const row = ta.logicalCursor.row
-      const still = row === last
-      last = row
-      return still
-    }, 4000, () => h.setup.renderOnce())
+    return waitUntil(
+      () => {
+        const row = ta.logicalCursor.row
+        const still = row === last
+        last = row
+        return still
+      },
+      4000,
+      () => h.setup.renderOnce(),
+    )
   }
   await h.step(() => h.keys.pressKey("\x1b[6~"))
   await settled()
   expect(ta.logicalCursor.row).toBeGreaterThan(5)
   await h.step(() => h.keys.pressKey("\x1b[5~"))
-  await waitUntil(() => ta.logicalCursor.row === 0, 4000, () => h.setup.renderOnce())
+  await waitUntil(
+    () => ta.logicalCursor.row === 0,
+    4000,
+    () => h.setup.renderOnce(),
+  )
   expect(ta.logicalCursor.row).toBe(0)
 })

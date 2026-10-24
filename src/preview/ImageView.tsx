@@ -34,7 +34,13 @@ type ImageViewProps = { buf: Buffer; active: boolean; focused: boolean }
 /** Re-rendered only when the tab's state or the image itself changes. */
 export const ImageView = memo(
   (props: ImageViewProps) => <ImageViewInner {...props} />,
-  (a, b) => a.active === b.active && a.focused === b.focused && a.buf.id === b.buf.id && a.buf.version === b.buf.version && a.buf.deleted === b.buf.deleted && a.buf.image === b.buf.image,
+  (a, b) =>
+    a.active === b.active &&
+    a.focused === b.focused &&
+    a.buf.id === b.buf.id &&
+    a.buf.version === b.buf.version &&
+    a.buf.deleted === b.buf.deleted &&
+    a.buf.image === b.buf.image,
 )
 
 function ImageViewInner({ buf, active, focused }: ImageViewProps) {
@@ -45,7 +51,13 @@ function ImageViewInner({ buf, active, focused }: ImageViewProps) {
   const onError = useCallback((message: string) => setError(message), [])
   const meta = buf.image
   const animated = (meta?.frames ?? 1) > 1
-  const problem = buf.deleted ? "The file was deleted" : !meta ? "Can't read this image" : error ? `Can't display this image: ${error}` : null
+  const problem = buf.deleted
+    ? "The file was deleted"
+    : !meta
+      ? "Can't read this image"
+      : error
+        ? `Can't display this image: ${error}`
+        : null
   return (
     <box visible={active} flexGrow={1} flexDirection="column" backgroundColor={colors.bg}>
       {focused && animated ? <PlayKeys toggle={() => setPaused((p) => !p)} /> : null}

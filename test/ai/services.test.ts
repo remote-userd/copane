@@ -43,7 +43,11 @@ test("a TypeScript watch error: the first error after the rebuild started, point
   expect(e.text.split("\n")[0]).toBe("src/app.service.ts:12:5 - error TS2322: Type 'string' is not assignable to type 'number'.")
   expect(e.location).toEqual({ path: "/p/api/src/app.service.ts", line: 12, col: 5 })
   // Fixed: the next round reports no errors.
-  const fixed = [...NEST_TS.split("\n"), "[2:01:09 PM] File change detected. Starting incremental compilation...", "[2:01:10 PM] Found 0 errors. Watching for file changes."]
+  const fixed = [
+    ...NEST_TS.split("\n"),
+    "[2:01:09 PM] File change detected. Starting incremental compilation...",
+    "[2:01:10 PM] Found 0 errors. Watching for file changes.",
+  ]
   expect(lastError(fixed, "/p/api")).toBeNull()
 })
 
@@ -65,10 +69,16 @@ Node.js v24.1.0`
 })
 
 test("a Nuxt/Vite error, then a reload clears it; plain logs are no error", () => {
-  const out = [" ERROR  Pre-transform error: Failed to resolve import \"~/x\" from \"pages/index.vue\". Does the file exist?", "  Plugin: vite:import-analysis", "  File: /p/web/pages/index.vue:3:21"]
+  const out = [
+    ' ERROR  Pre-transform error: Failed to resolve import "~/x" from "pages/index.vue". Does the file exist?',
+    "  Plugin: vite:import-analysis",
+    "  File: /p/web/pages/index.vue:3:21",
+  ]
   expect(lastError(out, "/p/web")!.location).toEqual({ path: "/p/web/pages/index.vue", line: 3, col: 21 })
   expect(lastError([...out, "✔ Vite server hmr update /pages/index.vue"], "/p/web")).toBeNull()
-  expect(lastError(["[Nest] 1  - LOG [NestApplication] Nest application successfully started", "GET /users 200"], "/p")).toBeNull()
+  expect(
+    lastError(["[Nest] 1  - LOG [NestApplication] Nest application successfully started", "GET /users 200"], "/p"),
+  ).toBeNull()
 })
 
 test("output lines: colours and cursor codes stripped, carriage returns overwrite, capped", () => {

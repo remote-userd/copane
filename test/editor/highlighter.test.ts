@@ -7,7 +7,15 @@ const resolve = (g: string) => styles[g] ?? styles[g.split(".")[0]!] ?? null
 describe("mapHighlights", () => {
   test("maps single-line ranges to per-line columns", () => {
     const text = "const a = 'x'\nlet b"
-    const out = mapHighlights(text, [[0, 5, "keyword"], [10, 13, "string"], [14, 17, "keyword"]], resolve)
+    const out = mapHighlights(
+      text,
+      [
+        [0, 5, "keyword"],
+        [10, 13, "string"],
+        [14, 17, "keyword"],
+      ],
+      resolve,
+    )
     expect(out).toEqual([
       { line: 0, start: 0, end: 5, styleId: 1 },
       { line: 0, start: 10, end: 13, styleId: 2 },
@@ -33,7 +41,15 @@ describe("mapHighlights", () => {
   })
 
   test("drops unknown groups and empty ranges, falls back to dotted prefix", () => {
-    const out = mapHighlights("abc", [[0, 1, "nope"], [1, 1, "keyword"], [1, 3, "keyword.return"]], resolve)
+    const out = mapHighlights(
+      "abc",
+      [
+        [0, 1, "nope"],
+        [1, 1, "keyword"],
+        [1, 3, "keyword.return"],
+      ],
+      resolve,
+    )
     expect(out).toEqual([{ line: 0, start: 1, end: 3, styleId: 1 }])
   })
 
@@ -95,7 +111,16 @@ test("applyHighlights clears the previous syntax layer first", () => {
 
 test("a range captured twice becomes one highlight with the last capture's style", () => {
   const ids: Record<string, number> = { variable: 1, function: 2, punctuation: 3 }
-  const out = mapHighlights("fn(a)", [[0, 2, "variable"], [0, 2, "function"], [2, 3, "punctuation"], [2, 3, "punctuation"]], (g) => ids[g] ?? null)
+  const out = mapHighlights(
+    "fn(a)",
+    [
+      [0, 2, "variable"],
+      [0, 2, "function"],
+      [2, 3, "punctuation"],
+      [2, 3, "punctuation"],
+    ],
+    (g) => ids[g] ?? null,
+  )
   expect(out).toEqual([
     { line: 0, start: 0, end: 2, styleId: 2 },
     { line: 0, start: 2, end: 3, styleId: 3 },

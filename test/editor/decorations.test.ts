@@ -3,10 +3,22 @@ import { indentGuides, indentUnit, matchBracket, wordOccurrences } from "../../s
 
 test("matchBracket finds partners across lines, in both directions", () => {
   const lines = ["f(a, [1, 2]) {", "  g()", "}"]
-  expect(matchBracket(lines, 0, 1)).toEqual([{ line: 0, index: 1 }, { line: 0, index: 11 }])
-  expect(matchBracket(lines, 0, 12)).toEqual([{ line: 0, index: 11 }, { line: 0, index: 1 }]) // just after ")"
-  expect(matchBracket(lines, 0, 13)).toEqual([{ line: 0, index: 13 }, { line: 2, index: 0 }])
-  expect(matchBracket(lines, 2, 0)).toEqual([{ line: 2, index: 0 }, { line: 0, index: 13 }])
+  expect(matchBracket(lines, 0, 1)).toEqual([
+    { line: 0, index: 1 },
+    { line: 0, index: 11 },
+  ])
+  expect(matchBracket(lines, 0, 12)).toEqual([
+    { line: 0, index: 11 },
+    { line: 0, index: 1 },
+  ]) // just after ")"
+  expect(matchBracket(lines, 0, 13)).toEqual([
+    { line: 0, index: 13 },
+    { line: 2, index: 0 },
+  ])
+  expect(matchBracket(lines, 2, 0)).toEqual([
+    { line: 2, index: 0 },
+    { line: 0, index: 13 },
+  ])
   expect(matchBracket(["(("], 0, 0)).toBeNull()
   expect(matchBracket(["abc"], 0, 1)).toBeNull()
 })

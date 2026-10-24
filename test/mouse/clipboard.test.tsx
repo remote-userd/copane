@@ -175,8 +175,11 @@ test("AI pane: a click focuses it even when the CLI has mouse reporting on (like
 test("AI pane: a startup question (claude's trust prompt) pulls focus to the pane once", async () => {
   const root = await fixture({ "a.txt": "x\n" })
   const ws = createWorkspace(root, { focus: "tree" })
-  const script = "printf 'Quick safety check: Is this a project you \\033[1mtrust\\033[0m?\\n Yes, I trust this\\n folder\\n'; sleep 5"
-  const hh = await renderApp(ws, { ai: <TerminalPane config={{ command: "/bin/sh", args: ["-c", script], maxScrollbackBytes: 10000 }} /> })
+  const script =
+    "printf 'Quick safety check: Is this a project you \\033[1mtrust\\033[0m?\\n Yes, I trust this\\n folder\\n'; sleep 5"
+  const hh = await renderApp(ws, {
+    ai: <TerminalPane config={{ command: "/bin/sh", args: ["-c", script], maxScrollbackBytes: 10000 }} />,
+  })
   h = hh
   for (let i = 0; i < 40 && ws.ui.get().focus !== "ai"; i++) {
     await Bun.sleep(25)
@@ -190,7 +193,9 @@ test("AI pane: the trust prompt while a dialog is open pulls focus once the dial
   const root = await fixture({ "a.txt": "x\n" })
   const ws = createWorkspace(root, { focus: "tree", modal: { kind: "help" } })
   const script = "printf 'Quick safety check: Is this a project you trust?\\n Yes, I trust this\\n folder\\n'; sleep 5"
-  const hh = await renderApp(ws, { ai: <TerminalPane config={{ command: "/bin/sh", args: ["-c", script], maxScrollbackBytes: 10000 }} /> })
+  const hh = await renderApp(ws, {
+    ai: <TerminalPane config={{ command: "/bin/sh", args: ["-c", script], maxScrollbackBytes: 10000 }} />,
+  })
   h = hh
   for (let i = 0; i < 40 && !hh.frame().includes("Shortcuts"); i++) {
     await Bun.sleep(25)

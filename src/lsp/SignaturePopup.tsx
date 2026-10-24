@@ -103,7 +103,17 @@ export function SignaturePopup() {
   const x = Math.max(0, Math.min(pos.x - 4, dims.width - width))
   const [a, b] = sig.active ?? [0, 0]
   return (
-    <box position="absolute" left={x} top={y} width={width} height={height} zIndex={140} backgroundColor={colors.panelBg} flexDirection="column" paddingLeft={1}>
+    <box
+      position="absolute"
+      left={x}
+      top={y}
+      width={width}
+      height={height}
+      zIndex={140}
+      backgroundColor={colors.panelBg}
+      flexDirection="column"
+      paddingLeft={1}
+    >
       <box height={1} overflow="hidden">
         <text selectable={false} fg={colors.text}>
           {sig.label.slice(0, a)}

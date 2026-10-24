@@ -14,11 +14,11 @@ const SAMPLES: Record<string, string> = {
   html: '<!doctype html>\n<p class="x">Hi <!-- c --></p>\n',
   css: ".a > b { color: red; /* c */ }\n",
   json: '{ "a": [1, true, null], "b": "s" }\n',
-  scss: '$c: red;\n@mixin m($x) { color: $x; }\n.a { &:hover { @include m($c); } } // c\n',
+  scss: "$c: red;\n@mixin m($x) { color: $x; }\n.a { &:hover { @include m($c); } } // c\n",
   vue: '<template><p :a="x" @click="go(1)">{{ msg }}</p></template>\n',
-  svelte: '{#if n > 0}<p on:click={() => n++}>{n}</p>{/if}\n',
+  svelte: "{#if n > 0}<p on:click={() => n++}>{n}</p>{/if}\n",
   astro: '---\nconst t = "hi"\n---\n<h1 class={t}>{t}</h1>\n',
-  nginx: 'server {\n  listen 80; # web\n  location /api/ { proxy_pass http://127.0.0.1:3000; }\n}\n',
+  nginx: "server {\n  listen 80; # web\n  location /api/ { proxy_pass http://127.0.0.1:3000; }\n}\n",
   dockerfile: 'FROM node:24-alpine AS build\n# deps\nRUN npm ci && npm run build\nCMD ["node", "dist/main.js"]\n',
   sql: "-- users\nSELECT id, name FROM users WHERE id = 1 AND name = 'x';\n",
 }
@@ -32,20 +32,29 @@ test.each(Object.entries(SAMPLES))("%s gets syntax colours", async (filetype, te
 })
 
 test("file types for the new languages, and JSONC as JSON", () => {
-  expect(["a.py", "a.yml", "a.sh", "a.toml", "a.rs", "a.go", "a.h", "a.hpp", "a.html", "a.css", "a.json", "a.jsonc"].map((p) => filetypeOf(p))).toEqual([
-    "python", "yaml", "bash", "toml", "rust", "go", "c", "cpp", "html", "css", "json", "json",
-  ])
+  expect(
+    ["a.py", "a.yml", "a.sh", "a.toml", "a.rs", "a.go", "a.h", "a.hpp", "a.html", "a.css", "a.json", "a.jsonc"].map((p) =>
+      filetypeOf(p),
+    ),
+  ).toEqual(["python", "yaml", "bash", "toml", "rust", "go", "c", "cpp", "html", "css", "json", "json"])
   expect(["a.scss", "a.vue", "a.svelte", "a.astro"].map((p) => filetypeOf(p))).toEqual(["scss", "vue", "svelte", "astro"])
 })
 
 test("nginx config by name, extension or folder, but not every file in an nginx folder", () => {
-  const nginx = ["nginx.conf", "/etc/nginx/nginx.conf", "site.nginx", "/etc/nginx/sites-available/default", "deploy/nginx/conf.d/app.conf"]
+  const nginx = [
+    "nginx.conf",
+    "/etc/nginx/nginx.conf",
+    "site.nginx",
+    "/etc/nginx/sites-available/default",
+    "deploy/nginx/conf.d/app.conf",
+  ]
   expect(nginx.map((p) => filetypeOf(p))).toEqual(nginx.map(() => "nginx"))
   expect(["deploy/nginx/Dockerfile", "deploy/nginx/README.md", "app.conf"].map((p) => filetypeOf(p))).not.toContain("nginx")
 })
 
 test("nginx: blocks with arguments, addresses and one-line blocks keep their colours", async () => {
-  const text = "events { worker_connections 1024; }\nupstream backend {\n  server 127.0.0.1:8080 weight=5;\n}\nserver {\n  listen 80;\n}\n"
+  const text =
+    "events { worker_connections 1024; }\nupstream backend {\n  server 127.0.0.1:8080 weight=5;\n}\nserver {\n  listen 80;\n}\n"
   const hl = (await computeHighlights(text, "nginx"))!
   const groupsAt = (word: string, from = 0) => {
     const i = text.indexOf(word, from)
@@ -73,7 +82,11 @@ test("nginx config in any .conf file by its content (deploy/conf/conf.d/app.conf
 // (OpenTUI's worker learns it from our patch).
 test.each([
   ["html", "<script>const a = 1</script>\n<style>p { color: red }</style>\n", ["javascript", "css"]],
-  ["vue", '<p @click="go(1)">{{ msg }}</p>\n<script setup lang="ts">\nconst a: number = 1\n</script>\n<style>p { color: red }</style>\n', ["typescript", "scss"]],
+  [
+    "vue",
+    '<p @click="go(1)">{{ msg }}</p>\n<script setup lang="ts">\nconst a: number = 1\n</script>\n<style>p { color: red }</style>\n',
+    ["typescript", "scss"],
+  ],
   ["svelte", "<script>let n = 1</script>\n<p>{n + 1}</p>\n<style>p { color: red }</style>\n", ["typescript", "scss"]],
   ["astro", "---\nconst t = 1\n---\n<p>{t}</p>\n<style>p { color: red }</style>\n", ["typescript", "scss"]],
 ] as const)("%s highlights the code inside it", async (filetype, text, langs) => {
@@ -83,8 +96,28 @@ test.each([
 })
 
 test("file types for full-stack files: .vue, Dockerfiles, SQL, and .env read as shell", () => {
-  const paths = ["a.vue", "Dockerfile", "api/Dockerfile.dev", "web.dockerfile", "q.sql", ".env", "packages/api/.env.local", "prod.env", "envs.ts"]
-  expect(paths.map((p) => filetypeOf(p))).toEqual(["vue", "dockerfile", "dockerfile", "dockerfile", "sql", "bash", "bash", "bash", "typescript"])
+  const paths = [
+    "a.vue",
+    "Dockerfile",
+    "api/Dockerfile.dev",
+    "web.dockerfile",
+    "q.sql",
+    ".env",
+    "packages/api/.env.local",
+    "prod.env",
+    "envs.ts",
+  ]
+  expect(paths.map((p) => filetypeOf(p))).toEqual([
+    "vue",
+    "dockerfile",
+    "dockerfile",
+    "dockerfile",
+    "sql",
+    "bash",
+    "bash",
+    "bash",
+    "typescript",
+  ])
 })
 
 test("Vue: TypeScript colours in <script>, {{ }} and directives; SCSS in <style>; tags as HTML", async () => {

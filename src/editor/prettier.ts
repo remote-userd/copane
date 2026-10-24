@@ -22,8 +22,31 @@ const CONFIGS = [
 
 /** Extensions Prettier formats without plugins. */
 const EXTENSIONS = new Set([
-  "js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts", "json", "jsonc", "json5", "css", "scss",
-  "less", "html", "vue", "md", "markdown", "mdx", "yaml", "yml", "graphql", "gql", "hbs", "handlebars",
+  "js",
+  "jsx",
+  "mjs",
+  "cjs",
+  "ts",
+  "tsx",
+  "mts",
+  "cts",
+  "json",
+  "jsonc",
+  "json5",
+  "css",
+  "scss",
+  "less",
+  "html",
+  "vue",
+  "md",
+  "markdown",
+  "mdx",
+  "yaml",
+  "yml",
+  "graphql",
+  "gql",
+  "hbs",
+  "handlebars",
 ])
 
 export function prettierHandles(path: string): boolean {

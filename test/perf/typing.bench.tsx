@@ -6,7 +6,10 @@
 import { act } from "react"
 import { createWorkspace, fixture, renderApp } from "../helpers"
 
-const big = Array.from({ length: 5000 }, (_, i) => `export function fn${i}(value: number): number { return value * ${i} + total }`).join("\n") + "\n"
+const big =
+  Array.from({ length: 5000 }, (_, i) => `export function fn${i}(value: number): number { return value * ${i} + total }`).join(
+    "\n",
+  ) + "\n"
 const files: Record<string, string> = { "big.ts": big }
 for (let i = 0; i < 9; i++) files[`f${i}.ts`] = big.slice(0, 200_000)
 const root = await fixture(files)
@@ -32,7 +35,9 @@ async function time(label: string, n: number, key: () => void) {
   const cpu = process.cpuUsage(cpu0)
   t.sort((a, b) => a - b)
   const p = (q: number) => t[Math.floor(q * (t.length - 1))]!.toFixed(2)
-  console.log(`${label.padEnd(10)} median ${p(0.5)}ms  p95 ${p(0.95)}ms  max ${p(1)}ms  cpu ${((cpu.user + cpu.system) / 1000).toFixed(0)}ms`)
+  console.log(
+    `${label.padEnd(10)} median ${p(0.5)}ms  p95 ${p(0.95)}ms  max ${p(1)}ms  cpu ${((cpu.user + cpu.system) / 1000).toFixed(0)}ms`,
+  )
 }
 
 ws.buffers.active!.textarea!.setCursor(2500, 10)

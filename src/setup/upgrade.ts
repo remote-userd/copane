@@ -75,7 +75,8 @@ export async function installRelease(tag: string, target = process.execPath): Pr
     const tarball = join(dir, asset)
     await Bun.write(tarball, archive)
     const tar = Bun.spawn(["tar", "-xzf", tarball, "-C", dir], { stdout: "ignore", stderr: "pipe" })
-    if ((await tar.exited) !== 0) throw new Error(`could not unpack ${asset}: ${(await Bun.readableStreamToText(tar.stderr)).trim()}`)
+    if ((await tar.exited) !== 0)
+      throw new Error(`could not unpack ${asset}: ${(await Bun.readableStreamToText(tar.stderr)).trim()}`)
 
     // Replace by rename: running editors keep their old file and see one clean change.
     const next = `${target}.new`
@@ -84,7 +85,9 @@ export async function installRelease(tag: string, target = process.execPath): Pr
       await chmod(next, 0o755)
       await rename(next, target)
     } catch (err) {
-      await Bun.file(next).delete().catch(() => null)
+      await Bun.file(next)
+        .delete()
+        .catch(() => null)
       const code = (err as NodeJS.ErrnoException).code
       if (code === "EACCES" || code === "EPERM") throw new Error(`no permission to write ${target}; try again with sudo`)
       throw err

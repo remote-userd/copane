@@ -13,7 +13,14 @@ import { createWorkspace, fixture, GIT_ENV } from "../helpers"
 function fakeAi(ws: Workspace) {
   const sent: string[] = []
   let submitted = false
-  ws.ai = { type: (t) => sent.push(t), paste: (t) => sent.push(t), submit: () => (submitted = true), focus() {}, restart() {}, kill() {} }
+  ws.ai = {
+    type: (t) => sent.push(t),
+    paste: (t) => sent.push(t),
+    submit: () => (submitted = true),
+    focus() {},
+    restart() {},
+    kill() {},
+  }
   return { text: () => sent.join(""), submitted: () => submitted }
 }
 
@@ -34,17 +41,31 @@ function fakeLsp(byPath: Record<string, ReturnType<typeof diag>[]>): LspManager 
 
 test("formatProblemsForAgent: file mentions with lines, kind, first line of the message, code", () => {
   const text = formatProblemsForAgent([
-    { relPath: "src/a.ts", line: 12, severity: 1, message: "Type 'string' is not assignable to type 'number'.\n  details", source: "ts", code: 2322 },
+    {
+      relPath: "src/a.ts",
+      line: 12,
+      severity: 1,
+      message: "Type 'string' is not assignable to type 'number'.\n  details",
+      source: "ts",
+      code: 2322,
+    },
     { relPath: "my dir/b.ts", line: 3, severity: 2, message: "Unused variable" },
   ])
-  expect(text).toBe("@src/a.ts#L12 error: Type 'string' is not assignable to type 'number'. (ts 2322)\n@\"my dir/b.ts\"#L3 warning: Unused variable")
-  expect(formatProblemsForAgent(Array(45).fill({ relPath: "a.ts", line: 1, severity: 1, message: "x" }))).toEndWith("…and 5 more.")
+  expect(text).toBe(
+    "@src/a.ts#L12 error: Type 'string' is not assignable to type 'number'. (ts 2322)\n@\"my dir/b.ts\"#L3 warning: Unused variable",
+  )
+  expect(formatProblemsForAgent(Array(45).fill({ relPath: "a.ts", line: 1, severity: 1, message: "x" }))).toEndWith(
+    "…and 5 more.",
+  )
 })
 
 test("formatChangesForAgent pastes small diffs, summarises big ones, lists new files", () => {
   const small = formatChangesForAgent({ diff: "-a\n+b\n", stat: " a.ts | 2 +-", staged: true, untracked: [] })
   expect(small).toBe("The staged changes:\n```diff\n-a\n+b\n```")
-  const big = formatChangesForAgent({ diff: "x".repeat(50_000), stat: " a.ts | 900 +++", staged: false, untracked: ["new.ts"] }, 40_000)
+  const big = formatChangesForAgent(
+    { diff: "x".repeat(50_000), stat: " a.ts | 900 +++", staged: false, untracked: ["new.ts"] },
+    40_000,
+  )
   expect(big).toContain("too big to paste")
   expect(big).toContain("git diff HEAD")
   expect(big).toContain("a.ts | 900 +++")
@@ -87,7 +108,12 @@ test("no problems: says so and sends nothing", async () => {
 test("review changes sends the uncommitted diff and new files from a real repo", async () => {
   const root = await fixture({ "a.ts": "one\n" })
   const env = GIT_ENV
-  for (const args of [["init", "-q"], ["add", "."], ["commit", "-qm", "init"]]) Bun.spawnSync(["git", ...args], { cwd: root, env })
+  for (const args of [
+    ["init", "-q"],
+    ["add", "."],
+    ["commit", "-qm", "init"],
+  ])
+    Bun.spawnSync(["git", ...args], { cwd: root, env })
   writeFileSync(join(root, "a.ts"), "two\n")
   writeFileSync(join(root, "new.ts"), "fresh\n")
   const ws = createWorkspace(root)

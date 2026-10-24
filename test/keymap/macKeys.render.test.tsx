@@ -36,7 +36,11 @@ test("Mac: Cmd+S saves, Ctrl+A / Ctrl+E (Cmd+←/→ in Ghostty) go to the line 
   expect(text(h)).toBe("world\n")
   // Cmd+S as a kitty-protocol terminal sends it (the mock only sends Super on special keys).
   await h.step(() => h.keys.pressKey("\x1b[115;9u"))
-  await waitUntil(() => !h.ws.buffers.active!.dirty, 3000, () => h.setup.renderOnce())
+  await waitUntil(
+    () => !h.ws.buffers.active!.dirty,
+    3000,
+    () => h.setup.renderOnce(),
+  )
   expect(await Bun.file(`${h.ws.root}/a.ts`).text()).toBe("world\n")
 })
 

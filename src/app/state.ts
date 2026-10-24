@@ -46,7 +46,14 @@ type ModalKind =
   | { kind: "info"; x: number; y: number; text: string }
   | { kind: "problems" }
   | { kind: "recent" }
-  | { kind: "locations"; title: string; locations: { path: string; range: { start: { line: number; character: number }; end: { line: number; character: number } } }[] }
+  | {
+      kind: "locations"
+      title: string
+      locations: {
+        path: string
+        range: { start: { line: number; character: number }; end: { line: number; character: number } }
+      }[]
+    }
   | { kind: "help" }
   | { kind: "turns" }
   | { kind: "mergeAgent"; sessionId: number }

@@ -182,7 +182,11 @@ test("maximize AI: the editor stays hidden until a file opens or you show it", a
   const ws = createWorkspace(dir, { focus: "editor" })
   await ws.buffers.open("a.ts")
   const setup = await render(ws, 120, 30)
-  const aiColumn = () => captureFrame(setup).split("\n").find((l) => l.includes("AI-SLOT"))!.indexOf("AI-SLOT")
+  const aiColumn = () =>
+    captureFrame(setup)
+      .split("\n")
+      .find((l) => l.includes("AI-SLOT"))!
+      .indexOf("AI-SLOT")
   const step = async (fn: () => unknown) => {
     await act(async () => void (await fn()))
     await setup.renderOnce()
@@ -231,7 +235,10 @@ test("maximize AI: the editor stays hidden until a file opens or you show it", a
 test("the editor's cursor is a thin line as in VS Code, or what editor.cursorStyle says", async () => {
   const dir = await mkdtemp(join(tmpdir(), "ce-cursor-"))
   await writeFile(join(dir, "a.ts"), "const a = 1\n")
-  for (const [setting, style] of [[undefined, "line"], ["block", "block"]] as const) {
+  for (const [setting, style] of [
+    [undefined, "line"],
+    ["block", "block"],
+  ] as const) {
     const config = configSchema.parse(setting ? { editor: { cursorStyle: setting } } : {})
     const ws = createWorkspace(dir, { focus: "editor" }, config)
     await ws.buffers.open("a.ts")

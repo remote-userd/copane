@@ -35,8 +35,14 @@ export async function runBunFmt(path: string, text: string, cwd: string): Promis
   if (code === 0) return out
   if (err.includes("No parser could be inferred")) throw new NoParser()
   // A syntax error comes as the code frame, then "error: …", then "at file:line:col".
-  const lines = err.trim().split("\n").map((l) => l.trim())
-  const message = lines.find((l) => l.startsWith("error:"))?.slice(6).trim()
+  const lines = err
+    .trim()
+    .split("\n")
+    .map((l) => l.trim())
+  const message = lines
+    .find((l) => l.startsWith("error:"))
+    ?.slice(6)
+    .trim()
   const at = lines.map((l) => /^at .*:(\d+:\d+)$/.exec(l)?.[1]).find(Boolean)
   throw new Error(message ? `${message}${at ? ` (${at})` : ""}` : `exited with ${code}`)
 }

@@ -13,7 +13,10 @@ import {
 } from "../../src/editor/lineOps"
 
 const at = (row: number, index: number): Sel => ({ anchor: { row, index }, head: { row, index } })
-const range = (r1: number, i1: number, r2: number, i2: number): Sel => ({ anchor: { row: r1, index: i1 }, head: { row: r2, index: i2 } })
+const range = (r1: number, i1: number, r2: number, i2: number): Sel => ({
+  anchor: { row: r1, index: i1 },
+  head: { row: r2, index: i2 },
+})
 
 test("lineSpan leaves out a line the selection only touches at its start", () => {
   expect(lineSpan(at(3, 2))).toEqual({ first: 3, last: 3 })

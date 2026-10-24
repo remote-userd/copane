@@ -22,7 +22,16 @@ async function welcome(opts: { here?: boolean; atHome?: boolean } = {}) {
   const forgotten: string[] = []
   let quit = 0
   setup = await testRender(
-    <Welcome version="9.9.9" recent={recent} cwd={cwd} here={opts.here} home={opts.atHome ? cwd : "/nowhere"} onOpen={(p) => opened.push(p)} onForget={(p) => forgotten.push(p)} onQuit={() => quit++} />,
+    <Welcome
+      version="9.9.9"
+      recent={recent}
+      cwd={cwd}
+      here={opts.here}
+      home={opts.atHome ? cwd : "/nowhere"}
+      onOpen={(p) => opened.push(p)}
+      onForget={(p) => forgotten.push(p)}
+      onQuit={() => quit++}
+    />,
     { width: 100, height: 30, exitOnCtrlC: false },
   )
   await setup.renderOnce()

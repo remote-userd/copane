@@ -64,8 +64,16 @@ export const EXTRA_GRAMMARS = [
   { filetype: "json", aliases: ["jsonc"], wasm: jsonWasm, queries: { highlights: [jsonHighlights] } },
   { filetype: "scss", wasm: scssWasm, queries: { highlights: [cssHighlights, scssHighlights] } },
   { filetype: "vue", wasm: vueWasm, queries: { highlights: [vueHtmlHighlights, vueHighlights], injections: [vueInjections] } },
-  { filetype: "svelte", wasm: svelteWasm, queries: { highlights: [htmlHighlights, svelteHighlights], injections: [svelteInjections] } },
-  { filetype: "astro", wasm: astroWasm, queries: { highlights: [htmlHighlights, astroHighlights], injections: [astroInjections] } },
+  {
+    filetype: "svelte",
+    wasm: svelteWasm,
+    queries: { highlights: [htmlHighlights, svelteHighlights], injections: [svelteInjections] },
+  },
+  {
+    filetype: "astro",
+    wasm: astroWasm,
+    queries: { highlights: [htmlHighlights, astroHighlights], injections: [astroInjections] },
+  },
   { filetype: "nginx", wasm: nginxWasm, queries: { highlights: [nginxHighlights] } },
   { filetype: "dockerfile", wasm: dockerfileWasm, queries: { highlights: [dockerfileHighlights] } },
   { filetype: "sql", wasm: sqlWasm, queries: { highlights: [sqlHighlights] } },

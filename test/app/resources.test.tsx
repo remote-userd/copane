@@ -1,5 +1,14 @@
 import { afterEach, expect, setDefaultTimeout, test } from "bun:test"
-import { aggregate, createResourceSampler, describeUsage, formatBytes, parseProcStat, parsePsTime, parseStatmPrivate, type ProcInfo } from "../../src/app/resources"
+import {
+  aggregate,
+  createResourceSampler,
+  describeUsage,
+  formatBytes,
+  parseProcStat,
+  parsePsTime,
+  parseStatmPrivate,
+  type ProcInfo,
+} from "../../src/app/resources"
 import { runCommand } from "../../src/keymap/commands"
 import { configSchema } from "../../src/config/schema"
 import { createWorkspace, fixture, renderApp, waitUntil, type Harness } from "../helpers"
@@ -30,9 +39,26 @@ test("ps cpu times", () => {
 })
 
 test("usage groups each child of the editor with everything under it, CPU as % of one core", () => {
-  const p = (pid: number, ppid: number, name: string, mb: number, cpuSec: number): ProcInfo => ({ pid, ppid, name, rss: mb * 1024 ** 2, cpuSec })
-  const procs = [p(1, 0, "init", 5, 0), p(10, 1, "bun", 200, 12), p(11, 10, "node", 300, 4), p(12, 11, "tsgo", 500, 10), p(13, 10, "claude", 100, 1)]
-  const prev = new Map([[10, 11], [11, 4], [12, 8], [13, 1]])
+  const p = (pid: number, ppid: number, name: string, mb: number, cpuSec: number): ProcInfo => ({
+    pid,
+    ppid,
+    name,
+    rss: mb * 1024 ** 2,
+    cpuSec,
+  })
+  const procs = [
+    p(1, 0, "init", 5, 0),
+    p(10, 1, "bun", 200, 12),
+    p(11, 10, "node", 300, 4),
+    p(12, 11, "tsgo", 500, 10),
+    p(13, 10, "claude", 100, 1),
+  ]
+  const prev = new Map([
+    [10, 11],
+    [11, 4],
+    [12, 8],
+    [13, 1],
+  ])
   const u = aggregate(procs, 10, prev, 2, new Map([[11, "typescript-language-server"]]))
   expect(u.self).toEqual({ pid: 10, name: "ce", rss: 200 * 1024 ** 2, cpu: 50 })
   expect(u.children.map((c) => [c.name, formatBytes(c.rss), c.cpu])).toEqual([

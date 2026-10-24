@@ -30,7 +30,14 @@ export function Sidebar({ files, search, actions }: { files: ReactNode; search: 
         {tab("files", nerd ? "\u{f02dc}" : "FILES")}
         {tab("search", nerd ? "\u{f0349}" : "SEARCH")}
         {/* Right-aligned; they give way first when the pane is narrow. */}
-        <box flexGrow={1} flexShrink={1} flexDirection="row" justifyContent="flex-end" overflow="hidden" visible={ui.sidebar === "files"}>
+        <box
+          flexGrow={1}
+          flexShrink={1}
+          flexDirection="row"
+          justifyContent="flex-end"
+          overflow="hidden"
+          visible={ui.sidebar === "files"}
+        >
           {actions}
         </box>
       </box>

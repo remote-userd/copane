@@ -28,7 +28,11 @@ test("a crash backs up unsaved changes; the next start puts them back, undoably"
   await ws.buffers.open("b.txt")
   const a = await ws.buffers.open("a.txt")
   h = await renderApp(ws)
-  await until(() => !!a.textarea, () => h!.setup.renderOnce(), "the editor")
+  await until(
+    () => !!a.textarea,
+    () => h!.setup.renderOnce(),
+    "the editor",
+  )
   ws.buffers.replaceText(a, "unsaved work\n")
   expect(a.dirty).toBe(true)
   expect(await saveRecovery(ws, state)).toBe(1) // only the dirty one
@@ -54,7 +58,11 @@ test("a crash copy older than the file on disk is not restored", async () => {
   const ws = createWorkspace(root)
   const a = await ws.buffers.open("a.txt")
   h = await renderApp(ws)
-  await until(() => !!a.textarea, () => h!.setup.renderOnce(), "the editor")
+  await until(
+    () => !!a.textarea,
+    () => h!.setup.renderOnce(),
+    "the editor",
+  )
   ws.buffers.replaceText(a, "crash copy\n")
   await saveRecovery(ws, state)
   await Bun.sleep(20)
@@ -101,7 +109,11 @@ test("a render error shows the crash screen; Ctrl+R draws the app again with uns
 
   ws.ui.set({ findQuery: "" })
   setup.mockInput.pressKey("r", { ctrl: true })
-  await until(() => !!ws.buffers.byId(a.id)?.textarea && captureFrame(setup).includes("typed, not saved"), render, "the editor again")
+  await until(
+    () => !!ws.buffers.byId(a.id)?.textarea && captureFrame(setup).includes("typed, not saved"),
+    render,
+    "the editor again",
+  )
   expect(ws.buffers.textOf(a)).toBe("typed, not saved\n")
   expect(a.dirty).toBe(true)
 })

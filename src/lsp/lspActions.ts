@@ -70,7 +70,11 @@ export async function goToDefinition(ws: Workspace, at?: { row: number; col: num
   if (!loc) return ws.notify("No definition found")
   const lineText = async () => {
     const open = ws.buffers.byPath(loc.path)
-    const text = open ? ws.buffers.textOf(open) : await Bun.file(loc.path).text().catch(() => "")
+    const text = open
+      ? ws.buffers.textOf(open)
+      : await Bun.file(loc.path)
+          .text()
+          .catch(() => "")
     return text.split("\n")[loc.range.start.line] ?? ""
   }
   const line = await lineText()
@@ -83,7 +87,9 @@ export async function goToDefinition(ws: Workspace, at?: { row: number; col: num
 export async function nextProblem(ws: Workspace): Promise<void> {
   const h = here(ws)
   if (!h || !ws.lsp) return
-  const diags = [...ws.lsp.diagnostics(h.buf.path)].sort((a, b) => a.range.start.line - b.range.start.line || a.range.start.character - b.range.start.character)
+  const diags = [...ws.lsp.diagnostics(h.buf.path)].sort(
+    (a, b) => a.range.start.line - b.range.start.line || a.range.start.character - b.range.start.character,
+  )
   if (!diags.length) return ws.notify("No problems in this file")
   const idx = colToIndex(h.line, h.col)
   const next =
@@ -106,7 +112,11 @@ export function openVersions(ws: Workspace): Map<string, number> {
  * request), an open file that changed meanwhile is skipped: the edits' positions are for the
  * old text and would garble the new one. Skipped files are reported.
  */
-export async function applyFileEdits(ws: Workspace, files: Map<string, TextEdit[]>, since?: Map<string, number>): Promise<number> {
+export async function applyFileEdits(
+  ws: Workspace,
+  files: Map<string, TextEdit[]>,
+  since?: Map<string, number>,
+): Promise<number> {
   const stale: string[] = []
   const apply = new Map<string, (text: string) => string>()
   for (const [path, edits] of files) {
@@ -247,7 +257,8 @@ async function runCodeAction(ws: Workspace, path: string, action: CodeAction, si
   const resolved = await lsp.resolveCodeAction(path, action)
   if (resolved.edit) await applyFileEdits(ws, lsp.editFiles(resolved.edit), since)
   // A bare Command has its name in `command`; a CodeAction has a Command object there.
-  const command = typeof resolved.command === "string" ? { command: resolved.command, arguments: resolved.arguments } : resolved.command
+  const command =
+    typeof resolved.command === "string" ? { command: resolved.command, arguments: resolved.arguments } : resolved.command
   if (command) {
     const err = await lsp.executeCommand(path, command)
     if (err) return ws.notify(`${resolved.title}: ${err}`, "error")
@@ -255,7 +266,8 @@ async function runCodeAction(ws: Workspace, path: string, action: CodeAction, si
   ws.notify(`${resolved.title} (Ctrl+Z undoes)`)
 }
 
-const kindOrder = (a: CodeAction) => (a.isPreferred ? 0 : a.kind?.startsWith("quickfix") ? 1 : a.kind?.startsWith("refactor") ? 2 : 3)
+const kindOrder = (a: CodeAction) =>
+  a.isPreferred ? 0 : a.kind?.startsWith("quickfix") ? 1 : a.kind?.startsWith("refactor") ? 2 : 3
 
 /** Ctrl+. / Alt+.: quick fixes and refactors at the cursor, in a menu. */
 export async function quickFix(ws: Workspace): Promise<void> {
@@ -269,8 +281,13 @@ export async function quickFix(ws: Workspace): Promise<void> {
   if (modalChanged(ws, before)) return
   const row = h.pos.line
   // A problem on this line can also go to the AI, even when the server has no fix for it.
-  const problemHere = ws.lsp.diagnostics(h.buf.path).some((d) => (d.severity ?? 1) <= 2 && d.range.start.line <= row && d.range.end.line >= row)
-  const askAi = problemHere && ws.ai ? [{ label: "Ask AI to fix", hint: "AI", run: () => sendProblems(ws, { at: { path: h.buf.path, line: row } }) }] : []
+  const problemHere = ws.lsp
+    .diagnostics(h.buf.path)
+    .some((d) => (d.severity ?? 1) <= 2 && d.range.start.line <= row && d.range.end.line >= row)
+  const askAi =
+    problemHere && ws.ai
+      ? [{ label: "Ask AI to fix", hint: "AI", run: () => sendProblems(ws, { at: { path: h.buf.path, line: row } }) }]
+      : []
   if (!actions.length && !askAi.length) return ws.notify("No quick fixes here")
   const at = h.ed.cursorScreenPos() ?? { x: h.ed.x, y: h.ed.y }
   ws.ui.set({

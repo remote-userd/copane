@@ -17,7 +17,12 @@ export interface ServerSpec {
 
 export type LspOverrides = Record<string, { command: string[] } | false>
 
-const TS_LANGS = { typescript: "typescript", typescriptreact: "typescriptreact", javascript: "javascript", javascriptreact: "javascriptreact" }
+const TS_LANGS = {
+  typescript: "typescript",
+  typescriptreact: "typescriptreact",
+  javascript: "javascript",
+  javascriptreact: "javascriptreact",
+}
 
 /** TypeScript 7+ ships a language server in `tsc --lsp`; prefer the package's own copy. */
 async function workspaceTsc(root: string): Promise<string | null> {
@@ -78,7 +83,10 @@ async function findTsserver(root: string, serverBin: string): Promise<string | n
 async function tsMajor(tsc: string): Promise<number> {
   try {
     // …/node_modules/typescript/bin/tsc
-    const pkg = (await Bun.file(join(dirname(dirname(realpathSync(tsc))), "package.json")).json()) as { name?: string; version?: string }
+    const pkg = (await Bun.file(join(dirname(dirname(realpathSync(tsc))), "package.json")).json()) as {
+      name?: string
+      version?: string
+    }
     return pkg.name === "typescript" ? Number(pkg.version?.split(".")[0]) || 0 : 0
   } catch {
     return 0
@@ -121,8 +129,10 @@ function familyOf(filetype: string): string {
 
 /** Candidate servers per language, in order of preference; the first one installed wins. */
 function candidates(filetype: string, root: string): (() => Promise<ServerSpec | null>)[] {
-  const has = (cmd: string, spec: Omit<ServerSpec, "command">, args: string[] = []) => async () =>
-    which(cmd) ? { ...spec, command: [cmd, ...args] } : null
+  const has =
+    (cmd: string, spec: Omit<ServerSpec, "command">, args: string[] = []) =>
+    async () =>
+      which(cmd) ? { ...spec, command: [cmd, ...args] } : null
   if (filetype in TS_LANGS)
     return [
       async () => {
@@ -133,7 +143,9 @@ function candidates(filetype: string, root: string): (() => Promise<ServerSpec |
       // A global TypeScript 7 (`npm i -g typescript`).
       async () => {
         const tsc = which("tsc")
-        return tsc && (await tsMajor(tsc)) >= 7 ? { key: "typescript", command: [tsc, "--lsp", "--stdio"], languages: TS_LANGS } : null
+        return tsc && (await tsMajor(tsc)) >= 7
+          ? { key: "typescript", command: [tsc, "--lsp", "--stdio"], languages: TS_LANGS }
+          : null
       },
     ]
   // .vue goes to the TypeScript server with Vue's plugin (TS7's tsc has no plugins).
@@ -147,7 +159,10 @@ function candidates(filetype: string, root: string): (() => Promise<ServerSpec |
   if (filetype === "rust") return [has("rust-analyzer", { key: "rust", languages: { rust: "rust" } })]
   if (filetype === "go") return [has("gopls", { key: "go", languages: { go: "go" } })]
   if (filetype === "python")
-    return [has("pyright-langserver", { key: "python", languages: { python: "python" } }, ["--stdio"]), has("pylsp", { key: "python", languages: { python: "python" } })]
+    return [
+      has("pyright-langserver", { key: "python", languages: { python: "python" } }, ["--stdio"]),
+      has("pylsp", { key: "python", languages: { python: "python" } }),
+    ]
   if (filetype === "zig") return [has("zls", { key: "zig", languages: { zig: "zig" } })]
   if (filetype === "c" || filetype === "cpp") return [has("clangd", { key: "c", languages: { c: "c", cpp: "cpp" } })]
   return []
@@ -159,7 +174,12 @@ const lookupCache = new Map<string, Promise<ServerSpec | null>>()
  * The server for a file: run in the file's project (its package in a monorepo, see projectRoot),
  * or in the workspace `root` when the file is not given or has none of its own.
  */
-export async function serverFor(filetype: string | undefined, root: string, overrides: LspOverrides = {}, file?: string): Promise<ServerSpec | null> {
+export async function serverFor(
+  filetype: string | undefined,
+  root: string,
+  overrides: LspOverrides = {},
+  file?: string,
+): Promise<ServerSpec | null> {
   if (!filetype) return null
   const o = overrides[filetype]
   if (o === false) return null

@@ -15,8 +15,18 @@ async function editor(smooth: boolean) {
 }
 const top = (ed: CodeEditorRenderable) => ed.editorView.getViewport().offsetY
 const wheel = (ed: CodeEditorRenderable, direction: "up" | "down", delta = 3) =>
-  ed.onMouseEvent({ type: "scroll", scroll: { direction, delta }, modifiers: { shift: false, ctrl: false, alt: false, meta: false }, button: 0, x: 1, y: 1, stopPropagation() {}, preventDefault() {} } as never)
-const page = (ed: CodeEditorRenderable) => ed.handleKeyPress({ name: "pagedown", ctrl: false, meta: false, shift: false, option: false, sequence: "\x1b[6~" } as never)
+  ed.onMouseEvent({
+    type: "scroll",
+    scroll: { direction, delta },
+    modifiers: { shift: false, ctrl: false, alt: false, meta: false },
+    button: 0,
+    x: 1,
+    y: 1,
+    stopPropagation() {},
+    preventDefault() {},
+  } as never)
+const page = (ed: CodeEditorRenderable) =>
+  ed.handleKeyPress({ name: "pagedown", ctrl: false, meta: false, shift: false, option: false, sequence: "\x1b[6~" } as never)
 
 test("a wheel step glides: part of the way at once, the rest over the next frames", async () => {
   const ed = await editor(true)

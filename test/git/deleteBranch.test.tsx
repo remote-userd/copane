@@ -18,7 +18,13 @@ afterEach(() => {
   git?.stop()
   h = null
 })
-const sh = (cwd: string, ...args: string[]) => Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, ...ENV, GIT_OPTIONAL_LOCKS: "0" } }).stdout.toString()
+const sh = (cwd: string, ...args: string[]) =>
+  Bun.spawnSync(["git", ...args], {
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+    env: { ...process.env, ...ENV, GIT_OPTIONAL_LOCKS: "0" },
+  }).stdout.toString()
 const branchList = (root: string) => sh(root, "branch", "--format=%(refname:short)").trim().split("\n").sort()
 const until = (cond: () => boolean | Promise<boolean>, ms = 4000) => waitUntil(cond, ms, () => h?.setup.renderOnce())
 
@@ -56,7 +62,9 @@ test("Delete a branch: merged ones go after one confirmation, unmerged ones need
   }
   await pick("merged-one")
   await h!.step(() => h!.keys.pressEnter())
-  await until(() => h!.frame().includes("Delete branch merged-one? (y/n)") || h!.frame().includes("Delete branch unmerged-one? (y/n)"))
+  await until(
+    () => h!.frame().includes("Delete branch merged-one? (y/n)") || h!.frame().includes("Delete branch unmerged-one? (y/n)"),
+  )
   const first = h!.frame().includes("Delete branch merged-one?") ? "merged-one" : "unmerged-one"
   await h!.step(() => h!.keys.pressKey("y"))
   if (first === "unmerged-one") {

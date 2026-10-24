@@ -9,7 +9,10 @@ test("the facts: version, platform, terminal, and the end of the error log with 
   const root = await fixture({})
   const logPath = join(await fixture({}), "errors.log")
   const old = Array.from({ length: 60 }, (_, i) => `2026-10-11T10:00:${String(i).padStart(2, "0")}Z old error ${i}`).join("\n")
-  await Bun.write(logPath, `${old}\n2026-10-11T11:00:00Z TypeError: boom\n    at render (/home/ann/.local/lib/x.js:1:2)\n    at open (${root}/src/a.ts:3:4)\n`)
+  await Bun.write(
+    logPath,
+    `${old}\n2026-10-11T11:00:00Z TypeError: boom\n    at render (/home/ann/.local/lib/x.js:1:2)\n    at open (${root}/src/a.ts:3:4)\n`,
+  )
   const ws = createWorkspace(root)
   const text = await reportContext(ws, { env: { WT_SESSION: "x", TERM: "xterm-256color" }, logPath, home: "/home/ann" })
   expect(text).toContain(`copane ${pkg.version}`)
@@ -47,7 +50,14 @@ test("Report a problem types the prompt into the AI pane and goes there", async 
   const ws = createWorkspace(await fixture({}), { focus: "editor" })
   const pasted: string[] = []
   let focused = false
-  ws.ai = { paste: (t) => pasted.push(t), type: () => {}, submit: () => {}, focus: () => (focused = true), restart: () => {}, kill: () => {} }
+  ws.ai = {
+    paste: (t) => pasted.push(t),
+    type: () => {},
+    submit: () => {},
+    focus: () => (focused = true),
+    restart: () => {},
+    kill: () => {},
+  }
   await reportProblem(ws)
   expect(pasted.join("")).toContain("report a problem with copane")
   expect(ws.ui.get().focus).toBe("ai")

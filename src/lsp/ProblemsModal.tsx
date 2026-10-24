@@ -44,10 +44,17 @@ export function ProblemsModal() {
 
   const counts = ws.lsp?.counts() ?? { errors: 0, warnings: 0 }
   return (
-    <Modal title={`Problems: ${counts.errors} errors, ${counts.warnings} warnings (open files)${all.length && ws.ai ? " · f: AI fix" : ""}`} width={Math.min(120, dims.width - 4)} height={listH + 4} onClose={close}>
+    <Modal
+      title={`Problems: ${counts.errors} errors, ${counts.warnings} warnings (open files)${all.length && ws.ai ? " · f: AI fix" : ""}`}
+      width={Math.min(120, dims.width - 4)}
+      height={listH + 4}
+      onClose={close}
+    >
       {all.length === 0 ? (
         <text selectable={false} fg={colors.dim}>
-          {ws.lsp?.status() ? "No problems in open files." : "No language server running (open a TypeScript, Rust, Go or Python file)."}
+          {ws.lsp?.status()
+            ? "No problems in open files."
+            : "No language server running (open a TypeScript, Rust, Go or Python file)."}
         </text>
       ) : (
         all.slice(start, start + listH).map((p, i) => {

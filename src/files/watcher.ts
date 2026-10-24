@@ -95,7 +95,9 @@ export class FileWatcher {
     this.pending = new Set()
     // New folders start being watched; removed ones are dropped.
     for (const p of paths) {
-      const info = await Bun.file(p).stat().catch(() => null)
+      const info = await Bun.file(p)
+        .stat()
+        .catch(() => null)
       if (info?.isDirectory()) {
         if (!this.watchers.has(p) && !this.matcher.isIgnored(p, true)) await this.addTree(p)
       } else if (!info && this.watchers.has(p)) this.unwatch(p)

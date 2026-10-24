@@ -12,8 +12,12 @@ class Ta {
   isDestroyed = false
   logicalCursor = { row: 0, col: 0 }
   lineCount = 1
-  setText(t: string) { this.plainText = t }
-  replaceText(t: string) { this.plainText = t }
+  setText(t: string) {
+    this.plainText = t
+  }
+  replaceText(t: string) {
+    this.plainText = t
+  }
   setCursor() {}
   removeHighlightsByRef() {}
   addHighlight() {}

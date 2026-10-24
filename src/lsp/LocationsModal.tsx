@@ -26,7 +26,11 @@ export function LocationsModal({ title, locations }: { title: string; locations:
       const m = new Map<string, string[]>()
       for (const p of new Set(locations.map((l) => l.path))) {
         const open = ws.buffers.byPath(p)
-        const text = open ? ws.buffers.textOf(open) : await Bun.file(p).text().catch(() => "")
+        const text = open
+          ? ws.buffers.textOf(open)
+          : await Bun.file(p)
+              .text()
+              .catch(() => "")
         m.set(p, text.split("\n"))
       }
       if (live) setLines(m)

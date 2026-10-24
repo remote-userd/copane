@@ -90,7 +90,15 @@ export function Tabs({ focused = false }: { focused?: boolean }) {
   const activeId = buffers.active?.id
   const activeIdx = list.findIndex((b) => b.id === activeId)
   const iconW = ws.config.tree.icons === "none" ? 0 : 2
-  first.current = width > 0 ? firstVisibleTab(list.map((b) => tabWidth(b, iconW)), activeIdx, width, first.current) : 0
+  first.current =
+    width > 0
+      ? firstVisibleTab(
+          list.map((b) => tabWidth(b, iconW)),
+          activeIdx,
+          width,
+          first.current,
+        )
+      : 0
   return (
     <box
       ref={ref}

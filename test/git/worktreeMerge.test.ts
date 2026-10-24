@@ -5,7 +5,8 @@ import { GitRepo } from "../../src/git/repo"
 import { fixture, GIT_ENV } from "../helpers"
 
 const env = GIT_ENV
-const sh = (cwd: string, ...args: string[]) => Bun.spawnSync(["git", ...args], { cwd, env, stdout: "pipe", stderr: "pipe" }).stdout.toString()
+const sh = (cwd: string, ...args: string[]) =>
+  Bun.spawnSync(["git", ...args], { cwd, env, stdout: "pipe", stderr: "pipe" }).stdout.toString()
 
 /** A repo, and a worktree on its own branch where an "agent" committed one change and left two more. */
 async function setup() {

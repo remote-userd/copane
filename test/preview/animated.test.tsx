@@ -14,14 +14,24 @@ afterEach(() => {
 
 /** A 16×8 GIF: a red frame, then a blue one, 50 ms each. */
 function redBlue(): Uint8Array {
-  return makeGif(16, 8, [[255, 0, 0], [0, 0, 255]], [
-    { width: 16, height: 8, pixels: Array(128).fill(0), delayCs: 5 },
-    { width: 16, height: 8, pixels: Array(128).fill(1), delayCs: 5 },
-  ])
+  return makeGif(
+    16,
+    8,
+    [
+      [255, 0, 0],
+      [0, 0, 255],
+    ],
+    [
+      { width: 16, height: 8, pixels: Array(128).fill(0), delayCs: 5 },
+      { width: 16, height: 8, pixels: Array(128).fill(1), delayCs: 5 },
+    ],
+  )
 }
 
 /** Which of red and blue appear on screen. */
-function colours(frame: { lines: { spans: { fg: { r: number; g: number; b: number }; bg: { r: number; g: number; b: number } }[] }[] }) {
+function colours(frame: {
+  lines: { spans: { fg: { r: number; g: number; b: number }; bg: { r: number; g: number; b: number } }[] }[]
+}) {
   const seen = new Set<string>()
   for (const line of frame.lines)
     for (const span of line.spans)
@@ -36,7 +46,10 @@ async function play(playing: boolean): Promise<Set<string>> {
   const root = await fixture({})
   const path = join(root, "anim.gif")
   writeFileSync(path, redBlue())
-  const setup = await testRender(<AnimatedImage path={path} width={8} height={4} protocol="blocks" playing={playing} />, { width: 20, height: 6 })
+  const setup = await testRender(<AnimatedImage path={path} width={8} height={4} protocol="blocks" playing={playing} />, {
+    width: 20,
+    height: 6,
+  })
   cleanup = () => setup.renderer.destroy()
   const seen = new Set<string>()
   for (let i = 0; i < 25; i++) {

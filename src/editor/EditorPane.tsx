@@ -56,7 +56,10 @@ function openEditorMenu(ws: Workspace, x: number, y: number): void {
         item("AI: find and fix bugs", "", "ai.fix", !ws.ai),
         item("AI: write tests", "", "ai.tests", !ws.ai),
         ...(ws.buffers.active?.filetype === "markdown"
-          ? [item("Open preview", "Alt+Shift+V", "markdown.openPreview"), item("Open preview to the side", "^K V", "markdown.togglePreviewSide")]
+          ? [
+              item("Open preview", "Alt+Shift+V", "markdown.openPreview"),
+              item("Open preview to the side", "^K V", "markdown.togglePreviewSide"),
+            ]
           : []),
       ],
     },
@@ -101,7 +104,13 @@ type BufferViewProps = { buf: Buffer; active: boolean; focused: boolean; wrap: b
  */
 const BufferView = memo(
   (props: BufferViewProps) => <BufferViewInner {...props} />,
-  (a, b) => a.active === b.active && a.focused === b.focused && a.wrap === b.wrap && a.buf.id === b.buf.id && a.buf.filetype === b.buf.filetype && a.buf.path === b.buf.path,
+  (a, b) =>
+    a.active === b.active &&
+    a.focused === b.focused &&
+    a.wrap === b.wrap &&
+    a.buf.id === b.buf.id &&
+    a.buf.filetype === b.buf.filetype &&
+    a.buf.path === b.buf.path,
 )
 
 function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
@@ -202,7 +211,8 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
       const base = ws.review?.base(path)
       const signs = new Map<number, LineSign>()
       if (base !== undefined) {
-        for (const [line, change] of lineChanges(base, ta.plainText)) signs.set(line, { after: change === "del" ? "▁" : "┃", afterColor: colors.aiEdit })
+        for (const [line, change] of lineChanges(base, ta.plainText))
+          signs.set(line, { after: change === "del" ? "▁" : "┃", afterColor: colors.aiEdit })
       }
       if (signs.size || aiSigns.current.size) {
         aiSigns.current = signs
@@ -236,7 +246,13 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
         const from = l === d.range.start.line ? indexToCol(text, d.range.start.character) : 0
         let to = l === d.range.end.line ? indexToCol(text, d.range.end.character) : Bun.stringWidth(text)
         if (to <= from) to = from + 1 // zero-width ranges still get a visible mark
-        ta.addHighlight(l, { start: from, end: to, styleId: sev === 1 ? ids.error : sev === 2 ? ids.warn : ids.info, hlRef: DIAG_HL_REF, priority: 8 })
+        ta.addHighlight(l, {
+          start: from,
+          end: to,
+          styleId: sev === 1 ? ids.error : sev === 2 ? ids.warn : ids.info,
+          hlRef: DIAG_HL_REF,
+          priority: 8,
+        })
       }
     }
     diagSigns.current = signs
@@ -259,7 +275,8 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
       const { row, col } = ta.logicalCursor
       currentRow.current = row
       // Both keys: OpenTUI treats an object without "gutter" as a colour string and throws.
-      if (!ta.hasSelection() && !conflictRows.current.includes(row)) ln.setLineColor(row, { gutter: colors.currentLineBg, content: colors.currentLineBg })
+      if (!ta.hasSelection() && !conflictRows.current.includes(row))
+        ln.setLineColor(row, { gutter: colors.currentLineBg, content: colors.currentLineBg })
       // Brackets and word matches near the cursor only: reading the whole file on every move lags big files.
       const from = Math.max(0, row - DECOR_RADIUS)
       const lines = ta.lineRange(from, row + DECOR_RADIUS)
@@ -268,14 +285,26 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
       const ids = decorStyles()
       const at = (l: number, i: number) => indexToCol(lines[l] ?? "", i)
       for (const c of matchBracket(lines, r, index) ?? [])
-        ta.addHighlight(from + c.line, { start: at(c.line, c.index), end: at(c.line, c.index) + 1, styleId: ids.bracket, hlRef: DECOR_REF, priority: 5 })
+        ta.addHighlight(from + c.line, {
+          start: at(c.line, c.index),
+          end: at(c.line, c.index) + 1,
+          styleId: ids.bracket,
+          hlRef: DECOR_REF,
+          priority: 5,
+        })
       // Other uses of the word: on and near the screen only. A common word ("export", "const")
       // is on most lines, and each native highlight costs tens of microseconds.
       const near = ta.visibleLines(1)
       if (!ta.hasSelection())
         for (const o of wordOccurrences(lines, r, index))
           if (from + o.line >= near.from && from + o.line <= near.to)
-            ta.addHighlight(from + o.line, { start: at(o.line, o.start), end: at(o.line, o.end), styleId: ids.word, hlRef: DECOR_REF, priority: 5 })
+            ta.addHighlight(from + o.line, {
+              start: at(o.line, o.start),
+              end: at(o.line, o.end),
+              styleId: ids.word,
+              hlRef: DECOR_REF,
+              priority: 5,
+            })
       ta.requestRender()
     }, 30)
   }, [ws, id])
@@ -402,7 +431,17 @@ function BufferViewInner({ buf, active, focused, wrap }: BufferViewProps) {
       if (markTimer.current) clearTimeout(markTimer.current)
       if (conflictCheck.current) clearTimeout(conflictCheck.current)
     }
-  }, [ws, id, refreshMarkers, refreshAiMarkers, refreshDiagnostics, syncGutterWidth, decorateCursor, drawIndentGuides, markConflicts])
+  }, [
+    ws,
+    id,
+    refreshMarkers,
+    refreshAiMarkers,
+    refreshDiagnostics,
+    syncGutterWidth,
+    decorateCursor,
+    drawIndentGuides,
+    markConflicts,
+  ])
 
   const onContent = useCallback(() => {
     ws.buffers.onContentChange(id)
@@ -548,12 +587,15 @@ export function EditorPane() {
             setPaneWidth(this.width)
           }}
         >
-          {ui.fileBlame && active?.kind === "text" && ws.git?.for(active.path) ? <BlameColumn key={active.id} buf={active} width={paneWidth >= 110 ? 44 : 30} /> : null}
+          {ui.fileBlame && active?.kind === "text" && ws.git?.for(active.path) ? (
+            <BlameColumn key={active.id} buf={active} width={paneWidth >= 110 ? 44 : 30} />
+          ) : null}
           <box flexGrow={1} flexBasis={0} flexDirection="column">
             {list.map((b) => {
               const on = b.id === active?.id
               if (b.kind === "image") return <ImageView key={b.id} buf={b} active={on} focused={focused && on} />
-              if (b.kind === "preview") return <MarkdownPreview key={b.id} path={b.source!} active={on} focused={focused && on} version={b.version} />
+              if (b.kind === "preview")
+                return <MarkdownPreview key={b.id} path={b.source!} active={on} focused={focused && on} version={b.version} />
               return <BufferView key={b.id} buf={b} active={on} focused={focused && on} wrap={ui.wordWrap} />
             })}
           </box>

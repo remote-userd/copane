@@ -11,7 +11,16 @@ import { acceptConflict, conflictsOf, gotoConflict } from "../git/conflictAction
 import { conflictAt } from "../editor/conflicts"
 import { NOT_COMMITTED } from "../git/repo"
 import { addNextOccurrence, multiPaste, selectAllOccurrences } from "../editor/MultiEdit"
-import { findReferences, formatDocument, goToDefinition, nextProblem, organizeImports, quickFix, renameSymbol, showHover } from "../lsp/lspActions"
+import {
+  findReferences,
+  formatDocument,
+  goToDefinition,
+  nextProblem,
+  organizeImports,
+  quickFix,
+  renameSymbol,
+  showHover,
+} from "../lsp/lspActions"
 import { completeNow } from "../lsp/CompletionPopup"
 import { parseGoto } from "../editor/search"
 import { deleteLine, duplicateLine, indent, moveLine, outdent, toggleLineComment, trimWhitespace } from "../editor/lineCommands"
@@ -325,7 +334,11 @@ function pickRepo(ws: Workspace): void {
   const nameW = Math.max(...names.map((n) => n.length))
   const items = all.map((s, i) => {
     const b = s.branch
-    const branch = !b ? "" : b.detached ? `${b.name} (detached)` : `${b.name}${b.ahead ? ` ↑${b.ahead}` : ""}${b.behind ? ` ↓${b.behind}` : ""}`
+    const branch = !b
+      ? ""
+      : b.detached
+        ? `${b.name} (detached)`
+        : `${b.name}${b.ahead ? ` ↑${b.ahead}` : ""}${b.behind ? ` ↓${b.behind}` : ""}`
     return {
       label: `${names[i]!.padEnd(nameW)}  ${branch}`,
       hint: s.entries.length ? `● ${s.entries.length}` : "",
@@ -344,7 +357,10 @@ function setFocus(ws: Workspace, focus: "tree" | "editor" | "ai"): void {
   if (focus === "tree" && ui.focus === "tree" && ui.sidebar === "search") return ws.ui.set({ sidebar: "files" })
   // "Maximize AI" hid the editor: Ctrl+E brings it back when it has tabs to show.
   const max = ui.aiMaximized
-  const showEditor = focus === "editor" && max && !max.editor && ws.buffers.list().length ? { aiMaximized: { ...max, editor: true }, notice: null } : {}
+  const showEditor =
+    focus === "editor" && max && !max.editor && ws.buffers.list().length
+      ? { aiMaximized: { ...max, editor: true }, notice: null }
+      : {}
   ws.ui.set({
     focus,
     ...showEditor,
@@ -507,15 +523,25 @@ export const commands = {
     },
   },
   // Conflicts come first: while a file has them, Alt+F5 / Shift+Alt+F5 step through those.
-  "git.nextChange": { title: "Next change (or merge conflict) in file", run: (ws) => void (gotoConflict(ws, 1) || gotoChange(ws, 1)) },
-  "git.prevChange": { title: "Previous change (or merge conflict) in file", run: (ws) => void (gotoConflict(ws, -1) || gotoChange(ws, -1)) },
+  "git.nextChange": {
+    title: "Next change (or merge conflict) in file",
+    run: (ws) => void (gotoConflict(ws, 1) || gotoChange(ws, 1)),
+  },
+  "git.prevChange": {
+    title: "Previous change (or merge conflict) in file",
+    run: (ws) => void (gotoConflict(ws, -1) || gotoChange(ws, -1)),
+  },
   "conflict.acceptCurrent": { title: "Merge conflict: accept current", run: (ws) => acceptConflict(ws, "current") },
   "conflict.acceptIncoming": { title: "Merge conflict: accept incoming", run: (ws) => acceptConflict(ws, "incoming") },
   "conflict.acceptBoth": { title: "Merge conflict: accept both", run: (ws) => acceptConflict(ws, "both") },
-  "git.branches": { title: "Switch or create a branch", run: (ws) => (followFile(ws) ? ws.ui.set({ modal: { kind: "branches" } }) : ws.notify("Not a git repository", "warn")) },
+  "git.branches": {
+    title: "Switch or create a branch",
+    run: (ws) => (followFile(ws) ? ws.ui.set({ modal: { kind: "branches" } }) : ws.notify("Not a git repository", "warn")),
+  },
   "git.deleteBranch": {
     title: "Delete a branch",
-    run: (ws) => (followFile(ws) ? ws.ui.set({ modal: { kind: "branches", mode: "delete" } }) : ws.notify("Not a git repository", "warn")),
+    run: (ws) =>
+      followFile(ws) ? ws.ui.set({ modal: { kind: "branches", mode: "delete" } }) : ws.notify("Not a git repository", "warn"),
   },
   "git.stageHunk": {
     title: "Stage the change at the cursor",
@@ -546,7 +572,8 @@ export const commands = {
   },
   "git.history": {
     title: "Commit history (git log of the whole project)",
-    run: (ws) => (followFile(ws) ? ws.ui.set({ modal: { kind: "history", path: null } }) : ws.notify("Not a git repository", "warn")),
+    run: (ws) =>
+      followFile(ws) ? ws.ui.set({ modal: { kind: "history", path: null } }) : ws.notify("Not a git repository", "warn"),
   },
   "git.blameLine": {
     title: "Show the commit that last changed this line",
@@ -575,7 +602,11 @@ export const commands = {
       if (!ws.git?.enabled) return ws.notify("Not a git repository", "warn")
       const on = !ws.ui.get().fileBlame
       ws.ui.set({ fileBlame: on })
-      ws.notify(on ? `File blame on: click a block for its commit (${macKeys(ws.config) ? "Alt+Shift+B" : "Alt+B"} hides it)` : "File blame off")
+      ws.notify(
+        on
+          ? `File blame on: click a block for its commit (${macKeys(ws.config) ? "Alt+Shift+B" : "Alt+B"} hides it)`
+          : "File blame off",
+      )
     },
   },
   "view.wordWrap": {
@@ -615,7 +646,13 @@ export const commands = {
       } else {
         // From "maximize AI", restoring later brings back the tree as it was before that.
         const tree = ui.aiMaximized ? ui.aiMaximized.tree : ui.treeVisible
-        ws.ui.set({ maximized: { tree, ai: ui.aiVisible }, aiMaximized: null, treeVisible: false, aiVisible: false, focus: "editor" })
+        ws.ui.set({
+          maximized: { tree, ai: ui.aiVisible },
+          aiMaximized: null,
+          treeVisible: false,
+          aiVisible: false,
+          focus: "editor",
+        })
       }
     },
   },
@@ -672,7 +709,8 @@ export const commands = {
     title: "Reload file from disk",
     run: async (ws) => {
       const b = ws.buffers.active
-      if (b && (await ws.buffers.reloadFromDisk(b.id)) === "gone") ws.notify("The file is no longer on disk; your version is kept", "warn")
+      if (b && (await ws.buffers.reloadFromDisk(b.id)) === "gone")
+        ws.notify("The file is no longer on disk; your version is kept", "warn")
     },
   },
   "buffer.keepLocal": {
@@ -725,7 +763,10 @@ export const commands = {
   "ai.turns": { title: "AI turns: review and undo what the AI changed", run: (ws) => ws.ui.set({ modal: { kind: "turns" } }) },
   "ai.newTerminal": { title: "Terminal: new terminal tab (your shell, in the AI pane)", run: (ws) => ws.agents?.newTerminal() },
   "ai.run": { title: "Terminal: run a dev server (npm run dev, docker compose up…)", run: (ws) => ws.agents?.openRun() },
-  "ai.fixTerminalError": { title: "AI: fix the terminal error (send a terminal's error to the AI)", run: (ws) => void ws.agents?.sendTerminalError() },
+  "ai.fixTerminalError": {
+    title: "AI: fix the terminal error (send a terminal's error to the AI)",
+    run: (ws) => void ws.agents?.sendTerminalError(),
+  },
   "ai.fixProblems": { title: "AI: fix problems (this file's errors, else all open files')", run: (ws) => sendProblems(ws) },
   "ai.reviewChanges": { title: "AI: review my changes (the git diff)", run: sendChangesForReview },
   "ai.nextChange": { title: "AI edits: next unreviewed change (accept / undo)", run: (ws) => void stepAiChange(ws, 1) },
@@ -764,7 +805,8 @@ export const commands = {
     title: "AI: review & merge this agent's worktree",
     run: (ws) => {
       const id = ws.agents?.activeId()
-      if (id === undefined || !ws.agents?.session(id)?.branch) return ws.notify("The visible agent doesn't work in its own worktree (Ctrl+Alt+N › … in a git worktree)", "warn")
+      if (id === undefined || !ws.agents?.session(id)?.branch)
+        return ws.notify("The visible agent doesn't work in its own worktree (Ctrl+Alt+N › … in a git worktree)", "warn")
       ws.ui.set({ modal: { kind: "mergeAgent", sessionId: id } })
     },
   },
@@ -776,7 +818,6 @@ export const commands = {
       ws.notify("Accepted all AI changes")
     },
   },
-
 } satisfies Record<string, Command>
 
 /** Alt+N / Alt+P: go to the next AI change and open its peek. */

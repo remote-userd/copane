@@ -151,7 +151,10 @@ test("in the AI pane, Ctrl+J and Ctrl+B reach the CLI (Claude's new line / run i
   const root = await fixture({ "a.txt": "a\n" })
   const ws = createWorkspace(root, { focus: "ai" })
   // Raw mode, so the bytes arrive as sent; dd stops after two of them and od prints them.
-  const raw: AiConfig = { ...config([]), args: ["-c", "stty raw -echo; echo agent-ready; dd bs=1 count=2 2>/dev/null | od -An -tx1"] }
+  const raw: AiConfig = {
+    ...config([]),
+    args: ["-c", "stty raw -echo; echo agent-ready; dd bs=1 count=2 2>/dev/null | od -An -tx1"],
+  }
   h = await renderApp(ws, { tree: <text>TREE</text>, ai: <TerminalPane config={raw} /> }, { width: 150, height: 24 })
   await until(() => h!.frame().includes("agent-ready"))
   await h.step(() => h!.keys.pressKey("LINEFEED"))

@@ -18,7 +18,12 @@ const ENV = GIT_ENV
 
 test("Ctrl+Alt+Z lists the turn, shows its changes, and u undoes it", async () => {
   const root = await fixture({ "cart.ts": "let total = 0\nfor (let i = 1; i < n; i++) {}\nexport { total }\n" })
-  for (const args of [["init", "-q"], ["add", "."], ["commit", "-qm", "init"]]) Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
+  for (const args of [
+    ["init", "-q"],
+    ["add", "."],
+    ["commit", "-qm", "init"],
+  ])
+    Bun.spawnSync(["git", ...args], { cwd: root, env: ENV })
   const ws = createWorkspace(root)
   const git = new GitRepo(root)
   ws.turns = new TurnLog(root, () => git)

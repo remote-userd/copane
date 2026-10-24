@@ -13,7 +13,12 @@ export function SearchModal({ tree }: { tree: TreeModel }) {
   const replace = ui.modal?.kind === "search" && !!ui.modal.replace
   const height = Math.max(8, Math.min(30, dims.height - 4))
   return (
-    <Modal title={replace ? "Replace in files" : "Search in files"} width={Math.min(110, dims.width - 4)} height={height} onClose={() => closeModal(ws)}>
+    <Modal
+      title={replace ? "Replace in files" : "Search in files"}
+      width={Math.min(110, dims.width - 4)}
+      height={height}
+      onClose={() => closeModal(ws)}
+    >
       <SearchPanel tree={tree} height={height - 4} mode="popup" />
     </Modal>
   )

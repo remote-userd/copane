@@ -19,7 +19,11 @@ export function linkAt(line: string, col: number, cwd: string): TerminalLink | n
   for (const m of line.matchAll(FILE)) {
     if (col < m.index || col >= m.index + m[0].length) continue
     const file = m[1]!.replace(/^file:\/\//, "")
-    const path = file.startsWith("~/") ? resolve(Bun.env.HOME ?? "/", file.slice(2)) : isAbsolute(file) ? file : resolve(cwd, file)
+    const path = file.startsWith("~/")
+      ? resolve(Bun.env.HOME ?? "/", file.slice(2))
+      : isAbsolute(file)
+        ? file
+        : resolve(cwd, file)
     return { kind: "file", path, line: Number(m[2] ?? m[4]), col: Number(m[3] ?? m[5] ?? 1) }
   }
   return null

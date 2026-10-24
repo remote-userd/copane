@@ -2,7 +2,15 @@ import { describe, expect, test } from "bun:test"
 import { mkdtemp, readFile, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { BinaryFileError, decodeForBuffer, decodeUtf8, detectEol, encodeForDisk, loadFile, saveFile } from "../../src/editor/fileio"
+import {
+  BinaryFileError,
+  decodeForBuffer,
+  decodeUtf8,
+  detectEol,
+  encodeForDisk,
+  loadFile,
+  saveFile,
+} from "../../src/editor/fileio"
 
 describe("fileio", () => {
   test("detects CRLF and LF", () => {

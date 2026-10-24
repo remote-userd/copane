@@ -74,7 +74,9 @@ export function HistoryModal({ path, sha }: { path: string | null; sha?: string 
   const listW = sha ? 0 : Math.min(64, Math.floor(w * 0.42))
   // Who and when on each row (GitLens style), when the list has room for a subject too.
   const authorW = listW >= 44 ? Math.min(14, Math.floor(listW * 0.25)) : 0
-  const title = sha ? `Commit ${sha.slice(0, 8)}` : `History: ${path ? repo?.rel(path) : "repository"}${commits ? ` (${commits.length})` : ""}`
+  const title = sha
+    ? `Commit ${sha.slice(0, 8)}`
+    : `History: ${path ? repo?.rel(path) : "repository"}${commits ? ` (${commits.length})` : ""}`
   const listTop = Math.max(0, Math.min(sel - viewH + 1, (commits?.length ?? 0) - viewH))
 
   return (

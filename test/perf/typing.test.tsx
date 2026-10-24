@@ -18,7 +18,12 @@ const big = Array.from({ length: LINES }, (_, i) => `const value${i} = compute($
 async function session(keys: number) {
   const root = await fixture({})
   writeFileSync(join(root, "big.ts"), big)
-  for (const args of [["init", "-q"], ["add", "."], ["commit", "-qm", "i"]]) Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...args], { cwd: root })
+  for (const args of [
+    ["init", "-q"],
+    ["add", "."],
+    ["commit", "-qm", "i"],
+  ])
+    Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...args], { cwd: root })
   const ws = createWorkspace(root)
   const git = new GitStatus(root)
   await git.start(60_000)
@@ -55,6 +60,8 @@ async function session(keys: number) {
 
 test("typing in an 11,000-line file", async () => {
   const r = await session(40)
-  console.log(`TYPING median ${r.median.toFixed(2)} ms | p90 ${r.p90.toFixed(2)} | max ${r.max.toFixed(2)} | background per key ${r.busyPerKey.toFixed(2)} ms`)
+  console.log(
+    `TYPING median ${r.median.toFixed(2)} ms | p90 ${r.p90.toFixed(2)} | max ${r.max.toFixed(2)} | background per key ${r.busyPerKey.toFixed(2)} ms`,
+  )
   expect(r.median).toBeGreaterThan(0)
 }, 60_000)

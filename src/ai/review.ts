@@ -92,7 +92,10 @@ export class AiReview {
     let timer: ReturnType<typeof setTimeout> | null = null
     const save = async (): Promise<void> => {
       timer = null
-      if (!this.bases.size) return void (await Bun.file(path).delete().catch(() => null))
+      if (!this.bases.size)
+        return void (await Bun.file(path)
+          .delete()
+          .catch(() => null))
       const files: Record<string, string> = {}
       let total = 0
       for (const [file, base] of this.bases) {
@@ -290,7 +293,10 @@ export async function gotoAiChange(ws: Workspace, dir: 1 | -1, quiet = false): P
   if (buf && ed && review.has(buf.path)) {
     const all = review.changes(buf.path, ed.plainText)
     const row = ed.logicalCursor.row
-    const h = dir === 1 ? all.find((x) => x.newStart > row) : [...all].reverse().find((x) => x.newStart + Math.max(1, x.newLines) - 1 < row)
+    const h =
+      dir === 1
+        ? all.find((x) => x.newStart > row)
+        : [...all].reverse().find((x) => x.newStart + Math.max(1, x.newLines) - 1 < row)
     if (h) return moveTo(ws, h)
   }
   // Another file (or this one from the top, when it is the only one).

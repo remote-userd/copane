@@ -57,7 +57,10 @@ export function formatProblemsForAgent(problems: Problem[], limit = 40): string 
  * Changes for the AI to review: the diff itself while it is small enough to paste, otherwise the
  * list of changed files (the AI can run `git diff` itself). New files are listed by name.
  */
-export function formatChangesForAgent(changes: { diff: string; stat: string; staged: boolean; untracked: string[] }, maxBytes = 40_000): string {
+export function formatChangesForAgent(
+  changes: { diff: string; stat: string; staged: boolean; untracked: string[] },
+  maxBytes = 40_000,
+): string {
   const parts: string[] = []
   const which = changes.staged ? "staged changes" : "uncommitted changes"
   if (changes.diff.trim()) {
@@ -65,7 +68,9 @@ export function formatChangesForAgent(changes: { diff: string; stat: string; sta
       const fence = changes.diff.includes("```") ? "````" : "```"
       parts.push(`The ${which}:\n${fence}diff\n${changes.diff.replace(/\n$/, "")}\n${fence}`)
     } else {
-      parts.push(`The ${which} are too big to paste (${Math.round(changes.diff.length / 1024)} KB); see \`git diff${changes.staged ? " --cached" : " HEAD"}\`. Changed files:\n${changes.stat.trim()}`)
+      parts.push(
+        `The ${which} are too big to paste (${Math.round(changes.diff.length / 1024)} KB); see \`git diff${changes.staged ? " --cached" : " HEAD"}\`. Changed files:\n${changes.stat.trim()}`,
+      )
     }
   }
   if (changes.untracked.length) parts.push(`New files: ${changes.untracked.map((p) => `@${mention(p)}`).join(" ")}`)

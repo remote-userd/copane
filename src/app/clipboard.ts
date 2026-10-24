@@ -1,4 +1,3 @@
-
 export interface ClipboardTool {
   name: string
   copy?: string[]
@@ -32,11 +31,18 @@ export function detectClipboardTool(which: (cmd: string) => string | null = (c) 
         "-Command",
         "$m=New-Object IO.MemoryStream; [Console]::OpenStandardInput().CopyTo($m); Set-Clipboard -Value ([Text.Encoding]::UTF8.GetString($m.ToArray()))",
       ],
-      paste: ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", "[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-Clipboard -Raw"],
+      paste: [
+        "powershell.exe",
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-Clipboard -Raw",
+      ],
     }
   }
   if (Bun.env.WAYLAND_DISPLAY && which("wl-copy")) return { name: "wl-clipboard", copy: ["wl-copy"], paste: ["wl-paste", "-n"] }
-  if (which("xclip")) return { name: "xclip", copy: ["xclip", "-selection", "clipboard"], paste: ["xclip", "-o", "-selection", "clipboard"] }
+  if (which("xclip"))
+    return { name: "xclip", copy: ["xclip", "-selection", "clipboard"], paste: ["xclip", "-o", "-selection", "clipboard"] }
   if (which("xsel")) return { name: "xsel", copy: ["xsel", "-ib"], paste: ["xsel", "-ob"] }
   return null
 }

@@ -18,7 +18,11 @@ test("getLineSources matches the full line info, with and without wrapping", asy
     const ed = editor(text, wrap)
     await renderOnce()
     const all = ed.lineInfo.lineSources
-    for (const [start, n] of [[0, 8], [37, 9], [all.length - 5, 9]] as const) {
+    for (const [start, n] of [
+      [0, 8],
+      [37, 9],
+      [all.length - 5, 9],
+    ] as const) {
       expect(ed.getLineSources(start, n)).toEqual(all.slice(start, start + n))
     }
     ed.destroy()

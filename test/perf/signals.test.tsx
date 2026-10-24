@@ -12,7 +12,7 @@ afterEach(() => {
   windowFocus.set({ focused: true })
 })
 const settle = async (ms = 80) => {
-  for (const end = Date.now() + ms; Date.now() < end; ) {
+  for (const end = Date.now() + ms; Date.now() < end;) {
     await Bun.sleep(15)
     await h?.setup.renderOnce()
   }

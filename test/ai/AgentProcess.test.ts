@@ -50,11 +50,21 @@ test.if(process.platform === "linux")("kill takes down background jobs in the CL
 })
 
 test("a CLI that exits by itself leaves no open terminal behind (restarting all day leaked one each)", async () => {
-  const fds = async () => (await import("node:fs/promises")).readdir("/proc/self/fd").then((l) => l.length).catch(() => -1)
+  const fds = async () =>
+    (await import("node:fs/promises"))
+      .readdir("/proc/self/fd")
+      .then((l) => l.length)
+      .catch(() => -1)
   const before = await fds()
   if (before < 0) return // no /proc (macOS): nothing to count
   for (let i = 0; i < 20; i++) {
-    const p = new AgentProcess({ command: "/bin/sh", args: ["-c", "true"], cwd: process.cwd(), onOutput: () => {}, onStatus: () => {} })
+    const p = new AgentProcess({
+      command: "/bin/sh",
+      args: ["-c", "true"],
+      cwd: process.cwd(),
+      onOutput: () => {},
+      onStatus: () => {},
+    })
     p.start(80, 24)
     for (let j = 0; j < 100 && p.status.kind === "running"; j++) await Bun.sleep(10)
   }

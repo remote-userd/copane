@@ -134,7 +134,9 @@ test("preview commands on other files say so", async () => {
 })
 
 test("local images in Markdown render as pictures; remote ones keep their alt text", async () => {
-  const root = await fixture({ "doc.md": "# Pics\n\n![logo](img/logo.png)\n\nAfter the picture.\n\n![badge](https://example.com/b.svg)\n" })
+  const root = await fixture({
+    "doc.md": "# Pics\n\n![logo](img/logo.png)\n\nAfter the picture.\n\n![badge](https://example.com/b.svg)\n",
+  })
   mkdirSync(join(root, "img"))
   writeFileSync(join(root, "img/logo.png"), makePng(80, 40))
   const ws = createWorkspace(root)

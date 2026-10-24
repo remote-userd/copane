@@ -22,7 +22,12 @@ function fakeTurns() {
   const store = new Store<{ turns: Turn[] }>({ turns: [] })
   let id = 1
   return {
-    log: { store, get turns() { return store.get().turns } } as unknown as TurnLog,
+    log: {
+      store,
+      get turns() {
+        return store.get().turns
+      },
+    } as unknown as TurnLog,
     add(files: { path: string; before: string | null }[]) {
       const turn: Turn = { id: id++, startedAt: 0, endedAt: 1, prompt: "p", files: files.map((f) => ({ ...f, known: true })) }
       store.set({ turns: [...store.get().turns, turn] })
@@ -30,7 +35,8 @@ function fakeTurns() {
   }
 }
 
-const lines = (n: number, edit: Record<number, string> = {}) => Array.from({ length: n }, (_, i) => edit[i] ?? `line ${i + 1}`).join("\n") + "\n"
+const lines = (n: number, edit: Record<number, string> = {}) =>
+  Array.from({ length: n }, (_, i) => edit[i] ?? `line ${i + 1}`).join("\n") + "\n"
 
 test("the review base is the file before its first unreviewed turn; accepting takes one change at a time", async () => {
   const root = await fixture({ "a.txt": lines(10, { 1: "AI one", 7: "AI two" }) })
@@ -193,7 +199,13 @@ test("from the AI pane: Ctrl+Alt+V lands on the first change in the editor", asy
   const turns = fakeTurns()
   ws.turns = turns.log
   ws.review.watch(turns.log)
-  const config = { command: "/bin/sh", args: ["-c", "echo agent-ready; exec cat"], maxScrollbackBytes: 100_000, notify: "off" as const, agents: [] }
+  const config = {
+    command: "/bin/sh",
+    args: ["-c", "echo agent-ready; exec cat"],
+    maxScrollbackBytes: 100_000,
+    notify: "off" as const,
+    agents: [],
+  }
   h = await renderApp(ws, { tree: <text>TREE</text>, ai: <TerminalPane config={config} /> }, { width: 140, height: 24 })
   await until(() => h!.frame().includes("agent-ready"))
   turns.add([{ path: join(root, "a.txt"), before: "one\ntwo\nthree\n" }])
@@ -227,7 +239,9 @@ test("committing accepts: committed files drop out; uncommitted, untracked and e
   const review = new AiReview(new BufferStore({ root }))
   const turns = fakeTurns()
   review.watch(turns.log)
-  turns.add(["a.txt", "b.txt", "c.txt", "new.txt"].map((f) => ({ path: join(root, f), before: f === "new.txt" ? null : f[0] + "\n" })))
+  turns.add(
+    ["a.txt", "b.txt", "c.txt", "new.txt"].map((f) => ({ path: join(root, f), before: f === "new.txt" ? null : f[0] + "\n" })),
+  )
   const git = new GitStatus(root)
   await git.start(50)
   const off = review.followGit(git)

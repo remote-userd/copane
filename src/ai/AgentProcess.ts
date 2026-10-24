@@ -126,7 +126,14 @@ export class AgentProcess {
     signalAll("SIGHUP", [proc.pid, ...members])
     signalAll("SIGTERM", [proc.pid, ...members])
     // Background jobs may survive both; kill whatever is left of the session shortly after.
-    const sweep = setTimeout(() => signalAll("SIGKILL", [...members].filter((p) => p !== proc.pid)), Math.min(graceMs, 300))
+    const sweep = setTimeout(
+      () =>
+        signalAll(
+          "SIGKILL",
+          [...members].filter((p) => p !== proc.pid),
+        ),
+      Math.min(graceMs, 300),
+    )
     const timer = setTimeout(() => signalAll("SIGKILL", [proc.pid, ...members]), graceMs)
     try {
       const code = await proc.exited

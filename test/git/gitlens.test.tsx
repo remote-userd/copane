@@ -8,7 +8,13 @@ import { createWorkspace, fixture, renderApp, type Harness, waitUntil } from "..
 // Several waits on the UI and git per test: more room than the default 5 s.
 setDefaultTimeout(15_000)
 
-const ENV = { GIT_AUTHOR_NAME: "Ann Dev", GIT_AUTHOR_EMAIL: "a@d", GIT_COMMITTER_NAME: "Ann Dev", GIT_COMMITTER_EMAIL: "a@d", GIT_OPTIONAL_LOCKS: "0" }
+const ENV = {
+  GIT_AUTHOR_NAME: "Ann Dev",
+  GIT_AUTHOR_EMAIL: "a@d",
+  GIT_COMMITTER_NAME: "Ann Dev",
+  GIT_COMMITTER_EMAIL: "a@d",
+  GIT_OPTIONAL_LOCKS: "0",
+}
 let h: Harness | null = null
 let git: GitStatus | null = null
 afterEach(() => {
@@ -17,7 +23,12 @@ afterEach(() => {
   h = null
 })
 const sh = (cwd: string, env: Record<string, string>, ...args: string[]) =>
-  Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, ...ENV, ...env } }).stdout.toString()
+  Bun.spawnSync(["git", ...args], {
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+    env: { ...process.env, ...ENV, ...env },
+  }).stdout.toString()
 const until = (cond: () => boolean | Promise<boolean>, ms = 4000) => waitUntil(cond, ms, () => h?.setup.renderOnce())
 
 /** a.ts: line 1 by Ann ("Start"), line 2 by Bob ("Bob's line"). */

@@ -1,5 +1,14 @@
 import { expect, test } from "bun:test"
-import { AgentWatch, MIN_WORK_MS, QUIET_MS, looksLikeQuestion, notifyCommand, plain, ringBell, type Attention } from "../../src/ai/alerts"
+import {
+  AgentWatch,
+  MIN_WORK_MS,
+  QUIET_MS,
+  looksLikeQuestion,
+  notifyCommand,
+  plain,
+  ringBell,
+  type Attention,
+} from "../../src/ai/alerts"
 
 function watch() {
   const events: Attention[] = []
@@ -56,7 +65,12 @@ test("each stretch of work gets its own alert", () => {
 })
 
 test("prompt patterns from several CLIs", () => {
-  for (const text of ["Do you want to make this edit to cart.ts?", "Allow command? (y/n)", "Approve this tool?", "❯ 1. Yes, and don't ask again"]) {
+  for (const text of [
+    "Do you want to make this edit to cart.ts?",
+    "Allow command? (y/n)",
+    "Approve this tool?",
+    "❯ 1. Yes, and don't ask again",
+  ]) {
     expect(looksLikeQuestion(text)).toBe(true)
   }
   expect(looksLikeQuestion("Fixed the off-by-one in total().")).toBe(false)
@@ -67,7 +81,11 @@ test("system notification commands per platform", () => {
   const all = () => true
   const wsl = notifyCommand("copane", "claude finished", "wsl", all)!
   expect(wsl.slice(0, 4)).toEqual(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand"])
-  expect(notifyCommand("copane", 'say "hi"', "mac", all)).toEqual(["osascript", "-e", 'display notification "say \\"hi\\"" with title "copane"'])
+  expect(notifyCommand("copane", 'say "hi"', "mac", all)).toEqual([
+    "osascript",
+    "-e",
+    'display notification "say \\"hi\\"" with title "copane"',
+  ])
   expect(notifyCommand("copane", "done", "linux", all)).toEqual(["notify-send", "copane", "done"])
   // Nothing installed: the caller falls back to the terminal's own notification (OSC 9).
   expect(notifyCommand("copane", "done", "linux", () => false)).toBeNull()

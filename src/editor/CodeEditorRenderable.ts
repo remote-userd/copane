@@ -1,4 +1,14 @@
-import { Renderable, RGBA, TextareaRenderable, type KeyEvent, type LineInfo, type MouseEvent, type OptimizedBuffer, type RenderContext, type TextareaOptions } from "@opentui/core"
+import {
+  Renderable,
+  RGBA,
+  TextareaRenderable,
+  type KeyEvent,
+  type LineInfo,
+  type MouseEvent,
+  type OptimizedBuffer,
+  type RenderContext,
+  type TextareaOptions,
+} from "@opentui/core"
 import { Glide } from "../app/glide"
 import { SYNTAX_HL_REF } from "./highlighter"
 import { combinedStyle, isOverlay } from "./syntaxStyle"
@@ -53,7 +63,13 @@ export function lineAt(ta: { plainText: string }, row: number): string {
   return ta instanceof CodeEditorRenderable ? ta.lineText(row) : (ta.plainText.split("\n")[row] ?? "")
 }
 type NativeHighlight = Parameters<TextareaRenderable["addHighlight"]>[1]
-const layerHl = (h: LayerHighlight, ref: number): NativeHighlight => ({ start: h.start, end: h.end, styleId: h.styleId, priority: h.priority, hlRef: ref })
+const layerHl = (h: LayerHighlight, ref: number): NativeHighlight => ({
+  start: h.start,
+  end: h.end,
+  styleId: h.styleId,
+  priority: h.priority,
+  hlRef: ref,
+})
 
 const sameHighlights = (a: readonly LayerHighlight[] | undefined, b: readonly LayerHighlight[] | undefined): boolean => {
   if (a === b) return true
@@ -75,7 +91,11 @@ function changedLines(old: Map<number, LayerHighlight[]>, next: Map<number, Laye
 }
 
 type RawMouse = { type: string; button: number; x: number; y: number; modifiers: { ctrl: boolean } }
-type MouseRouting = { processSingleMouseEvent(e: RawMouse): boolean; hitTest(x: number, y: number): number; clearSelection(): void }
+type MouseRouting = {
+  processSingleMouseEvent(e: RawMouse): boolean
+  hitTest(x: number, y: number): number
+  clearSelection(): void
+}
 const routed = new WeakSet<object>()
 
 /**
@@ -351,7 +371,8 @@ export class CodeEditorRenderable extends TextareaRenderable {
       super.removeHighlightsByRef(ref)
       this.drawn.set(ref, next)
       // Overlays on a line were cut against the old colours: such a line is redrawn whole instead.
-      const recut = ref === SYNTAX_HL_REF ? new Set([...next.keys(), ...(old?.keys() ?? [])].filter((line) => this.hasOverlay(line))) : null
+      const recut =
+        ref === SYNTAX_HL_REF ? new Set([...next.keys(), ...(old?.keys() ?? [])].filter((line) => this.hasOverlay(line))) : null
       for (const [line, list] of next) if (!recut?.has(line)) for (const h of list) this.nativeAdd(line, layerHl(h, ref))
       for (const line of recut ?? []) this.redrawLine(line)
       return
@@ -377,7 +398,8 @@ export class CodeEditorRenderable extends TextareaRenderable {
   /** Whether an overlay (see nativeAdd) is drawn on a line. */
   private hasOverlay(line: number): boolean {
     if (this.direct.get(line)?.some((h) => isOverlay(h.styleId))) return true
-    for (const [r, lines] of this.drawn) if (r !== SYNTAX_HL_REF && lines.get(line)?.some((h) => isOverlay(h.styleId))) return true
+    for (const [r, lines] of this.drawn)
+      if (r !== SYNTAX_HL_REF && lines.get(line)?.some((h) => isOverlay(h.styleId))) return true
     return false
   }
 
@@ -401,7 +423,10 @@ export class CodeEditorRenderable extends TextareaRenderable {
     const next =
       cur.to < screen.from || cur.from > screen.to
         ? screen // jumped: nothing drawn is on screen
-        : { from: Math.max(t.from, Math.min(cur.from, screen.from) - GROW_STEP), to: Math.min(t.to, Math.max(cur.to, screen.to) + GROW_STEP) }
+        : {
+            from: Math.max(t.from, Math.min(cur.from, screen.from) - GROW_STEP),
+            to: Math.min(t.to, Math.max(cur.to, screen.to) + GROW_STEP),
+          }
     this.window = next
     for (const ref of this.layers.keys()) this.drawLayer(ref, next)
     if (next.from === t.from && next.to === t.to) this.target = null
@@ -449,7 +474,12 @@ export class CodeEditorRenderable extends TextareaRenderable {
       if (event.type === "down") this.openContextMenu(event)
       return
     }
-    if (event.button === LEFT && event.type === "down" && (event.modifiers.ctrl || event.modifiers.alt) && this.onDefinitionClick) {
+    if (
+      event.button === LEFT &&
+      event.type === "down" &&
+      (event.modifiers.ctrl || event.modifiers.alt) &&
+      this.onDefinitionClick
+    ) {
       event.stopPropagation()
       const { row, col } = this.clickPos(event)
       const cb = this.onDefinitionClick

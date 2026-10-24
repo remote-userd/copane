@@ -70,8 +70,12 @@ export async function detectServices(root: string): Promise<Service[]> {
 }
 
 /** Services from the config when it lists any, else the detected ones. */
-export async function servicesFor(root: string, configured: { name: string; command: string; cwd?: string }[]): Promise<Service[]> {
-  if (configured.length) return configured.map((s) => ({ name: s.name, command: s.command, cwd: s.cwd ? resolve(root, s.cwd) : root }))
+export async function servicesFor(
+  root: string,
+  configured: { name: string; command: string; cwd?: string }[],
+): Promise<Service[]> {
+  if (configured.length)
+    return configured.map((s) => ({ name: s.name, command: s.command, cwd: s.cwd ? resolve(root, s.cwd) : root }))
   return detectServices(root)
 }
 
@@ -87,7 +91,8 @@ const ERROR_LINE = /\b(error|errors|exception|failed to|cannot find|is not defin
 const BOUNDARY_LINE =
   /found 0 errors|successfully started|compiled successfully|built in|ready in|hmr update|page reload|listening (on|at)|server (running|started)|started server on|nitro built|vite client warmed up|✔|file change detected|starting (incremental )?compilation|restarting|\brestarted\b/i
 /** `file:line[:col]` with a source-like extension, absolute or relative. */
-const LOCATION = /(?:file:\/\/)?((?:\/|\.{1,2}\/|[\w@~-][\w.@~-]*\/)[\w./@~-]*\.(?:[cm]?[jt]sx?|vue|svelte|py|go|rs|rb|php|java|kt|css|scss|sql|json|ya?ml))(?::(\d+))(?::(\d+))?/
+const LOCATION =
+  /(?:file:\/\/)?((?:\/|\.{1,2}\/|[\w@~-][\w.@~-]*\/)[\w./@~-]*\.(?:[cm]?[jt]sx?|vue|svelte|py|go|rs|rb|php|java|kt|css|scss|sql|json|ya?ml))(?::(\d+))(?::(\d+))?/
 /** A stack frame line ("    at fn (/x/y.js:3:7)"). */
 const FRAME = /^\s+at\s/
 

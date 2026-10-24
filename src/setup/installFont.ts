@@ -84,7 +84,8 @@ export function terminalFontEdit(text: string, face = FACE): EditResult {
     return { text: out, changed: true, nerd: true, reason: `font switched from ${OLD_FACE} to ${face} (bigger icons)` }
   }
   const faces = facesIn(settings)
-  if (faces.some(isNerdFace)) return { text, changed: false, nerd: true, reason: `already uses a Nerd Font (${faces.find(isNerdFace)})` }
+  if (faces.some(isNerdFace))
+    return { text, changed: false, nerd: true, reason: `already uses a Nerd Font (${faces.find(isNerdFace)})` }
   if (faces.length) {
     return { text, changed: false, nerd: false, reason: `you chose "${faces[0]}"; left it alone` }
   }
@@ -135,7 +136,11 @@ export function windowsFontScript(files: { winPath: string; file: string; regist
 /** Run a command; trimmed stdout, or null when it fails. */
 async function sh(cmd: string[], input?: string): Promise<string | null> {
   try {
-    const p = Bun.spawn(cmd, { stdout: "pipe", stderr: "pipe", stdin: input === undefined ? "ignore" : new TextEncoder().encode(input) })
+    const p = Bun.spawn(cmd, {
+      stdout: "pipe",
+      stderr: "pipe",
+      stdin: input === undefined ? "ignore" : new TextEncoder().encode(input),
+    })
     const [out, code] = await Promise.all([Bun.readableStreamToText(p.stdout), p.exited])
     return code === 0 ? out.trim() : null
   } catch {
@@ -144,7 +149,9 @@ async function sh(cmd: string[], input?: string): Promise<string | null> {
 }
 
 async function isWsl(): Promise<boolean> {
-  const version = await Bun.file("/proc/version").text().catch(() => "")
+  const version = await Bun.file("/proc/version")
+    .text()
+    .catch(() => "")
   return /microsoft/i.test(version) && Bun.which("powershell.exe") !== null
 }
 
@@ -156,7 +163,8 @@ function utf16Base64(text: string): string {
 }
 
 /** Run a PowerShell script. -EncodedCommand runs multi-line blocks reliably; stdin does not. */
-const powershell = (script: string) => sh(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", utf16Base64(script)])
+const powershell = (script: string) =>
+  sh(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", utf16Base64(script)])
 
 async function installWindows(): Promise<string> {
   // The embedded files have no path Windows can see: copy them to a real folder first.
@@ -214,7 +222,8 @@ async function windowsTerminalSettings(): Promise<string[]> {
 
 async function configureWindowsTerminal(): Promise<{ nerd: boolean; lines: string[]; files: string[] }> {
   const files = await windowsTerminalSettings()
-  if (!files.length) return { nerd: false, lines: ["Windows Terminal: settings not found; pick the font yourself (see README, Icons)"], files }
+  if (!files.length)
+    return { nerd: false, lines: ["Windows Terminal: settings not found; pick the font yourself (see README, Icons)"], files }
   let nerd = false
   const lines: string[] = []
   for (const file of files) {
@@ -259,7 +268,8 @@ async function setUpBefore(): Promise<boolean> {
   const stamp = (await Bun.file(stampPath())
     .json()
     .catch(() => null)) as Stamp | null
-  if (!stamp || stamp.face !== FACE || stamp.fonts.join() !== FONT_FILES.map((f) => f.file).join() || !stamp.settings.length) return false
+  if (!stamp || stamp.face !== FACE || stamp.fonts.join() !== FONT_FILES.map((f) => f.file).join() || !stamp.settings.length)
+    return false
   for (const file of stamp.settings) {
     const text = await Bun.file(file)
       .text()

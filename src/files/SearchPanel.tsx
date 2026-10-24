@@ -7,7 +7,16 @@ import { useUi, useWorkspace, useCursorStyle } from "../app/workspace"
 import { applyToFiles } from "../app/fileEdits"
 import { ui as colors } from "../config/theme"
 import { openAt } from "../app/navHistory"
-import { matcherFor, parseGlobs, replaceInFiles, replaceLines, searchFiles, type Hit, type MatchOptions, type SearchResult } from "./searchFiles"
+import {
+  matcherFor,
+  parseGlobs,
+  replaceInFiles,
+  replaceLines,
+  searchFiles,
+  type Hit,
+  type MatchOptions,
+  type SearchResult,
+} from "./searchFiles"
 import type { TreeModel } from "./TreeModel"
 import { replaceSeed, selectAllSoon } from "../app/seededInput"
 import { closeModal } from "../app/modalStack"
@@ -26,7 +35,24 @@ const last = { query: "", replaceWith: "", files: "", match: {} as MatchOptions 
  * Keys this panel handles itself (its key handler below), plus text editing in its fields. The
  * app keymap leaves these alone while the SEARCH tab has focus, so keep them in step.
  */
-export const SEARCH_PANEL_KEYS = new Set(["escape", "tab", "shift+tab", "return", "ctrl+f", "alt+c", "alt+w", "alt+r", "alt+return", "ctrl+return", "ctrl+a", "ctrl+z", "ctrl+y", "ctrl+c", "ctrl+v", "ctrl+x"])
+export const SEARCH_PANEL_KEYS = new Set([
+  "escape",
+  "tab",
+  "shift+tab",
+  "return",
+  "ctrl+f",
+  "alt+c",
+  "alt+w",
+  "alt+r",
+  "alt+return",
+  "ctrl+return",
+  "ctrl+a",
+  "ctrl+z",
+  "ctrl+y",
+  "ctrl+c",
+  "ctrl+v",
+  "ctrl+x",
+])
 
 /** Start the next search fresh (tests). */
 export function forgetLastSearch(): void {
@@ -177,7 +203,8 @@ export function SearchPanel({ tree, height, mode }: { tree: TreeModel; height: n
 
   const leave = () => (popup ? closeModal(ws) : ws.ui.set({ focus: "editor" }))
   const focusHere = () => !popup && ws.ui.set({ focus: "tree", sidebar: "search" })
-  const toggle = (k: keyof MatchOptions) => setMatch((m) => ({ ...m, [k]: k === "caseSensitive" ? (m.caseSensitive ? undefined : true) : !m[k] }))
+  const toggle = (k: keyof MatchOptions) =>
+    setMatch((m) => ({ ...m, [k]: k === "caseSensitive" ? (m.caseSensitive ? undefined : true) : !m[k] }))
   /** Ctrl+F keeps the cursor where it is; clicking ▸ puts it in the replace field. */
   const toggleReplace = (focusIt = false) => {
     setShowReplace((r) => !r)
@@ -205,7 +232,8 @@ export function SearchPanel({ tree, height, mode }: { tree: TreeModel; height: n
     return h.text.slice(h.start, h.end).replace(new RegExp(matcher.source, matcher.flags.replace("g", "")), replaceWith)
   }
 
-  const skipFor = (path: string) => new Set((result?.hits ?? []).filter((h) => h.path === path && dismissed.has(hitKey(h))).map((h) => h.line))
+  const skipFor = (path: string) =>
+    new Set((result?.hits ?? []).filter((h) => h.path === path && dismissed.has(hitKey(h))).map((h) => h.line))
 
   /** ⇄ on a match: replace just it. ⇄ on a file: every match in it but the dismissed ones. */
   const replaceRow = async (r: Row) => {
@@ -234,7 +262,8 @@ export function SearchPanel({ tree, height, mode }: { tree: TreeModel; height: n
     if (!showReplace || !hits.length || badRegex) return
     const files = async () => (await tree.files()).files
     const skip = new Map<string, Set<number>>()
-    for (const h of result?.hits ?? []) if (dismissed.has(hitKey(h))) skip.set(h.path, (skip.get(h.path) ?? new Set()).add(h.line))
+    for (const h of result?.hits ?? [])
+      if (dismissed.has(hitKey(h))) skip.set(h.path, (skip.get(h.path) ?? new Set()).add(h.line))
     const plan = await replaceInFiles(ws.root, query, replaceWith, { files, match, globs, skip })
     if (typeof plan === "string") return ws.notify(plan, "error")
     if (!plan.size) return ws.notify("Nothing to replace")
@@ -305,7 +334,14 @@ export function SearchPanel({ tree, height, mode }: { tree: TreeModel; height: n
           : // The pane is narrow: short form.
             `${hits.length}${more} in ${plural(files, "file")}${dismissed.size ? ` · ${dismissed.size} hidden` : ""}${slow}`
 
-  const input = (f: Field, placeholder: string, value: string, onInput: (v: string) => void, ref?: typeof queryInput, key?: number) => (
+  const input = (
+    f: Field,
+    placeholder: string,
+    value: string,
+    onInput: (v: string) => void,
+    ref?: typeof queryInput,
+    key?: number,
+  ) => (
     <box
       flexGrow={1}
       flexShrink={1}
@@ -371,7 +407,12 @@ export function SearchPanel({ tree, height, mode }: { tree: TreeModel; height: n
       ) : null}
       <box height={1} flexDirection="row" gap={1}>
         <box width={1} flexShrink={0} />
-        {input("files", popup ? "Files to include, e.g. src/**, !*.test.ts" : "files: src/**, !*.test.ts", filesField, setFilesField)}
+        {input(
+          "files",
+          popup ? "Files to include, e.g. src/**, !*.test.ts" : "files: src/**, !*.test.ts",
+          filesField,
+          setFilesField,
+        )}
       </box>
       <box height={1} overflow="hidden">
         <text selectable={false} wrapMode="none" fg={badRegex ? colors.error : colors.dim}>
@@ -422,7 +463,9 @@ export function SearchPanel({ tree, height, mode }: { tree: TreeModel; height: n
                   <HitText hit={r.hit} selected={selected} replaceWith={preview(r.hit)} />
                 )}
               </box>
-              {selected ? rowButtons(r) : isFile ? (
+              {selected ? (
+                rowButtons(r)
+              ) : isFile ? (
                 <box flexShrink={0} paddingRight={1}>
                   <text selectable={false} fg={colors.dim}>
                     {r.count}

@@ -24,7 +24,12 @@ export function makePng(width: number, height: number, rgba: [number, number, nu
   v.setUint32(0, width)
   v.setUint32(4, height)
   ihdr.set([8, 6, 0, 0, 0], 8) // 8-bit RGBA
-  const parts = [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw)), chunk("IEND", new Uint8Array())]
+  const parts = [
+    new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk("IHDR", ihdr),
+    chunk("IDAT", deflateSync(raw)),
+    chunk("IEND", new Uint8Array()),
+  ]
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0))
   let o = 0
   for (const p of parts) (out.set(p, o), (o += p.length))

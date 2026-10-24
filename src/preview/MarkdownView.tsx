@@ -41,10 +41,23 @@ interface Chunk extends Style {
   text: string
 }
 
-const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", copy: "©", reg: "®", mdash: "—", ndash: "–", hellip: "…" }
+const ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+  copy: "©",
+  reg: "®",
+  mdash: "—",
+  ndash: "–",
+  hellip: "…",
+}
 export function decodeEntities(s: string): string {
   return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
-    if (e[0] === "#") return String.fromCodePoint(e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10))
+    if (e[0] === "#")
+      return String.fromCodePoint(e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10))
     return ENTITIES[e.toLowerCase()] ?? m
   })
 }
@@ -80,7 +93,10 @@ const attrPatterns = new Map<string, RegExp>()
 const attrOf = (name: string, tag: string) => {
   let re = attrPatterns.get(name)
   if (!re) attrPatterns.set(name, (re = new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, "i")))
-  return tag.match(re)?.slice(2).find((v) => v !== undefined)
+  return tag
+    .match(re)
+    ?.slice(2)
+    .find((v) => v !== undefined)
 }
 
 /** Image sizes by path, size and modification time: rendering doesn't re-read and decode the file. */
@@ -110,7 +126,13 @@ class InlineWriter {
   private style(extra: Style): Style {
     let s: Style = { ...this.base, attr: this.base.attr | extra.attr }
     for (const t of this.tags) s = { ...s, ...t.style, attr: s.attr | (t.style.attr ?? 0) }
-    return { ...s, ...(extra.fg ? { fg: extra.fg } : {}), ...(extra.bg ? { bg: extra.bg } : {}), ...(extra.link ? { link: extra.link } : {}), attr: s.attr | extra.attr }
+    return {
+      ...s,
+      ...(extra.fg ? { fg: extra.fg } : {}),
+      ...(extra.bg ? { bg: extra.bg } : {}),
+      ...(extra.link ? { link: extra.link } : {}),
+      attr: s.attr | extra.attr,
+    }
   }
 
   push(text: string, extra: Style = { attr: 0 }): void {
@@ -187,14 +209,26 @@ class InlineWriter {
   }
 }
 
-function Inline({ tokens, base = { attr: 0 }, align }: { tokens: Token[] | undefined; base?: Style; align?: "left" | "center" | "right" }) {
+function Inline({
+  tokens,
+  base = { attr: 0 },
+  align,
+}: {
+  tokens: Token[] | undefined
+  base?: Style
+  align?: "left" | "center" | "right"
+}) {
   const w = new InlineWriter(base)
   w.tokens(tokens)
   // Trailing line breaks (from <br> at the end) would add empty rows.
   while (w.chunks.length && /^\n+$/.test(w.chunks.at(-1)!.text)) w.chunks.pop()
   if (!w.chunks.length) return null
   return (
-    <text fg={base.fg ?? colors.text} wrapMode="word" {...(align && align !== "left" ? { alignSelf: align === "center" ? "center" : "flex-end" } : {})}>
+    <text
+      fg={base.fg ?? colors.text}
+      wrapMode="word"
+      {...(align && align !== "left" ? { alignSelf: align === "center" ? "center" : "flex-end" } : {})}
+    >
       {w.chunks.map((c, i) => (
         <span key={i} fg={c.fg} bg={c.bg} attributes={c.attr} {...(c.link ? { link: { url: c.link } } : {})}>
           {c.text}
@@ -234,7 +268,13 @@ function LocalImages({ images, ctx }: { images: { path: string; w: number; h: nu
   return (
     <box flexDirection="row" gap={1} flexWrap="wrap">
       {images.map((img, i) => (
-        <AnimatedImage key={i} path={img.path} protocol={ctx.protocol} playing={ctx.animate} {...imageCells(img.w, img.h, ctx.width, MAX_IMAGE_ROWS)} />
+        <AnimatedImage
+          key={i}
+          path={img.path}
+          protocol={ctx.protocol}
+          playing={ctx.animate}
+          {...imageCells(img.w, img.h, ctx.width, MAX_IMAGE_ROWS)}
+        />
       ))}
     </box>
   )
@@ -294,7 +334,9 @@ const BULLETS = ["•", "◦", "▪"]
 
 function List({ token, ctx, depth, base }: { token: Tokens.List; ctx: MdContext; depth: number; base: Style }) {
   const start = typeof token.start === "number" ? token.start : 1
-  const markers = token.items.map((item, i) => (item.task ? (item.checked ? "☑" : "☐") : token.ordered ? `${start + i}.` : BULLETS[depth % BULLETS.length]!))
+  const markers = token.items.map((item, i) =>
+    item.task ? (item.checked ? "☑" : "☐") : token.ordered ? `${start + i}.` : BULLETS[depth % BULLETS.length]!,
+  )
   const markerWidth = Math.max(...markers.map((m) => Bun.stringWidth(m))) + 1
   return (
     <box flexDirection="column" gap={token.loose ? 1 : 0}>
@@ -337,7 +379,12 @@ function CodeBlock({ token }: { token: Tokens.Code }) {
 function Table({ token, ctx }: { token: Tokens.Table; ctx: MdContext }) {
   const n = token.header.length
   const natural = Array.from({ length: n }, (_, c) =>
-    Math.max(3, ...[token.header[c]!, ...token.rows.map((r) => r[c]!)].filter(Boolean).map((cell) => Bun.stringWidth(plainText(cell.tokens)))),
+    Math.max(
+      3,
+      ...[token.header[c]!, ...token.rows.map((r) => r[c]!)]
+        .filter(Boolean)
+        .map((cell) => Bun.stringWidth(plainText(cell.tokens))),
+    ),
   )
   // Cells get a space either side; shrink the widest columns until the table fits.
   const widths = natural.map((w) => w + 2)
@@ -379,10 +426,22 @@ function Table({ token, ctx }: { token: Tokens.Table; ctx: MdContext }) {
 
 function Heading({ token }: { token: Tokens.Heading }) {
   const d = token.depth
-  const base: Style = { fg: d <= 2 ? colors.mdHeading : d === 3 ? colors.mdSubheading : colors.text, attr: BOLD | (d >= 5 ? DIM : 0) }
+  const base: Style = {
+    fg: d <= 2 ? colors.mdHeading : d === 3 ? colors.mdSubheading : colors.text,
+    attr: BOLD | (d >= 5 ? DIM : 0),
+  }
   // h1 and h2 get a rule underneath, as on GitHub.
   return (
-    <box flexDirection="column" {...(d <= 2 ? { border: ["bottom"] as "bottom"[], borderColor: colors.mdRule, borderStyle: d === 1 ? ("heavy" as const) : ("single" as const) } : {})}>
+    <box
+      flexDirection="column"
+      {...(d <= 2
+        ? {
+            border: ["bottom"] as "bottom"[],
+            borderColor: colors.mdRule,
+            borderStyle: d === 1 ? ("heavy" as const) : ("single" as const),
+          }
+        : {})}
+    >
       <Inline tokens={token.tokens} base={base} />
     </box>
   )
@@ -405,7 +464,12 @@ export function htmlTable(html: string): Tokens.Table | null {
   )
   const width = Math.max(0, ...rows.map((r) => r.length))
   if (!rows.length || !width) return null
-  const cell = (c: { text: string } | undefined, header: boolean): Tokens.TableCell => ({ text: c?.text ?? "", tokens: Lexer.lexInline(c?.text ?? ""), header, align: null })
+  const cell = (c: { text: string } | undefined, header: boolean): Tokens.TableCell => ({
+    text: c?.text ?? "",
+    tokens: Lexer.lexInline(c?.text ?? ""),
+    header,
+    align: null,
+  })
   const [head, ...body] = rows
   return {
     type: "table",
@@ -426,7 +490,9 @@ function HtmlBlock({ raw, ctx, base }: { raw: string; ctx: MdContext; base: Styl
   const imgs = paragraphImages(Lexer.lexInline(text), ctx)
   if (imgs) return <LocalImages images={imgs} ctx={ctx} />
   const summary = text.match(/<summary>([\s\S]*?)<\/summary>/i)
-  const inner = (summary ? text.replace(summary[0], "") : text).replace(/<\/?(details|div|p|center|picture|source)\b[^>]*>/gi, "").trim()
+  const inner = (summary ? text.replace(summary[0], "") : text)
+    .replace(/<\/?(details|div|p|center|picture|source)\b[^>]*>/gi, "")
+    .trim()
   const blocks = inner ? new Lexer({ gfm: true }).lex(inner) : []
   // HTML that lexes back into an HTML block (an <img> that isn't a local file, say) would render
   // this component again, forever: show it inline instead (an <img> becomes "🖼 alt").
@@ -434,7 +500,11 @@ function HtmlBlock({ raw, ctx, base }: { raw: string; ctx: MdContext; base: Styl
   return (
     <box flexDirection="column">
       {summary ? <Inline tokens={Lexer.lexInline(`▸ ${summary[1]!.trim()}`)} base={{ ...base, attr: base.attr | BOLD }} /> : null}
-      {loops ? <Inline tokens={Lexer.lexInline(inner)} base={base} /> : inner ? <Blocks tokens={blocks} ctx={ctx} base={base} /> : null}
+      {loops ? (
+        <Inline tokens={Lexer.lexInline(inner)} base={base} />
+      ) : inner ? (
+        <Blocks tokens={blocks} ctx={ctx} base={base} />
+      ) : null}
     </box>
   )
 }
@@ -444,7 +514,19 @@ const CENTER_OPEN = /^<(div|p|center|h[1-6])\b[^>]*(align\s*=\s*["']?center|^<ce
 const centerOpen = (raw: string) => CENTER_OPEN.test(raw.trim()) || /^<center>\s*$/i.test(raw.trim())
 const blockClose = (raw: string) => /^<\/(div|p|center|h[1-6])>\s*$/i.test(raw.trim())
 
-function Block({ token, ctx, depth, tight, base }: { token: Token; ctx: MdContext; depth: number; tight: boolean; base: Style }): ReactNode {
+function Block({
+  token,
+  ctx,
+  depth,
+  tight,
+  base,
+}: {
+  token: Token
+  ctx: MdContext
+  depth: number
+  tight: boolean
+  base: Style
+}): ReactNode {
   switch (token.type) {
     case "heading":
       return <Heading token={token as Tokens.Heading} />
@@ -476,7 +558,19 @@ function Block({ token, ctx, depth, tight, base }: { token: Token; ctx: MdContex
  * A run of blocks. Blank lines separate them (none inside tight list items), and HTML centring
  * wrappers centre the blocks between their tags.
  */
-function Blocks({ tokens, ctx, depth = 0, tight = false, base = { attr: 0 } }: { tokens: Token[]; ctx: MdContext; depth?: number; tight?: boolean; base?: Style }) {
+function Blocks({
+  tokens,
+  ctx,
+  depth = 0,
+  tight = false,
+  base = { attr: 0 },
+}: {
+  tokens: Token[]
+  ctx: MdContext
+  depth?: number
+  tight?: boolean
+  base?: Style
+}) {
   const groups: { center: boolean; tokens: Token[] }[] = [{ center: false, tokens: [] }]
   let centred = 0
   for (const t of tokens) {

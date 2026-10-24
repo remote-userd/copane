@@ -20,7 +20,10 @@ test("folders: open vs closed, special names; simple style shows no folder icon"
   expect(iconFor("node_modules", true, false, "nerd")!.glyph).toBe(ICON_KINDS.folderNpm!.nerd)
   expect(iconFor("src", true, false, "simple")).toBeNull()
   // Open special folders switch to the open-folder glyph so their state still shows.
-  expect(iconFor("node_modules", true, true, "nerd")).toEqual({ glyph: ICON_KINDS.folderOpen!.nerd, color: ICON_KINDS.folderNpm!.color })
+  expect(iconFor("node_modules", true, true, "nerd")).toEqual({
+    glyph: ICON_KINDS.folderOpen!.nerd,
+    color: ICON_KINDS.folderNpm!.color,
+  })
   expect(iconFor("a.ts", false, false, "none")).toBeNull()
 })
 

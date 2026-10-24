@@ -15,8 +15,14 @@ afterEach(() => {
 /** On a timeout, says what the screen and the language server's diagnostics were (for CI). */
 const until = (cond: () => boolean | Promise<boolean>, ms = 15_000) =>
   waitUntil(cond, ms, () => h?.setup.renderOnce()).catch((err: Error) => {
-    const diags = lsp ? [...(lsp as unknown as { diags: Map<string, { message: string }[]> }).diags].map(([p, d]) => `${p}: ${d.map((x) => x.message).join(" | ")}`) : []
-    throw new Error(`${err.message}\ndiagnostics: ${JSON.stringify(diags)}\ntext: ${JSON.stringify(h?.ws.buffers.active?.textarea?.plainText)}\n${h?.frame() ?? ""}`)
+    const diags = lsp
+      ? [...(lsp as unknown as { diags: Map<string, { message: string }[]> }).diags].map(
+          ([p, d]) => `${p}: ${d.map((x) => x.message).join(" | ")}`,
+        )
+      : []
+    throw new Error(
+      `${err.message}\ndiagnostics: ${JSON.stringify(diags)}\ntext: ${JSON.stringify(h?.ws.buffers.active?.textarea?.plainText)}\n${h?.frame() ?? ""}`,
+    )
   })
 
 test("diagnostics, F8, completion and go to definition in the editor", async () => {
@@ -25,7 +31,9 @@ test("diagnostics, F8, completion and go to definition in the editor", async () 
     "main.ts": 'import { greet } from "./util"\nconst n: number = "x"\ngreet("a").toUpp\n',
   })
   const ws = createWorkspace(root)
-  lsp = new LspManager(root, {}, (ft) => (ft === "typescript" ? { key: "ts", command: [TSC, "--lsp", "--stdio"], languages: { typescript: "typescript" } } : null))
+  lsp = new LspManager(root, {}, (ft) =>
+    ft === "typescript" ? { key: "ts", command: [TSC, "--lsp", "--stdio"], languages: { typescript: "typescript" } } : null,
+  )
   ws.lsp = lsp
   lsp.attach(ws.buffers)
   await ws.buffers.open("main.ts")
@@ -94,7 +102,9 @@ test("rename across files (open buffer and closed file), references, format", as
     "main.ts": 'import { greet } from "./util"\ngreet("a")\nconst   x   =   greet( "b" )\n',
   })
   const ws = createWorkspace(root)
-  lsp = new LspManager(root, {}, (ft) => (ft === "typescript" ? { key: "ts", command: [TSC, "--lsp", "--stdio"], languages: { typescript: "typescript" } } : null))
+  lsp = new LspManager(root, {}, (ft) =>
+    ft === "typescript" ? { key: "ts", command: [TSC, "--lsp", "--stdio"], languages: { typescript: "typescript" } } : null,
+  )
   ws.lsp = lsp
   lsp.attach(ws.buffers)
   await ws.buffers.open("main.ts")
@@ -133,7 +143,9 @@ test("rename across files (open buffer and closed file), references, format", as
 test("parameter hints appear inside a call and close after it", async () => {
   const root = await fixture({ "main.ts": "function greet(name: string, times: number): string {\n  return name\n}\n\n" })
   const ws = createWorkspace(root)
-  lsp = new LspManager(root, {}, (ft) => (ft === "typescript" ? { key: "ts", command: [TSC, "--lsp", "--stdio"], languages: { typescript: "typescript" } } : null))
+  lsp = new LspManager(root, {}, (ft) =>
+    ft === "typescript" ? { key: "ts", command: [TSC, "--lsp", "--stdio"], languages: { typescript: "typescript" } } : null,
+  )
   ws.lsp = lsp
   lsp.attach(ws.buffers)
   await ws.buffers.open("main.ts")
@@ -159,7 +171,9 @@ test("Alt+. quick fix: a menu of code actions; choosing one adds the import", as
     "tsconfig.json": '{ "include": ["*.ts"] }\n',
   })
   const ws = createWorkspace(root)
-  lsp = new LspManager(root, {}, (ft) => (ft === "typescript" ? { key: "ts", command: [TSC, "--lsp", "--stdio"], languages: { typescript: "typescript" } } : null))
+  lsp = new LspManager(root, {}, (ft) =>
+    ft === "typescript" ? { key: "ts", command: [TSC, "--lsp", "--stdio"], languages: { typescript: "typescript" } } : null,
+  )
   ws.lsp = lsp
   lsp.attach(ws.buffers)
   await ws.buffers.open("main.ts")

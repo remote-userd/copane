@@ -130,9 +130,7 @@ export const configSchema = z
      */
     keyStyle: z.enum(["auto", "mac", "pc"]).default("auto"),
     /** Extra key bindings per layer, e.g. { "global": { "ctrl+o": "file.picker" } }. null removes one. */
-    keys: z
-      .partialRecord(z.enum(["global", "editor", "tree", "ai"]), z.record(z.string(), z.string().nullable()))
-      .default({}),
+    keys: z.partialRecord(z.enum(["global", "editor", "tree", "ai"]), z.record(z.string(), z.string().nullable())).default({}),
   })
   .prefault({})
 

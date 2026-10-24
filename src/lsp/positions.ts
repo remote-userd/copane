@@ -6,7 +6,7 @@ export function indexToCol(line: string, index: number): number {
 
 export function colToIndex(line: string, col: number): number {
   let w = 0
-  for (let i = 0; i < line.length; ) {
+  for (let i = 0; i < line.length;) {
     if (w >= col) return i
     const cp = line.codePointAt(i)!
     const ch = String.fromCodePoint(cp)

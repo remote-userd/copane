@@ -23,10 +23,17 @@ if (!(await Bun.file(join(root, ".done")).exists())) {
   for (let a = 0; a < 20; a++)
     for (let b = 0; b < 25; b++) {
       const dir = join(root, `pkg${a}`, `mod${b}`)
-      jobs.push(mkdir(dir, { recursive: true }).then(() => Promise.all(Array.from({ length: 10 }, (_, i) => writeFile(join(dir, `file${i}.ts`), `export const v${i} = ${i}\n`)))))
+      jobs.push(
+        mkdir(dir, { recursive: true }).then(() =>
+          Promise.all(Array.from({ length: 10 }, (_, i) => writeFile(join(dir, `file${i}.ts`), `export const v${i} = ${i}\n`))),
+        ),
+      )
     }
   await Promise.all(jobs)
-  const big = Array.from({ length: 3000 }, (_, i) => `export function f${i}(a: number, b: string): string {\n  return \`\${a}:\${b}\` // line ${i}\n}\n`).join("")
+  const big = Array.from(
+    { length: 3000 },
+    (_, i) => `export function f${i}(a: number, b: string): string {\n  return \`\${a}:\${b}\` // line ${i}\n}\n`,
+  ).join("")
   await writeFile(join(root, "big.ts"), big)
   Bun.spawnSync(["git", "init", "-q"], { cwd: root })
   Bun.spawnSync(["git", "-c", "user.name=b", "-c", "user.email=b@b", "add", "."], { cwd: root })
@@ -85,7 +92,9 @@ await step("AI terminal, 2 MB out", async () => {
   for (let i = 0; i < Math.ceil(2_000_000 / chunk.length); i++) term.write(chunk)
 })
 
-console.log(`${"step".padEnd(24)} ${"held".padStart(7)} ${"live".padStart(7)} ${"+live".padStart(7)} ${"heap".padStart(7)} ${"heapGC".padStart(7)}  (MB; private = RssAnon)`)
+console.log(
+  `${"step".padEnd(24)} ${"held".padStart(7)} ${"live".padStart(7)} ${"+live".padStart(7)} ${"heap".padStart(7)} ${"heapGC".padStart(7)}  (MB; private = RssAnon)`,
+)
 for (const r of rows) console.log(r)
 git.stop()
 h!.setup.renderer.destroy()

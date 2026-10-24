@@ -33,7 +33,14 @@ export async function git(
       // GIT_OPTIONAL_LOCKS=0: reads (status, diff, blame…) skip the opportunistic index refresh that
       // takes .git/index.lock, so they never make a commit or `git add` fail. Writes still lock.
       // GCM_INTERACTIVE / SSH_ASKPASS_REQUIRE: no credential windows or askpass programs either.
-      env: { ...Bun.env, GIT_TERMINAL_PROMPT: "0", GIT_OPTIONAL_LOCKS: "0", GCM_INTERACTIVE: "never", SSH_ASKPASS_REQUIRE: "never", ...opts.env },
+      env: {
+        ...Bun.env,
+        GIT_TERMINAL_PROMPT: "0",
+        GIT_OPTIONAL_LOCKS: "0",
+        GCM_INTERACTIVE: "never",
+        SSH_ASKPASS_REQUIRE: "never",
+        ...opts.env,
+      },
     })
     let timedOut = false
     const timer = opts.timeoutMs
@@ -68,7 +75,12 @@ export async function git(
     if (!drained) killGroup(p)
     if (timer) clearTimeout(timer)
     const text = drained ? await out : ""
-    if (timedOut) return { ok: false, out: text, err: `git ${args.find((a) => !a.startsWith("-")) ?? ""} timed out (waiting for a password, a hook or a signing prompt?)` }
+    if (timedOut)
+      return {
+        ok: false,
+        out: text,
+        err: `git ${args.find((a) => !a.startsWith("-")) ?? ""} timed out (waiting for a password, a hook or a signing prompt?)`,
+      }
     return { ok: code === 0, out: text, err: errChunks.join("\n").trim() }
   } catch (err) {
     return { ok: false, out: "", err: (err as Error).message }
@@ -90,8 +102,14 @@ function killGroup(p: { pid: number; kill: (sig?: number) => void }): void {
 
 /** The most useful line of a git error (skips hints and blank lines). */
 export function firstError(err: string): string {
-  const lines = err.split("\n").map((l) => l.trim()).filter(Boolean)
-  return (lines.find((l) => /^(fatal|error):/i.test(l)) ?? lines.find((l) => !/^hint:/i.test(l)) ?? "git failed").replace(/^(fatal|error):\s*/i, "")
+  const lines = err
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+  return (lines.find((l) => /^(fatal|error):/i.test(l)) ?? lines.find((l) => !/^hint:/i.test(l)) ?? "git failed").replace(
+    /^(fatal|error):\s*/i,
+    "",
+  )
 }
 
 /** The files git lists (tab-indented) under "…would be overwritten by merge:" / "by checkout:". */
@@ -219,7 +237,21 @@ export interface Branch {
 export const NOT_COMMITTED = "0000000000000000000000000000000000000000"
 
 /** git commands that write the index, HEAD or refs (push only reads them). */
-const WRITES = new Set(["add", "apply", "rm", "restore", "update-index", "hash-object", "commit", "merge", "pull", "switch", "branch", "stash", "worktree"])
+const WRITES = new Set([
+  "add",
+  "apply",
+  "rm",
+  "restore",
+  "update-index",
+  "hash-object",
+  "commit",
+  "merge",
+  "pull",
+  "switch",
+  "branch",
+  "stash",
+  "worktree",
+])
 /** `git worktree list --porcelain`: each worktree's folder and branch (null when detached). */
 export function parseWorktrees(out: string): { path: string; branch: string | null }[] {
   return out
@@ -286,7 +318,15 @@ export class GitRepo {
 
   /** Lines added and removed per file (absolute path): staged (index vs HEAD) or unstaged. Binary files are left out. */
   async numstat(staged: boolean): Promise<Map<string, { add: number; del: number }>> {
-    const r = await this.run([...READ_ONLY, "diff", "--numstat", "-z", "--no-color", "--no-ext-diff", ...(staged ? ["--cached"] : [])])
+    const r = await this.run([
+      ...READ_ONLY,
+      "diff",
+      "--numstat",
+      "-z",
+      "--no-color",
+      "--no-ext-diff",
+      ...(staged ? ["--cached"] : []),
+    ])
     const out = new Map<string, { add: number; del: number }>()
     const parts = r.ok ? r.out.split("\0") : []
     for (let i = 0; i < parts.length; i++) {
@@ -355,7 +395,12 @@ export class GitRepo {
       return [`@@ -0,0 +1,${lines.length} @@ new file`, ...lines.map((l) => "+" + l)].join("\n")
     }
     const r = await this.run(["diff", "--no-color", "--no-ext-diff", ...(staged ? ["--cached"] : []), "--", this.rel(path)])
-    return capDiff(r.out.split("\n").filter((l) => !/^(diff --git|index |--- |\+\+\+ )/.test(l)).join("\n"))
+    return capDiff(
+      r.out
+        .split("\n")
+        .filter((l) => !/^(diff --git|index |--- |\+\+\+ )/.test(l))
+        .join("\n"),
+    )
   }
 
   /**
@@ -488,7 +533,9 @@ export class GitRepo {
     return r.out.length > maxBytes ? r.out.slice(0, maxBytes) + "\n[diff truncated]" : r.out
   }
 
-  async push(onProgress?: (line: string) => void): Promise<{ ok: true } | { error: string; noUpstream?: boolean; noRemote?: boolean }> {
+  async push(
+    onProgress?: (line: string) => void,
+  ): Promise<{ ok: true } | { error: string; noUpstream?: boolean; noRemote?: boolean }> {
     const remotes = (await this.run(["remote"])).out.split("\n").filter(Boolean)
     if (!remotes.length) return { error: "No remote configured (git remote add origin <url>)", noRemote: true }
     const upstream = await this.run(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
@@ -554,12 +601,25 @@ export class GitRepo {
   }
 
   async log(path?: string, max = 200): Promise<LogEntry[]> {
-    const r = await this.run(["log", `-${max}`, "--format=%h%x1f%an%x1f%ar%x1f%at%x1f%s", ...(path ? ["--follow", "--", this.rel(path)] : [])])
+    const r = await this.run([
+      "log",
+      `-${max}`,
+      "--format=%h%x1f%an%x1f%ar%x1f%at%x1f%s",
+      ...(path ? ["--follow", "--", this.rel(path)] : []),
+    ])
     return r.ok ? parseLog(r.out) : []
   }
 
   async show(sha: string, path?: string): Promise<string> {
-    const r = await this.run(["show", "--no-color", "--stat", "--patch", "--format=commit %H%nAuthor: %an <%ae>%nDate:   %ad%n%n%w(0,4,4)%B", sha, ...(path ? ["--", this.rel(path)] : [])])
+    const r = await this.run([
+      "show",
+      "--no-color",
+      "--stat",
+      "--patch",
+      "--format=commit %H%nAuthor: %an <%ae>%nDate:   %ad%n%n%w(0,4,4)%B",
+      sha,
+      ...(path ? ["--", this.rel(path)] : []),
+    ])
     return r.ok ? capDiff(r.out) : firstError(r.err)
   }
 }

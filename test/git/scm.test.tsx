@@ -24,7 +24,12 @@ afterEach(() => {
 function sh(cwd: string, ...args: string[]) {
   // The test polls `git status` while the app commits: without this its own reads would take
   // .git/index.lock and make the app's commit fail (as they did on slow macOS runners).
-  return Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, ...ENV, GIT_OPTIONAL_LOCKS: "0" } }).stdout.toString()
+  return Bun.spawnSync(["git", ...args], {
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+    env: { ...process.env, ...ENV, GIT_OPTIONAL_LOCKS: "0" },
+  }).stdout.toString()
 }
 
 const until = (cond: () => boolean | Promise<boolean>, ms = 3000) => waitUntil(cond, ms, () => h?.setup.renderOnce())
@@ -125,7 +130,11 @@ test("AI message: asks the configured claude with the staged diff and fills the 
 async function panel(
   files: Record<string, string>,
   changes: Record<string, string>,
-  opts: { size?: { width: number; height: number }; ws?: (ws: ReturnType<typeof createWorkspace>) => void; before?: (root: string) => void } = {},
+  opts: {
+    size?: { width: number; height: number }
+    ws?: (ws: ReturnType<typeof createWorkspace>) => void
+    before?: (root: string) => void
+  } = {},
 ) {
   const root = await fixture(files)
   sh(root, "init", "-q", "-b", "main")
@@ -159,12 +168,16 @@ test("after staging, the selection moves to the next file in the same section, n
 })
 
 test("rows show name, folder, +/− counts and the AI mark", async () => {
-  await panel({ "src/deep/a.ts": "one\ntwo\n" }, { "src/deep/a.ts": "one\nTWO\nthree\n" }, {
-    ws: (ws) => {
-      const path = join(ws.root, "src/deep/a.ts")
-      ws.review = { store: new Store({ version: 1 }), files: () => [path] } as never
+  await panel(
+    { "src/deep/a.ts": "one\ntwo\n" },
+    { "src/deep/a.ts": "one\nTWO\nthree\n" },
+    {
+      ws: (ws) => {
+        const path = join(ws.root, "src/deep/a.ts")
+        ws.review = { store: new Store({ version: 1 }), files: () => [path] } as never
+      },
     },
-  })
+  )
   await until(() => h!.frame().includes("+2 −1"))
   const row = h!.lines().find((l) => l.includes("a.ts  src/deep"))
   expect(row).toBeDefined()
@@ -183,16 +196,20 @@ test("a stages all, A unstages all", async () => {
 
 test("a multi-line AI message is kept whole in the commit", async () => {
   const { configSchema } = await import("../../src/config/schema")
-  const { root } = await panel({ "a.ts": "a\n" }, { "a.ts": "b\n" }, {
-    before: (root) => {
-      const bin = join(root, ".bin")
-      Bun.spawnSync(["mkdir", "-p", bin])
-      writeFileSync(join(bin, "claude"), '#!/bin/sh\ncat >/dev/null\nprintf "Change a to b\\n\\nBecause b is better.\\n"\n')
-      Bun.spawnSync(["chmod", "+x", join(bin, "claude")])
-      writeFileSync(join(root, ".git/info/exclude"), ".bin\n")
+  const { root } = await panel(
+    { "a.ts": "a\n" },
+    { "a.ts": "b\n" },
+    {
+      before: (root) => {
+        const bin = join(root, ".bin")
+        Bun.spawnSync(["mkdir", "-p", bin])
+        writeFileSync(join(bin, "claude"), '#!/bin/sh\ncat >/dev/null\nprintf "Change a to b\\n\\nBecause b is better.\\n"\n')
+        Bun.spawnSync(["chmod", "+x", join(bin, "claude")])
+        writeFileSync(join(root, ".git/info/exclude"), ".bin\n")
+      },
+      ws: (ws) => Object.assign(ws, { config: configSchema.parse({ ai: { command: join(ws.root, ".bin/claude") } }) }),
     },
-    ws: (ws) => Object.assign(ws, { config: configSchema.parse({ ai: { command: join(ws.root, ".bin/claude") } }) }),
-  })
+  )
   await press(" ")
   await until(() => h!.frame().includes("Staged (1)"))
   await press("m")
@@ -285,16 +302,20 @@ test("History (g) lists the project's commits, and Escape goes back to the panel
 })
 
 test("a clean tree says so, with commits to push and the last commit", async () => {
-  await panel({ "a.ts": "a\n" }, {}, {
-    before: (root) => {
-      const remote = join(root, "..", `${root.split("/").pop()}-remote.git`)
-      sh(root, "init", "-q", "--bare", remote)
-      sh(root, "remote", "add", "origin", remote)
-      sh(root, "push", "-q", "-u", "origin", "main")
-      writeFileSync(join(root, "a.ts"), "b\n")
-      sh(root, "commit", "-qam", "Local only")
+  await panel(
+    { "a.ts": "a\n" },
+    {},
+    {
+      before: (root) => {
+        const remote = join(root, "..", `${root.split("/").pop()}-remote.git`)
+        sh(root, "init", "-q", "--bare", remote)
+        sh(root, "remote", "add", "origin", remote)
+        sh(root, "push", "-q", "-u", "origin", "main")
+        writeFileSync(join(root, "a.ts"), "b\n")
+        sh(root, "commit", "-qam", "Local only")
+      },
     },
-  })
+  )
   // Ahead/behind and the last commit load separately: wait for both.
   await until(() => h!.frame().includes("↑1 to push") && h!.frame().includes("Last commit: Local only"))
   expect(h!.frame()).toContain("Working tree clean · ↑1 to push (P)")
@@ -318,28 +339,36 @@ test("with more files than fit, the selected row stays on screen", async () => {
 })
 
 test("a push keeps showing in the status bar after the panel closes, and its result comes as a notice", async () => {
-  await panel({ "a.ts": "a\n" }, {}, {
-    before: (root) => {
-      const remote = join(root, "..", `${root.split("/").pop()}-remote.git`)
-      sh(root, "init", "-q", "--bare", remote)
-      sh(root, "remote", "add", "origin", remote)
-      sh(root, "push", "-q", "-u", "origin", "main")
-      writeFileSync(join(root, "a.ts"), "b\n")
-      sh(root, "commit", "-qam", "Local only")
-      // Now the remote answers slowly, then refuses.
-      const ssh = join(root, ".git", "slow-ssh.sh")
-      writeFileSync(ssh, "#!/bin/sh\nsleep 1\necho 'remote: no thanks' >&2\nexit 1\n")
-      Bun.spawnSync(["chmod", "+x", ssh])
-      sh(root, "remote", "set-url", "origin", "ssh://example.invalid/x.git")
-      sh(root, "config", "core.sshCommand", ssh)
+  await panel(
+    { "a.ts": "a\n" },
+    {},
+    {
+      before: (root) => {
+        const remote = join(root, "..", `${root.split("/").pop()}-remote.git`)
+        sh(root, "init", "-q", "--bare", remote)
+        sh(root, "remote", "add", "origin", remote)
+        sh(root, "push", "-q", "-u", "origin", "main")
+        writeFileSync(join(root, "a.ts"), "b\n")
+        sh(root, "commit", "-qam", "Local only")
+        // Now the remote answers slowly, then refuses.
+        const ssh = join(root, ".git", "slow-ssh.sh")
+        writeFileSync(ssh, "#!/bin/sh\nsleep 1\necho 'remote: no thanks' >&2\nexit 1\n")
+        Bun.spawnSync(["chmod", "+x", ssh])
+        sh(root, "remote", "set-url", "origin", "ssh://example.invalid/x.git")
+        sh(root, "config", "core.sshCommand", ssh)
+      },
     },
-  })
+  )
   await until(() => h!.frame().includes("↑1 to push"))
   await press("p", { shift: true })
   await until(() => h!.frame().includes("Pushing…"))
   await h!.step(() => h!.keys.pressEscape())
   await until(() => !h!.frame().includes("Source control"))
-  const bottom = () => h!.lines().filter((l) => l.trim()).at(-1) ?? ""
+  const bottom = () =>
+    h!
+      .lines()
+      .filter((l) => l.trim())
+      .at(-1) ?? ""
   expect(bottom()).toContain("Pushing…")
   await until(() => !bottom().includes("Pushing…"), 8000)
   expect(bottom()).toMatch(/no thanks|Could not read|fatal/)
@@ -426,14 +455,11 @@ test("Stage from the panel's menu: the panel stays on screen the whole time", as
   await h!.step(() => h!.mouse.click(at.x + 3, at.y, MouseButtons.RIGHT))
   await until(() => h!.frame().includes("Discard changes…"))
   await h!.step(() => h!.mouse.click(h!.find("Stage").x, h!.find("Stage").y))
-  await waitUntil(
-    async () => {
-      await h!.setup.renderOnce()
-      expect(h!.frame()).toContain("Source control")
-      return sh(root, "diff", "--cached", "--name-only").trim() === "a.ts" && h!.frame().includes("Staged (1)")
-    },
-    3000,
-  )
+  await waitUntil(async () => {
+    await h!.setup.renderOnce()
+    expect(h!.frame()).toContain("Source control")
+    return sh(root, "diff", "--cached", "--name-only").trim() === "a.ts" && h!.frame().includes("Staged (1)")
+  }, 3000)
 })
 
 test("the panel opened over another dialog returns to it on Escape", async () => {

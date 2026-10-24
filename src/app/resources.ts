@@ -35,7 +35,9 @@ export function parseProcStat(text: string, pageSize: number, clockTicks: number
  */
 export function parseStatmPrivate(text: string, pageSize: number): number | null {
   const [, resident, shared] = text.trim().split(" ").map(Number)
-  return resident === undefined || shared === undefined || Number.isNaN(resident - shared) ? null : Math.max(0, resident - shared) * pageSize
+  return resident === undefined || shared === undefined || Number.isNaN(resident - shared)
+    ? null
+    : Math.max(0, resident - shared) * pageSize
 }
 
 /** On Linux: each process of copane's tree gets its private memory instead of RSS. */

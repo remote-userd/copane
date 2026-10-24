@@ -46,7 +46,11 @@ export function acceptConflict(ws: Workspace, side: Side): void {
   ws.buffers.replaceText(buf, resolveConflict(ed.plainText, c, side))
   ed.goTo(Math.min(c.start, ed.lineCount - 1), 0)
   const left = list.length - 1
-  ws.notify(left ? `Resolved. ${left} conflict${left === 1 ? "" : "s"} left (Alt+F5 next)` : "All conflicts resolved: save, then stage the file to mark it resolved")
+  ws.notify(
+    left
+      ? `Resolved. ${left} conflict${left === 1 ? "" : "s"} left (Alt+F5 next)`
+      : "All conflicts resolved: save, then stage the file to mark it resolved",
+  )
 }
 
 /** Move to the next / previous conflict; false when the file has none. */
@@ -57,7 +61,8 @@ export function gotoConflict(ws: Workspace, dir: 1 | -1): boolean {
   const list = findConflicts(ed.plainText)
   if (!list.length) return false
   const row = ed.logicalCursor.row
-  const c = dir === 1 ? (list.find((x) => x.start > row) ?? list[0]!) : ([...list].reverse().find((x) => x.start < row) ?? list.at(-1)!)
+  const c =
+    dir === 1 ? (list.find((x) => x.start > row) ?? list[0]!) : ([...list].reverse().find((x) => x.start < row) ?? list.at(-1)!)
   ed.goTo(c.start, 0)
   ws.buffers.onCursorChange(buf.id)
   return true

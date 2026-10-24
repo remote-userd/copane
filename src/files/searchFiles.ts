@@ -63,7 +63,8 @@ export function parseGlobs(field: string): string[] {
 
 /** Whether a project-relative path passes the globs (a bare name like "src" also matches inside it). */
 export function globsAllow(rel: string, globs: string[]): boolean {
-  const test = (g: string) => new Bun.Glob(g).match(rel) || new Bun.Glob(`**/${g}`).match(rel) || new Bun.Glob(`**/${g}/**`).match(rel)
+  const test = (g: string) =>
+    new Bun.Glob(g).match(rel) || new Bun.Glob(`**/${g}`).match(rel) || new Bun.Glob(`**/${g}/**`).match(rel)
   const include = globs.filter((g) => !g.startsWith("!"))
   const exclude = globs.filter((g) => g.startsWith("!")).map((g) => g.slice(1))
   if (include.length && !include.some(test)) return false
@@ -103,8 +104,24 @@ function rgArgs(rg: string, query: string, match: MatchOptions, globs: string[])
 }
 
 /** ripgrep: fast, honours .gitignore. */
-async function withRg(rg: string, root: string, query: string, re: RegExp, opts: SearchOptions, limit: number): Promise<SearchResult> {
-  const args = [...rgArgs(rg, query, opts.match ?? {}, opts.globs ?? []), "--line-number", "--no-heading", "--max-count=100", "-0", "--", query, "."]
+async function withRg(
+  rg: string,
+  root: string,
+  query: string,
+  re: RegExp,
+  opts: SearchOptions,
+  limit: number,
+): Promise<SearchResult> {
+  const args = [
+    ...rgArgs(rg, query, opts.match ?? {}, opts.globs ?? []),
+    "--line-number",
+    "--no-heading",
+    "--max-count=100",
+    "-0",
+    "--",
+    query,
+    ".",
+  ]
   const proc = Bun.spawn(args, { cwd: root, stdout: "pipe", stderr: "ignore", stdin: "ignore" })
   opts.signal?.addEventListener("abort", () => proc.kill(), { once: true })
   const hits: Hit[] = []
@@ -185,12 +202,15 @@ export async function searchFiles(root: string, query: string, opts: SearchOptio
 async function matchingFiles(root: string, query: string, re: RegExp, opts: SearchOptions): Promise<string[]> {
   const rg = opts.rg === undefined ? Bun.which("rg") : opts.rg
   if (rg) {
-    const proc = Bun.spawn([...rgArgs(rg, query, opts.match ?? {}, opts.globs ?? []), "--files-with-matches", "-0", "--", query, "."], {
-      cwd: root,
-      stdout: "pipe",
-      stderr: "ignore",
-      stdin: "ignore",
-    })
+    const proc = Bun.spawn(
+      [...rgArgs(rg, query, opts.match ?? {}, opts.globs ?? []), "--files-with-matches", "-0", "--", query, "."],
+      {
+        cwd: root,
+        stdout: "pipe",
+        stderr: "ignore",
+        stdin: "ignore",
+      },
+    )
     // A newer search (or closing the panel) stops this one, as for the hit search.
     opts.signal?.addEventListener("abort", () => proc.kill(), { once: true })
     const out = await Bun.readableStreamToText(proc.stdout)

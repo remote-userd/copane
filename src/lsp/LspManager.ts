@@ -122,7 +122,10 @@ class Client {
     )
   }
 
-  private async start(root: string, onDiagnostics: (path: string, diags: Diagnostic[], version?: number) => void): Promise<boolean> {
+  private async start(
+    root: string,
+    onDiagnostics: (path: string, diags: Diagnostic[], version?: number) => void,
+  ): Promise<boolean> {
     let proc
     try {
       proc = Bun.spawn(this.spec.command, { cwd: root, stdin: "pipe", stdout: "pipe", stderr: "ignore" })
@@ -167,7 +170,13 @@ class Client {
         ...(this.spec.initializationOptions ? { initializationOptions: this.spec.initializationOptions } : {}),
         capabilities: {
           general: { positionEncodings: ["utf-16"] },
-          workspace: { workspaceFolders: true, configuration: true, symbol: {}, applyEdit: true, workspaceEdit: { documentChanges: true } },
+          workspace: {
+            workspaceFolders: true,
+            configuration: true,
+            symbol: {},
+            applyEdit: true,
+            workspaceEdit: { documentChanges: true },
+          },
           textDocument: {
             synchronization: { didSave: false, dynamicRegistration: false },
             publishDiagnostics: { relatedInformation: false },
@@ -182,7 +191,18 @@ class Client {
             formatting: {},
             codeAction: {
               codeActionLiteralSupport: {
-                codeActionKind: { valueSet: ["quickfix", "refactor", "refactor.extract", "refactor.inline", "refactor.rewrite", "source", "source.organizeImports", "source.fixAll"] },
+                codeActionKind: {
+                  valueSet: [
+                    "quickfix",
+                    "refactor",
+                    "refactor.extract",
+                    "refactor.inline",
+                    "refactor.rewrite",
+                    "source",
+                    "source.organizeImports",
+                    "source.fixAll",
+                  ],
+                },
               },
               isPreferredSupport: true,
               disabledSupport: true,
@@ -278,7 +298,10 @@ export class LspManager {
   constructor(
     readonly root: string,
     private overrides: LspOverrides = {},
-    private resolve: (filetype: string | undefined, path: string) => ServerSpec | null | Promise<ServerSpec | null> = (ft, path) => serverFor(ft, root, overrides, path),
+    private resolve: (filetype: string | undefined, path: string) => ServerSpec | null | Promise<ServerSpec | null> = (
+      ft,
+      path,
+    ) => serverFor(ft, root, overrides, path),
   ) {}
 
   subscribe = (l: Listener) => {
@@ -357,7 +380,9 @@ export class LspManager {
     this.docs.set(path, doc)
     void client.ready.then((ok) => {
       if (!ok || this.docs.get(path) !== doc) return
-      client.rpc!.notify("textDocument/didOpen", { textDocument: { uri: uriOf(path), languageId: doc.languageId, version: doc.version, text: text() } })
+      client.rpc!.notify("textDocument/didOpen", {
+        textDocument: { uri: uriOf(path), languageId: doc.languageId, version: doc.version, text: text() },
+      })
       this.schedulePull(client, path)
     })
   }
@@ -415,7 +440,9 @@ export class LspManager {
     this.docs.delete(path)
     this.pulls.delete(path)
     if (this.diags.delete(path)) this.emit()
-    void doc.client.ready.then((ok) => ok && doc.client.rpc!.notify("textDocument/didClose", { textDocument: { uri: uriOf(path) } }))
+    void doc.client.ready.then(
+      (ok) => ok && doc.client.rpc!.notify("textDocument/didClose", { textDocument: { uri: uriOf(path) } }),
+    )
     if (![...this.docs.values()].some((d) => d.client === doc.client)) this.stopWhenIdle(doc.client)
   }
 
@@ -496,7 +523,12 @@ export class LspManager {
   allDiagnostics(): { path: string; diag: Diagnostic }[] {
     const out: { path: string; diag: Diagnostic }[] = []
     for (const [path, list] of this.diags) for (const diag of list) out.push({ path, diag })
-    return out.sort((a, b) => (a.diag.severity ?? 1) - (b.diag.severity ?? 1) || a.path.localeCompare(b.path) || a.diag.range.start.line - b.diag.range.start.line)
+    return out.sort(
+      (a, b) =>
+        (a.diag.severity ?? 1) - (b.diag.severity ?? 1) ||
+        a.path.localeCompare(b.path) ||
+        a.diag.range.start.line - b.diag.range.start.line,
+    )
   }
 
   counts(): { errors: number; warnings: number } {
@@ -515,7 +547,8 @@ export class LspManager {
     const parts: string[] = []
     // A package's server says which package: "typescript:backend".
     const label = (spec: ServerSpec) => (spec.root && spec.root !== this.root ? `${spec.key}:${basename(spec.root)}` : spec.key)
-    for (const c of this.clients.values()) parts.push(c.state === "ready" ? label(c.spec) : c.state === "starting" ? `${label(c.spec)}…` : `${label(c.spec)} ✗`)
+    for (const c of this.clients.values())
+      parts.push(c.state === "ready" ? label(c.spec) : c.state === "starting" ? `${label(c.spec)}…` : `${label(c.spec)} ✗`)
     for (const key of this.crashes.keys()) if (!this.clients.has(key) && this.gaveUp(key)) parts.push(`${key.split("\0")[0]} ✗`)
     return parts.join(" ")
   }
@@ -533,7 +566,10 @@ export class LspManager {
       clearTimeout(doc.changeTimer)
       doc.changeTimer = null
       doc.version++
-      doc.client.rpc!.notify("textDocument/didChange", { textDocument: { uri: uriOf(path), version: doc.version }, contentChanges: [{ text: doc.text() }] })
+      doc.client.rpc!.notify("textDocument/didChange", {
+        textDocument: { uri: uriOf(path), version: doc.version },
+        contentChanges: [{ text: doc.text() }],
+      })
       this.schedulePull(doc.client, path)
     }
     return doc
@@ -558,7 +594,10 @@ export class LspManager {
     const doc = await this.flush(path)
     if (!doc) return null
     try {
-      const r = await doc.client.rpc!.request<{ contents: unknown } | null>("textDocument/hover", { textDocument: { uri: uriOf(path) }, position: pos })
+      const r = await doc.client.rpc!.request<{ contents: unknown } | null>("textDocument/hover", {
+        textDocument: { uri: uriOf(path) },
+        position: pos,
+      })
       return r ? hoverText(r.contents) : null
     } catch {
       return null
@@ -570,7 +609,10 @@ export class LspManager {
     if (!doc) return null
     try {
       type Loc = { uri?: string; range?: Range; targetUri?: string; targetSelectionRange?: Range }
-      const r = await doc.client.rpc!.request<Loc | Loc[] | null>("textDocument/definition", { textDocument: { uri: uriOf(path) }, position: pos })
+      const r = await doc.client.rpc!.request<Loc | Loc[] | null>("textDocument/definition", {
+        textDocument: { uri: uriOf(path) },
+        position: pos,
+      })
       const first = Array.isArray(r) ? r[0] : r
       if (!first) return null
       const uri = first.targetUri ?? first.uri
@@ -588,7 +630,9 @@ export class LspManager {
     try {
       type DocSym = { name: string; kind: number; range: Range; selectionRange?: Range; children?: DocSym[] }
       type SymInfo = { name: string; kind: number; location: { range: Range }; containerName?: string }
-      const r = await doc.client.rpc!.request<(DocSym | SymInfo)[] | null>("textDocument/documentSymbol", { textDocument: { uri: uriOf(path) } })
+      const r = await doc.client.rpc!.request<(DocSym | SymInfo)[] | null>("textDocument/documentSymbol", {
+        textDocument: { uri: uriOf(path) },
+      })
       const out: SymbolEntry[] = []
       const walk = (list: DocSym[], container: string) => {
         for (const s of list) {
@@ -598,7 +642,15 @@ export class LspManager {
         }
       }
       if (r?.length && "location" in (r[0] as object))
-        for (const s of r as SymInfo[]) out.push({ name: s.name, kind: s.kind, path, line: s.location.range.start.line, character: s.location.range.start.character, container: s.containerName ?? "" })
+        for (const s of r as SymInfo[])
+          out.push({
+            name: s.name,
+            kind: s.kind,
+            path,
+            line: s.location.range.start.line,
+            character: s.location.range.start.character,
+            container: s.containerName ?? "",
+          })
       else walk((r ?? []) as DocSym[], "")
       return out.sort((a, b) => a.line - b.line)
     } catch {
@@ -635,7 +687,9 @@ export class LspManager {
       type SymInfo = { name: string; location: { range: Range }; containerName?: string }
       // Breadcrumbs ask each time the cursor settles; the symbols only change with the text.
       if (doc.symbols?.version !== doc.version) {
-        const symbols = doc.client.rpc!.request<(DocSym | SymInfo)[] | null>("textDocument/documentSymbol", { textDocument: { uri: uriOf(path) } })
+        const symbols = doc.client.rpc!.request<(DocSym | SymInfo)[] | null>("textDocument/documentSymbol", {
+          textDocument: { uri: uriOf(path) },
+        })
         doc.symbols = { version: doc.version, symbols }
         // A failed request is asked again next time.
         symbols.catch(() => {
@@ -744,7 +798,12 @@ export class LspManager {
   async resolveCodeAction(path: string, action: CodeAction): Promise<CodeAction> {
     const doc = await this.flush(path)
     const provider = doc?.client.caps.codeActionProvider
-    if (!doc || action.edit || typeof action.command === "string" || !(provider && typeof provider === "object" && "resolveProvider" in provider && provider.resolveProvider))
+    if (
+      !doc ||
+      action.edit ||
+      typeof action.command === "string" ||
+      !(provider && typeof provider === "object" && "resolveProvider" in provider && provider.resolveProvider)
+    )
       return action
     try {
       return (await doc.client.rpc!.request<CodeAction | null>("codeAction/resolve", action)) ?? action
@@ -794,7 +853,10 @@ export function symbolPathAt(symbols: unknown[], pos: Position): string[] {
   if (symbols.length && "location" in (symbols[0] as object)) {
     // Flat list: take every symbol containing the position, outer (larger) first.
     const hits = (symbols as SymInfo[]).filter((s) => contains(s.location.range, pos))
-    hits.sort((a, b) => a.location.range.start.line - b.location.range.start.line || b.location.range.end.line - a.location.range.end.line)
+    hits.sort(
+      (a, b) =>
+        a.location.range.start.line - b.location.range.start.line || b.location.range.end.line - a.location.range.end.line,
+    )
     return hits.map((s) => s.name)
   }
   let level = symbols as DocSym[]
@@ -815,6 +877,9 @@ export function hoverText(contents: unknown): string | null {
   }
   const text = (Array.isArray(contents) ? contents.map(one) : [one(contents)]).filter(Boolean).join("\n\n")
   // Drop markdown code fences; the popup is plain text.
-  const clean = text.replace(/^```\w*\n?/gm, "").replace(/\n?```$/gm, "").trim()
+  const clean = text
+    .replace(/^```\w*\n?/gm, "")
+    .replace(/\n?```$/gm, "")
+    .trim()
   return clean || null
 }

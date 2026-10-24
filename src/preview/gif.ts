@@ -62,7 +62,11 @@ export function parseGif(bytes: Uint8Array): Gif {
       if (label === 0xf9 && block && block.length >= 4) {
         // Graphic control, for the next image. Browsers show delays of 0 or 10 ms as 100 ms; so do we.
         const centis = block[1]! | (block[2]! << 8)
-        control = { delay: centis <= 1 ? 100 : centis * 10, disposal: (block[0]! >> 2) & 7, transparent: block[0]! & 1 ? block[3]! : -1 }
+        control = {
+          delay: centis <= 1 ? 100 : centis * 10,
+          disposal: (block[0]! >> 2) & 7,
+          transparent: block[0]! & 1 ? block[3]! : -1,
+        }
       }
       continue
     }

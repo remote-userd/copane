@@ -3,7 +3,11 @@ import { findAll, nearestMatch, parseGoto, replaceMatches } from "../../src/edit
 
 test("smart case and display columns", () => {
   const t = "const Foo = foo()\n日本 foo"
-  expect(findAll(t, "foo").map((m) => [m.line, m.startCol])).toEqual([[0, 6], [0, 12], [1, 5]])
+  expect(findAll(t, "foo").map((m) => [m.line, m.startCol])).toEqual([
+    [0, 6],
+    [0, 12],
+    [1, 5],
+  ])
   expect(findAll(t, "Foo").map((m) => [m.line, m.startCol])).toEqual([[0, 6]])
   expect(findAll(t, "")).toEqual([])
   expect(findAll("aaaa", "aa")).toHaveLength(2) // non-overlapping

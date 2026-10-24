@@ -59,7 +59,9 @@ export function installMemLog(): void {
       .catch(() => "")
     const anon = /RssAnon:\s+(\d+) kB/.exec(status)?.[1]
     const { rss, heapUsed } = process.memoryUsage()
-    writer.write(`${new Date().toISOString()} private ${anon ? mb(Number(anon) * 1024) : "?"} rss ${mb(rss)} heap ${mb(heapUsed)}\n`)
+    writer.write(
+      `${new Date().toISOString()} private ${anon ? mb(Number(anon) * 1024) : "?"} rss ${mb(rss)} heap ${mb(heapUsed)}\n`,
+    )
     writer.flush()
   }, 10_000)
   tick.unref?.()

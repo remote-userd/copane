@@ -21,7 +21,7 @@ const key = (turn: Turn, path: string) => `${turn.id}:${path}`
 function lineCounts(changes: Map<string, Hunk[]>, turn: Turn): { add: number; del: number } {
   let add = 0
   let del = 0
-  for (const f of turn.files) for (const h of changes.get(key(turn, f.path)) ?? []) (add += h.newLines), (del += h.oldLines)
+  for (const f of turn.files) for (const h of changes.get(key(turn, f.path)) ?? []) ((add += h.newLines), (del += h.oldLines))
   return { add, del }
 }
 
@@ -75,7 +75,8 @@ export function TurnsModal() {
   const undoTurn = async (t: Turn) => {
     const edited = await log!.editedSince(t)
     const run = async () => done(`Undid ${await log!.undo(t)} file(s) from ${time(t.startedAt)}`)
-    if (edited.length) setConfirm({ text: `${edited.length} file(s) changed since this turn; undo anyway and lose those edits? (y/n)`, yes: run })
+    if (edited.length)
+      setConfirm({ text: `${edited.length} file(s) changed since this turn; undo anyway and lose those edits? (y/n)`, yes: run })
     else await run()
   }
   const undoFile = async (t: Turn, f: TurnFile) => {
@@ -107,7 +108,20 @@ export function TurnsModal() {
       else setHi((i) => Math.max(0, Math.min(fileHunks.length - 1, i + d)))
     }
     if (key.name === "escape") close()
-    else if (key.name === "tab") setFocus((f) => (key.shift ? (f === "turns" ? "changes" : f === "files" ? "turns" : "files") : f === "turns" ? "files" : f === "files" ? "changes" : "turns"))
+    else if (key.name === "tab")
+      setFocus((f) =>
+        key.shift
+          ? f === "turns"
+            ? "changes"
+            : f === "files"
+              ? "turns"
+              : "files"
+          : f === "turns"
+            ? "files"
+            : f === "files"
+              ? "changes"
+              : "turns",
+      )
     else if (key.name === "down" || key.name === "j") move(1)
     else if (key.name === "up" || key.name === "k") move(-1)
     else if ((key.name === "u" || key.name === "x" || key.name === "r") && turn && !turn.endedAt) {
@@ -136,7 +150,11 @@ export function TurnsModal() {
   const lines: { text: string; fg: string; bg?: string }[] = []
   fileHunks.forEach((hk, i) => {
     const sel = focus === "changes" && i === hi
-    lines.push({ text: `── change ${i + 1} · line ${hk.newStart + 1} ${sel ? "◂" : ""}`, fg: colors.accent, bg: sel ? colors.segmentBg : undefined })
+    lines.push({
+      text: `── change ${i + 1} · line ${hk.newStart + 1} ${sel ? "◂" : ""}`,
+      fg: colors.accent,
+      bg: sel ? colors.segmentBg : undefined,
+    })
     for (const l of hk.removed) lines.push({ text: `- ${l}`, fg: colors.gitDel })
     for (const l of hk.added) lines.push({ text: `+ ${l}`, fg: colors.gitAdd })
   })
@@ -145,7 +163,12 @@ export function TurnsModal() {
   const top = Math.max(0, Math.min(firstOfSel - 2, lines.length - viewH))
 
   return (
-    <Modal title="AI turns   Tab move · u undo turn · x undo file · r undo change · Enter open · Esc" width={w} height={h} onClose={close}>
+    <Modal
+      title="AI turns   Tab move · u undo turn · x undo file · r undo change · Enter open · Esc"
+      width={w}
+      height={h}
+      onClose={close}
+    >
       <box flexDirection="row" flexGrow={1} gap={2}>
         <box width={leftW} flexShrink={0} flexDirection="column">
           {turns.slice(0, Math.max(3, Math.floor(viewH / 2))).map((t, i) => {
@@ -153,7 +176,9 @@ export function TurnsModal() {
             return (
               <box key={t.id} height={1} overflow="hidden" backgroundColor={row(i === ti, focus === "turns")}>
                 <text selectable={false} wrapMode="none">
-                  <span fg={t.endedAt ? colors.text : colors.warn}>{`${time(t.startedAt)} · ${t.files.length} file${t.files.length === 1 ? "" : "s"} `}</span>
+                  <span
+                    fg={t.endedAt ? colors.text : colors.warn}
+                  >{`${time(t.startedAt)} · ${t.files.length} file${t.files.length === 1 ? "" : "s"} `}</span>
                   <span fg={colors.gitAdd}>{`+${c.add} `}</span>
                   <span fg={colors.gitDel}>{`−${c.del} `}</span>
                   <span fg={colors.dim}>{t.endedAt ? t.prompt : "working…"}</span>
@@ -176,7 +201,9 @@ export function TurnsModal() {
         <box flexGrow={1} flexDirection="column">
           {lines.length === 0 ? (
             <text selectable={false} fg={colors.dim}>
-              {file && !file.known ? "The content before this turn isn't known (binary, or ignored by git)." : "No difference from before this turn (already undone?)."}
+              {file && !file.known
+                ? "The content before this turn isn't known (binary, or ignored by git)."
+                : "No difference from before this turn (already undone?)."}
             </text>
           ) : (
             lines.slice(top, top + viewH).map((l, i) => (

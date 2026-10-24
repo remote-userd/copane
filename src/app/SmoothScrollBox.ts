@@ -12,7 +12,8 @@ export class SmoothScrollBoxRenderable extends ScrollBoxRenderable {
 
   override onMouseEvent(event: MouseEvent): void {
     const dir = event.scroll?.direction
-    if (event.type !== "scroll" || event.modifiers.shift || !this.glide.enabled || (dir !== "up" && dir !== "down")) return super.onMouseEvent(event)
+    if (event.type !== "scroll" || event.modifiers.shift || !this.glide.enabled || (dir !== "up" && dir !== "down"))
+      return super.onMouseEvent(event)
     const delta = event.scroll?.delta ?? 0
     this.glideBy(dir === "up" ? -delta : delta)
   }

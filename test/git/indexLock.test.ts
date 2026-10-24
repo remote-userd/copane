@@ -9,7 +9,12 @@ const ENV = GIT_ENV
 
 test("background reads (status, diff) never make a commit fail on .git/index.lock", async () => {
   const root = await fixture({ "a.txt": "0" })
-  for (const args of [["init", "-q"], ["add", "."], ["commit", "-qm", "init"]]) Bun.spawnSync(["git", ...args], { cwd: root, env: { ...process.env, ...ENV } })
+  for (const args of [
+    ["init", "-q"],
+    ["add", "."],
+    ["commit", "-qm", "init"],
+  ])
+    Bun.spawnSync(["git", ...args], { cwd: root, env: { ...process.env, ...ENV } })
   const saved = { ...process.env }
   Object.assign(process.env, ENV)
   const repo = new GitRepo(root)

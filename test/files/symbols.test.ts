@@ -11,7 +11,7 @@ test("scanSymbols finds declarations, methods and test blocks", () => {
     "}",
     "export const API = 1",
     "describe('ReactDOM', () => {",
-    "  it(\"renders\", () => {})",
+    '  it("renders", () => {})',
     "def py_func(x):",
     "pub fn rust_fn() {",
   ].join("\n")

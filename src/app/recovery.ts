@@ -45,7 +45,9 @@ export async function restoreRecovery(ws: Workspace, dir = recoveryDir(ws.root))
       const saved = (await Bun.file(file).json()) as Saved
       if (typeof saved.path !== "string" || typeof saved.text !== "string") continue
       // Saved since the copy was made (the session went on after the error): the copy is old.
-      const stat = await Bun.file(saved.path).stat().catch(() => null)
+      const stat = await Bun.file(saved.path)
+        .stat()
+        .catch(() => null)
       if (stat && stat.mtimeMs > saved.savedAt) continue
       const buf = await ws.buffers.open(saved.path)
       // The editor mounts on a later frame; until then the text waits in pendingText.

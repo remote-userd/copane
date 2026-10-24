@@ -18,7 +18,10 @@ export async function listDir(dir: string, matcher: IgnoreMatcher, withIgnored =
   } catch {
     return []
   }
-  matcher.noteListing(dir, dirents.some((d) => d.name === ".gitignore"))
+  matcher.noteListing(
+    dir,
+    dirents.some((d) => d.name === ".gitignore"),
+  )
   const out: DirEntry[] = []
   const prefix = dir.endsWith(sep) ? dir : dir + sep
   for (const d of dirents) {

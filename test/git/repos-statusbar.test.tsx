@@ -14,7 +14,11 @@ afterEach(() => {
 })
 
 function repo(dir: string, branch: string) {
-  for (const args of [["init", "-q", "-b", branch], ["add", "."], ["commit", "-qm", "init"]])
+  for (const args of [
+    ["init", "-q", "-b", branch],
+    ["add", "."],
+    ["commit", "-qm", "init"],
+  ])
     Bun.spawnSync(["git", ...args], { cwd: dir, env: { ...Bun.env, ...GIT_ENV } })
 }
 

@@ -34,11 +34,24 @@ for (const engine of ["rg", "builtin"] as const) {
     if (engine === "rg" && !Bun.which("rg")) return
     const root = await fixture(more)
     const lines = async (q: string, extra: Parameters<typeof searchFiles>[2]) =>
-      (await searchFiles(root, q, { ...optsFor(), ...extra })).hits.map((h) => `${h.rel}:${h.line + 1}:${h.text.slice(h.start, h.end)}`).sort()
-    expect(await lines("total", { match: { wholeWord: true } })).toEqual(["lib/b.ts:1:total", "src/a.test.ts:1:total", "src/a.ts:2:total"])
-    expect(await lines("total", { match: { caseSensitive: true }, globs: ["src/**"] })).toEqual(["src/a.test.ts:1:total", "src/a.ts:1:total", "src/a.ts:2:total"])
+      (await searchFiles(root, q, { ...optsFor(), ...extra })).hits
+        .map((h) => `${h.rel}:${h.line + 1}:${h.text.slice(h.start, h.end)}`)
+        .sort()
+    expect(await lines("total", { match: { wholeWord: true } })).toEqual([
+      "lib/b.ts:1:total",
+      "src/a.test.ts:1:total",
+      "src/a.ts:2:total",
+    ])
+    expect(await lines("total", { match: { caseSensitive: true }, globs: ["src/**"] })).toEqual([
+      "src/a.test.ts:1:total",
+      "src/a.ts:1:total",
+      "src/a.ts:2:total",
+    ])
     expect(await lines("TOTAL", { match: { caseSensitive: false }, globs: ["lib"] })).toEqual(["lib/b.ts:1:total"])
-    expect(await lines("total\\w+", { match: { regex: true }, globs: ["!*.test.ts"] })).toEqual(["src/a.ts:1:totalCount", "src/a.ts:2:totalCount"])
+    expect(await lines("total\\w+", { match: { regex: true }, globs: ["!*.test.ts"] })).toEqual([
+      "src/a.ts:1:totalCount",
+      "src/a.ts:2:totalCount",
+    ])
   })
 
   test(`${engine}: replace in files (literal $, regex groups), every match`, async () => {

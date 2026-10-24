@@ -116,7 +116,14 @@ export function addNextOccurrence(ws: Workspace): void {
   if (!state || state.bufId !== buf.id) {
     const s = seed(ed)
     if (!s) return ws.notify("Put the cursor on a word (or select text) first")
-    state = { bufId: buf.id, occs: [{ row: s.row, start: s.start }], value: s.value, fresh: true, wholeWord: s.wholeWord, steps: 0 }
+    state = {
+      bufId: buf.id,
+      occs: [{ row: s.row, start: s.start }],
+      value: s.value,
+      fresh: true,
+      wholeWord: s.wholeWord,
+      steps: 0,
+    }
     const line = lineAt(ed, s.row)
     ed.selectRange(s.row, indexToCol(line, s.start), indexToCol(line, s.start + s.value.length))
   } else {
@@ -141,7 +148,14 @@ export function selectAllOccurrences(ws: Workspace): void {
   if (!ed || !buf) return
   const s = state?.bufId === buf.id ? { value: state.value, wholeWord: state.wholeWord } : seed(ed)
   if (!s) return ws.notify("Put the cursor on a word (or select text) first")
-  state = { bufId: buf.id, occs: occurrences(ed.plainText, s.value, s.wholeWord), value: s.value, fresh: state?.fresh ?? true, wholeWord: s.wholeWord, steps: state?.steps ?? 0 }
+  state = {
+    bufId: buf.id,
+    occs: occurrences(ed.plainText, s.value, s.wholeWord),
+    value: s.value,
+    fresh: state?.fresh ?? true,
+    wholeWord: s.wholeWord,
+    steps: state?.steps ?? 0,
+  }
   paint(ws)
   emit()
 }
@@ -227,11 +241,15 @@ export function MultiEdit() {
     if (!state || state.occs.length < 2 || ws.ui.get().focus !== "editor" || ws.ui.get().modal) return
     let handled = true
     const plain = !key.ctrl && !key.meta
-    if (key.name === "escape" || ["up", "down", "left", "right", "home", "end", "pageup", "pagedown", "return"].includes(key.name)) {
+    if (
+      key.name === "escape" ||
+      ["up", "down", "left", "right", "home", "end", "pageup", "pagedown", "return"].includes(key.name)
+    ) {
       exitMultiEdit(ws)
       handled = key.name === "escape"
     } else if (key.name === "backspace" && plain) applyValue(ws, state.fresh ? "" : state.value.slice(0, -1))
-    else if (plain && key.sequence && key.sequence.length === 1 && key.sequence >= " ") applyValue(ws, state.fresh ? key.sequence : state.value + key.sequence)
+    else if (plain && key.sequence && key.sequence.length === 1 && key.sequence >= " ")
+      applyValue(ws, state.fresh ? key.sequence : state.value + key.sequence)
     else handled = false
     if (handled) {
       key.preventDefault()

@@ -23,7 +23,10 @@ export function sendProblems(ws: Workspace, opts: { at?: { path: string; line: n
   if (!ai) return ws.notify("AI terminal is not running", "warn")
   if (!ws.lsp) return ws.notify("No language server running", "warn")
   const serious = (severity?: number) => (severity ?? 1) <= 2
-  const toProblem = (path: string, d: { range: { start: { line: number } }; severity?: number; message: string; source?: string; code?: string | number }): Problem => ({
+  const toProblem = (
+    path: string,
+    d: { range: { start: { line: number } }; severity?: number; message: string; source?: string; code?: string | number },
+  ): Problem => ({
     relPath: relative(ws.root, path),
     line: d.range.start.line + 1,
     severity: d.severity ?? 1,
@@ -33,9 +36,21 @@ export function sendProblems(ws: Workspace, opts: { at?: { path: string; line: n
   })
   const active = ws.buffers.active
   let problems: Problem[] = []
-  if (at) problems = ws.lsp.diagnostics(at.path).filter((d) => serious(d.severity) && d.range.start.line <= at.line && d.range.end.line >= at.line).map((d) => toProblem(at.path, d))
-  else if (active?.kind === "text" && !all) problems = ws.lsp.diagnostics(active.path).filter((d) => serious(d.severity)).map((d) => toProblem(active.path, d))
-  if (!problems.length && !at) problems = ws.lsp.allDiagnostics().filter((p) => serious(p.diag.severity)).map((p) => toProblem(p.path, p.diag))
+  if (at)
+    problems = ws.lsp
+      .diagnostics(at.path)
+      .filter((d) => serious(d.severity) && d.range.start.line <= at.line && d.range.end.line >= at.line)
+      .map((d) => toProblem(at.path, d))
+  else if (active?.kind === "text" && !all)
+    problems = ws.lsp
+      .diagnostics(active.path)
+      .filter((d) => serious(d.severity))
+      .map((d) => toProblem(active.path, d))
+  if (!problems.length && !at)
+    problems = ws.lsp
+      .allDiagnostics()
+      .filter((p) => serious(p.diag.severity))
+      .map((p) => toProblem(p.path, p.diag))
   if (!problems.length) return ws.notify(at ? "No error or warning on this line" : "No errors or warnings in open files")
   problems.sort((a, b) => a.severity - b.severity || a.relPath.localeCompare(b.relPath) || a.line - b.line)
   ai.type(`Fix ${problems.length === 1 ? "this problem" : "these problems"}, keeping the changes minimal: `)
@@ -58,7 +73,9 @@ export async function sendChangesForReview(ws: Workspace): Promise<void> {
       // New files are named from the project, where the AI runs.
       if (dir && !dir.startsWith("..")) changes.untracked = changes.untracked.map((p) => `${dir}/${p}`)
       const text = formatChangesForAgent(changes)
-      return text && repos.length > 1 ? `In the repository ${git.name(s)} (its diff paths are relative to ${dir || "."}):\n${text}` : text
+      return text && repos.length > 1
+        ? `In the repository ${git.name(s)} (its diff paths are relative to ${dir || "."}):\n${text}`
+        : text
     }),
   )
   const text = parts.filter(Boolean).join("\n\n")
@@ -67,4 +84,3 @@ export async function sendChangesForReview(ws: Workspace): Promise<void> {
   ai.paste(text)
   showAi(ws)
 }
-

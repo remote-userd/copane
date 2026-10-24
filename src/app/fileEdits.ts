@@ -18,7 +18,9 @@ export async function applyToFiles(ws: Workspace, files: Map<string, (text: stri
     } else {
       // Only valid UTF-8 is rewritten (a Latin-1 file would come back with its accents replaced);
       // a byte-order mark stays where it was.
-      const bytes = await Bun.file(path).bytes().catch(() => null)
+      const bytes = await Bun.file(path)
+        .bytes()
+        .catch(() => null)
       const text = bytes && decodeUtf8(bytes, true)
       if (text === null || text === undefined) continue
       const after = change(text)

@@ -126,7 +126,13 @@ export function FindBar() {
     const ids = searchStyles()
     ed.setHighlightLayer(
       SEARCH_HL_REF,
-      matches.map((m, i) => ({ line: m.line, start: m.startCol, end: m.endCol, styleId: i === current ? ids.current : ids.match, priority: 10 })),
+      matches.map((m, i) => ({
+        line: m.line,
+        start: m.startCol,
+        end: m.endCol,
+        styleId: i === current ? ids.current : ids.match,
+        priority: 10,
+      })),
     )
   }, [ws, matches, current])
 
@@ -135,7 +141,10 @@ export function FindBar() {
   const go = (delta: number) => {
     const ed = editorOf(ws)
     if (!ed || !matches.length) return
-    const i = current === -1 ? nearestMatch(matches, ed.logicalCursor.row, ed.logicalCursor.col) : (current + delta + matches.length) % matches.length
+    const i =
+      current === -1
+        ? nearestMatch(matches, ed.logicalCursor.row, ed.logicalCursor.col)
+        : (current + delta + matches.length) % matches.length
     setCurrent(i)
     const m = matches[i]!
     ed.selectRange(m.line, m.startCol, m.endCol)
@@ -187,7 +196,12 @@ export function FindBar() {
 
   const count = !ui.findQuery ? "" : matches.length ? `${current + 1}/${matches.length}` : "no results"
   const caseNote = ui.findQuery && isCaseSensitive(ui.findQuery) ? "Aa" : ""
-  const inputStyle = { backgroundColor: colors.bg, focusedBackgroundColor: colors.bg, textColor: colors.text, focusedTextColor: colors.text }
+  const inputStyle = {
+    backgroundColor: colors.bg,
+    focusedBackgroundColor: colors.bg,
+    textColor: colors.text,
+    focusedTextColor: colors.text,
+  }
 
   return (
     <box flexDirection="column" flexShrink={0} backgroundColor={colors.panelBg} paddingLeft={1} paddingRight={1}>

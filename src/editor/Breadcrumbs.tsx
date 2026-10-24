@@ -72,7 +72,14 @@ export function Breadcrumbs({ reveal }: { reveal?: (path: string) => void }) {
       overflow="hidden"
       backgroundColor={colors.bg}
     >
-      {skipped ? [<text key="more" selectable={false} fg={colors.headerFg} flexShrink={0}>…</text>, arrow("am")] : null}
+      {skipped
+        ? [
+            <text key="more" selectable={false} fg={colors.headerFg} flexShrink={0}>
+              …
+            </text>,
+            arrow("am"),
+          ]
+        : null}
       {dirs.flatMap((d, i) => [
         <box
           key={`d${i}`}

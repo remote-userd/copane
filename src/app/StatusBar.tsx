@@ -113,7 +113,13 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
     : buf?.kind === "image" && buf.image
       ? `${buf.image.width}×${buf.image.height}`
       : ""
-  const lang = text ? langName(text.filetype) : buf?.kind === "image" ? (buf.image?.format.toUpperCase() ?? "Image") : buf ? "Markdown preview" : ""
+  const lang = text
+    ? langName(text.filetype)
+    : buf?.kind === "image"
+      ? (buf.image?.format.toUpperCase() ?? "Image")
+      : buf
+        ? "Markdown preview"
+        : ""
   const eol = text ? (text.eol === "\r\n" ? "CRLF" : "LF") : ""
   // A badge while the AI has news you haven't looked at (finished, or waiting for an answer).
   const badge = ui.aiAttention === "waiting" ? " ⚠ needs you" : ui.aiAttention === "finished" ? " ✓ done" : ""
@@ -149,7 +155,11 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
   return (
     <box flexDirection="row" height={1} flexShrink={0} backgroundColor={colors.statusBg} paddingRight={1} gap={2}>
       <box flexDirection="row" flexShrink={0} gap={1}>
-        {branchText ? <Segment bg={colors.segmentBg} onPress={() => void runCommand(ws, several ? "git.pickRepo" : "git.changes")}>{branchText}</Segment> : null}
+        {branchText ? (
+          <Segment bg={colors.segmentBg} onPress={() => void runCommand(ws, several ? "git.pickRepo" : "git.changes")}>
+            {branchText}
+          </Segment>
+        ) : null}
         {problemsText ? (
           <HoverBox onPress={() => void runCommand(ws, "lsp.problems")}>
             <text selectable={false} fg={counts.errors ? colors.error : counts.warnings ? colors.warn : colors.dim}>
@@ -236,7 +246,9 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
         ) : null}
         {usage ? (
           <HoverBox
-            onPress={() => ws.ui.set({ modal: { kind: "info", x: dims.width - 40, y: dims.height - 1, text: describeUsage(usage) } })}
+            onPress={() =>
+              ws.ui.set({ modal: { kind: "info", x: dims.width - 40, y: dims.height - 1, text: describeUsage(usage) } })
+            }
           >
             <text selectable={false} fg={colors.headerFg}>
               {usageText}
@@ -245,7 +257,10 @@ export function StatusBar({ aiStatus }: { aiStatus: string }) {
         ) : null}
       </box>
       {aiText ? (
-        <Segment bg={ui.focus === "ai" || ui.aiAttention ? colors.accentDim : colors.segmentBg} onPress={() => void runCommand(ws, ui.focus === "ai" ? "focus.editor" : "focus.ai")}>
+        <Segment
+          bg={ui.focus === "ai" || ui.aiAttention ? colors.accentDim : colors.segmentBg}
+          onPress={() => void runCommand(ws, ui.focus === "ai" ? "focus.editor" : "focus.ai")}
+        >
           {aiText}
         </Segment>
       ) : null}

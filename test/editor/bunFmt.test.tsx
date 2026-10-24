@@ -22,7 +22,11 @@ async function project(files: Record<string, string>, open: string, editor: Reco
 
 const format = async (h: Harness, notice: string) => {
   await h.step(() => h.keys.pressKey("\x1bF"))
-  await waitUntil(() => h.frame().includes(notice), 5000, () => h.setup.renderOnce())
+  await waitUntil(
+    () => h.frame().includes(notice),
+    5000,
+    () => h.setup.renderOnce(),
+  )
 }
 
 test("bun fmt formats from stdin, with the project's config; unknown types and syntax errors throw", async () => {

@@ -64,7 +64,10 @@ export function FileTree({
   }, [ui.revealPath, tree, ws])
 
   const rows = tree.rows()
-  const selectedIdx = Math.max(0, rows.findIndex((r) => r.entry.path === tree.selected))
+  const selectedIdx = Math.max(
+    0,
+    rows.findIndex((r) => r.entry.path === tree.selected),
+  )
   // One row for the header.
   const viewH = Math.max(1, height - (header ? 1 : 0))
   const maxTop = Math.max(0, rows.length - viewH)
@@ -202,7 +205,10 @@ export function FileTree({
       case "left":
         if (row?.entry.isDir && row.expanded) tree.collapse(row.entry.path)
         else if (row && row.depth > 0) {
-          const parent = rows.slice(0, selectedIdx).reverse().find((r) => r.depth === row.depth - 1)
+          const parent = rows
+            .slice(0, selectedIdx)
+            .reverse()
+            .find((r) => r.depth === row.depth - 1)
           if (parent) {
             tree.select(parent.entry.path)
             reveal(rows.indexOf(parent))
@@ -286,7 +292,8 @@ export function FileTree({
         e.stopPropagation()
         const dir = e.scroll?.direction
         // Sideways: a tilt wheel or touchpad swipe, or Shift+wheel.
-        const side = dir === "left" ? -1 : dir === "right" ? 1 : e.modifiers.shift ? (dir === "up" ? -1 : dir === "down" ? 1 : 0) : 0
+        const side =
+          dir === "left" ? -1 : dir === "right" ? 1 : e.modifiers.shift ? (dir === "up" ? -1 : dir === "down" ? 1 : 0) : 0
         if (side) return setLeft(Math.max(0, Math.min(maxLeft, left + side * SIDE_STEP)))
         const d = dir === "up" ? -3 : dir === "down" ? 3 : 0
         setTop(Math.max(0, Math.min(maxTop, top + d)))
@@ -319,7 +326,17 @@ export function FileTree({
             height={1}
             flexDirection="row"
             paddingLeft={1}
-            backgroundColor={isDrop ? colors.selectionBg : isSel ? (focused ? colors.selectionBg : colors.tabActiveBg) : isHover ? colors.tabActiveBg : undefined}
+            backgroundColor={
+              isDrop
+                ? colors.selectionBg
+                : isSel
+                  ? focused
+                    ? colors.selectionBg
+                    : colors.tabActiveBg
+                  : isHover
+                    ? colors.tabActiveBg
+                    : undefined
+            }
             onMouseOver={() => setHovered(r.entry.path)}
             onMouseOut={() => setHovered((h) => (h === r.entry.path ? null : h))}
             onMouseDown={(e) => {
@@ -346,7 +363,13 @@ export function FileTree({
           >
             <box flexGrow={1} flexShrink={1} overflow="hidden">
               {/* One line, clipped at the pane's edge (no "…"); scrolled sideways by `left`. */}
-              <text selectable={false} wrapMode="none" flexShrink={0} marginLeft={-left} fg={isSel && focused ? colors.text : (gitColor ?? fg)}>
+              <text
+                selectable={false}
+                wrapMode="none"
+                flexShrink={0}
+                marginLeft={-left}
+                fg={isSel && focused ? colors.text : (gitColor ?? fg)}
+              >
                 {" ".repeat(r.depth * indentW)}
                 {arrow}
                 {icon ? <span fg={ignored ? colors.ignoredFg : icon.color}>{icon.glyph} </span> : null}

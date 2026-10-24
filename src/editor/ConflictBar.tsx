@@ -17,10 +17,16 @@ function resolve(ws: Workspace, buf: Buffer, how: "merge" | "disk" | "mine"): vo
   } else if (how === "disk") {
     void ws.buffers
       .reloadFromDisk(buf.id)
-      .then((r) => ws.notify(r === "gone" ? "The file is no longer on disk; your version is kept (Ctrl+S saves it)" : "Using the version on disk (Ctrl+Z brings yours back)", r === "gone" ? "warn" : "info"))
+      .then((r) =>
+        ws.notify(
+          r === "gone"
+            ? "The file is no longer on disk; your version is kept (Ctrl+S saves it)"
+            : "Using the version on disk (Ctrl+Z brings yours back)",
+          r === "gone" ? "warn" : "info",
+        ),
+      )
       .catch((err: Error) => ws.notify(`Could not read the file: ${err.message}`, "error"))
-  }
-  else {
+  } else {
     ws.buffers.keepLocal(buf.id)
     ws.notify("Keeping your version; saving will overwrite the file")
   }
@@ -111,7 +117,12 @@ export function DiffModal({ bufId }: { bufId: number }) {
   if (!buf) return null
 
   return (
-    <Modal title={`${buf.relPath}: yours (−) vs on disk (+)`} width={Math.min(110, dims.width - 4)} height={viewH + 6} onClose={() => closeModal(ws)}>
+    <Modal
+      title={`${buf.relPath}: yours (−) vs on disk (+)`}
+      width={Math.min(110, dims.width - 4)}
+      height={viewH + 6}
+      onClose={() => closeModal(ws)}
+    >
       <box
         flexDirection="column"
         height={viewH}

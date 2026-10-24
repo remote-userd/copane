@@ -52,7 +52,8 @@ export function numbered(n: number): string {
 export async function waitUntil(cond: () => boolean | Promise<boolean>, ms = 4000, render?: () => unknown): Promise<void> {
   const end = Date.now() + ms
   while (!(await cond())) {
-    if (Date.now() > end) throw new Error(`Timed out after ${ms} ms waiting for: ${cond.toString().replace(/\s+/g, " ").slice(0, 160)}`)
+    if (Date.now() > end)
+      throw new Error(`Timed out after ${ms} ms waiting for: ${cond.toString().replace(/\s+/g, " ").slice(0, 160)}`)
     await Bun.sleep(25)
     await render?.()
   }

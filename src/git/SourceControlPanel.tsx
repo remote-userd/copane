@@ -113,11 +113,19 @@ export async function aiCommitMessage(ws: Workspace): Promise<string | { error: 
     "Write a git commit message for the staged diff on stdin. First line: imperative summary under 72 characters. " +
     "Then a blank line and a few short lines only if the change needs explaining. Output only the message, no quotes or code fences."
   try {
-    const p = Bun.spawn([cmd, "-p", prompt], { cwd: repo.top, stdin: new TextEncoder().encode(diff), stdout: "pipe", stderr: "pipe" })
+    const p = Bun.spawn([cmd, "-p", prompt], {
+      cwd: repo.top,
+      stdin: new TextEncoder().encode(diff),
+      stdout: "pipe",
+      stderr: "pipe",
+    })
     const timer = setTimeout(() => p.kill(), 90_000)
     const [out, code] = await Promise.all([Bun.readableStreamToText(p.stdout), p.exited])
     clearTimeout(timer)
-    const msg = out.trim().replace(/^```\w*\n?|```$/g, "").trim()
+    const msg = out
+      .trim()
+      .replace(/^```\w*\n?|```$/g, "")
+      .trim()
     return code === 0 && msg ? msg : { error: "The AI did not return a message" }
   } catch (err) {
     return { error: (err as Error).message }
@@ -150,7 +158,10 @@ export function SourceControlPanel() {
   const git = repos?.current() ?? null
   const repo = git?.repo ?? null
   const all = repos?.list() ?? []
-  useSyncExternalStore(ws.review?.store.subscribe ?? none.subscribe, ws.review ? () => ws.review!.store.get().version : none.getSnapshot)
+  useSyncExternalStore(
+    ws.review?.store.subscribe ?? none.subscribe,
+    ws.review ? () => ws.review!.store.get().version : none.getSnapshot,
+  )
   const ai = aiMarks(ws)
   const entries = git?.entries ?? []
   const rows: Row[] = [
@@ -169,7 +180,10 @@ export function SourceControlPanel() {
   const [rawDiff, setRawDiff] = useState("")
   const [top, setTop] = useState(0)
   const [hunkSel, setHunkSel] = useState(0)
-  const [stats, setStats] = useState<{ staged: Map<string, { add: number; del: number }>; changes: Map<string, { add: number; del: number }> }>({
+  const [stats, setStats] = useState<{
+    staged: Map<string, { add: number; del: number }>
+    changes: Map<string, { add: number; del: number }>
+  }>({
     staged: new Map(),
     changes: new Map(),
   })
@@ -342,7 +356,8 @@ export function SourceControlPanel() {
     if (r.noUpstream && git?.branch) {
       const branch = git.branch.name
       // The question needs the panel: closed meanwhile, say how to get it.
-      if (ws.ui.get().modal?.kind !== "scm") return fail(`${branch} has no upstream yet: push from Source control (Ctrl+Alt+D) to publish it`)
+      if (ws.ui.get().modal?.kind !== "scm")
+        return fail(`${branch} has no upstream yet: push from Source control (Ctrl+Alt+D) to publish it`)
       return setConfirm({
         text: `Branch ${branch} has no upstream. Publish it to the remote? (y/n)`,
         yes: async () => {
@@ -636,7 +651,11 @@ export function SourceControlPanel() {
     </HoverBox>
   )
   const sectionTitle = (s: Section) =>
-    s === "conflict" ? `Merge conflicts (${counts.conflict})` : s === "staged" ? `Staged (${counts.staged})` : `Changes (${counts.changes})`
+    s === "conflict"
+      ? `Merge conflicts (${counts.conflict})`
+      : s === "staged"
+        ? `Staged (${counts.staged})`
+        : `Changes (${counts.changes})`
   const sectionHeading = (s: Section) => (
     <box key={`h-${s}`} height={1} flexDirection="row" overflow="hidden">
       <box flexGrow={1} overflow="hidden">
@@ -722,13 +741,17 @@ export function SourceControlPanel() {
     }
     items.push({ node: () => fileRow(r, i), row: i })
   })
-  const selItem = Math.max(0, items.findIndex((it) => it.row === sel))
+  const selItem = Math.max(
+    0,
+    items.findIndex((it) => it.row === sel),
+  )
   // The first file of a section brings its heading into view with it.
   const want = items[selItem - 1]?.row === null ? selItem - 1 : selItem
   const start = Math.max(0, Math.min(want, items.length - listH), selItem - listH + 1)
   const body = items.slice(start, start + listH).map((it) => it.node())
 
-  const diffStat = row && row.section !== "conflict" ? (row.section === "staged" ? stats.staged : stats.changes).get(row.entry.path) : undefined
+  const diffStat =
+    row && row.section !== "conflict" ? (row.section === "staged" ? stats.staged : stats.changes).get(row.entry.path) : undefined
   const summaryLen = message.split("\n")[0]!.length
   const hint =
     focus === "diff"
@@ -834,7 +857,9 @@ export function SourceControlPanel() {
             {row ? (
               <text selectable={false} wrapMode="none" truncate fg={focus === "diff" ? colors.accent : colors.headerFg}>
                 {row.entry.rel}
-                <span fg={colors.dim}>{`  ${row.section === "staged" ? "staged" : row.section === "conflict" ? "conflict" : "unstaged"}`}</span>
+                <span
+                  fg={colors.dim}
+                >{`  ${row.section === "staged" ? "staged" : row.section === "conflict" ? "conflict" : "unstaged"}`}</span>
                 {diffStat ? <span fg={colors.gitAdd}>{`  +${diffStat.add}`}</span> : null}
                 {diffStat ? <span fg={colors.gitDel}>{` −${diffStat.del}`}</span> : null}
                 {hunks.length > 1 ? <span fg={colors.dim}>{`  change ${hunkSel + 1}/${hunks.length}`}</span> : null}
@@ -861,7 +886,9 @@ export function SourceControlPanel() {
           selectable={false}
           wrapMode="none"
           truncate
-          fg={confirm ? colors.warn : status?.kind === "error" ? colors.error : status?.kind === "busy" ? colors.warn : colors.dim}
+          fg={
+            confirm ? colors.warn : status?.kind === "error" ? colors.error : status?.kind === "busy" ? colors.warn : colors.dim
+          }
         >
           {confirm?.text ?? (status ? `${status.kind === "busy" ? spin + " " : ""}${status.text}` : hint)}
         </text>

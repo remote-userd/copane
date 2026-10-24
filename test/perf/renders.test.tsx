@@ -36,7 +36,7 @@ async function app(files: Record<string, string>, ai?: React.ReactNode) {
     setup.renderer.destroy()
   }
   const settle = async (ms = 60) => {
-    for (const end = Date.now() + ms; Date.now() < end; ) {
+    for (const end = Date.now() + ms; Date.now() < end;) {
       await Bun.sleep(15)
       await setup.renderOnce()
     }
@@ -45,7 +45,8 @@ async function app(files: Record<string, string>, ai?: React.ReactNode) {
 }
 
 const big = Array.from({ length: 11_000 }, (_, i) => `const value${i} = compute(${i}) // line ${i}`).join("\n")
-const md = "# Notes\n\n" + Array.from({ length: 200 }, (_, i) => `- item **${i}** with \`code\` and a [link](https://x.y/${i})`).join("\n")
+const md =
+  "# Notes\n\n" + Array.from({ length: 200 }, (_, i) => `- item **${i}** with \`code\` and a [link](https://x.y/${i})`).join("\n")
 
 test("cursor moves and typing in a big file, with a Markdown preview open", async () => {
   const { root, ws, setup, settle } = await app({ "big.ts": big, "notes.md": md })
@@ -76,14 +77,21 @@ test("cursor moves and typing in a big file, with a Markdown preview open", asyn
   await settle()
   const typing = { ...stats }
 
-  console.log(`RENDER arrows: ${arrows.commits} commits, ${arrows.ms.toFixed(0)} ms | typing: ${typing.commits} commits, ${typing.ms.toFixed(0)} ms`)
+  console.log(
+    `RENDER arrows: ${arrows.commits} commits, ${arrows.ms.toFixed(0)} ms | typing: ${typing.commits} commits, ${typing.ms.toFixed(0)} ms`,
+  )
   expect(arrows.commits).toBeGreaterThan(0)
 }, 30_000)
 
 test("a stream of AI output", async () => {
   const pane = (
     <TerminalPane
-      config={{ command: "/bin/sh", args: ["-c", "for i in $(seq 1 400); do echo chunk $i; sleep 0.005; done; exec cat"], maxScrollbackBytes: 100_000, notify: "off" }}
+      config={{
+        command: "/bin/sh",
+        args: ["-c", "for i in $(seq 1 400); do echo chunk $i; sleep 0.005; done; exec cat"],
+        maxScrollbackBytes: 100_000,
+        notify: "off",
+      }}
     />
   )
   const { settle } = await app({ "a.ts": "a\n" }, pane)

@@ -158,7 +158,9 @@ test("writes fired at once run one after another: no index.lock errors", async (
   for (let i = 0; i < 12; i++) files[`f${i}.ts`] = `${i}\n`
   const { root, repo } = await repoWith(files)
   for (let i = 0; i < 12; i++) writeFileSync(join(root, `f${i}.ts`), `changed ${i}\n`)
-  const errors = await Promise.all(Object.keys(files).map((f, i) => (i % 3 === 2 ? repo.unstage([join(root, f)]) : repo.stage([join(root, f)]))))
+  const errors = await Promise.all(
+    Object.keys(files).map((f, i) => (i % 3 === 2 ? repo.unstage([join(root, f)]) : repo.stage([join(root, f)]))),
+  )
   expect(errors.filter(Boolean)).toEqual([])
   expect((await repo.status()).filter((e) => e.staged).length).toBe(8)
 })
@@ -193,7 +195,10 @@ test("paths with spaces and non-ASCII names stage, unstage and stage a hunk", as
   expect(await repo.setIndexText(path, "ONE\ntwo\n")).toBeNull()
   expect(await repo.indexText(path)).toBe("ONE\ntwo\n")
   expect((await repo.numstat(true)).get(path)).toEqual({ add: 1, del: 1 })
-  const hunk = (await repo.diff(path, false)).split("\n").filter((l) => !l.startsWith("\\")).join("\n")
+  const hunk = (await repo.diff(path, false))
+    .split("\n")
+    .filter((l) => !l.startsWith("\\"))
+    .join("\n")
   expect(await repo.applyHunk(path, hunk, "stage")).toBeNull()
   expect(await repo.indexText(path)).toBe("ONE\nTWO\n")
 })

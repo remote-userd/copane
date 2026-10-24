@@ -100,7 +100,9 @@ export class TurnLog {
     if (!turn) return
     if (this.ownWrites.has(path)) {
       const expected = this.ownWrites.get(path)
-      const now = await Bun.file(path).text().catch(() => null)
+      const now = await Bun.file(path)
+        .text()
+        .catch(() => null)
       if (now === expected) return void this.ownWrites.delete(path)
     }
     if (turn.files.some((f) => f.path === path)) return // the first "before" is the one that counts
@@ -123,7 +125,8 @@ export class TurnLog {
   /** Files of a turn changed since it ended (by you or a later turn): undoing would drop those edits. */
   async editedSince(turn: Turn): Promise<string[]> {
     const out: string[] = []
-    for (const f of turn.files) if (f.afterHash !== undefined && hashOf(await this.contentNow(f.path)) !== f.afterHash) out.push(f.path)
+    for (const f of turn.files)
+      if (f.afterHash !== undefined && hashOf(await this.contentNow(f.path)) !== f.afterHash) out.push(f.path)
     return out
   }
 
@@ -133,7 +136,10 @@ export class TurnLog {
     for (const f of turn.files) {
       if (!f.known || (paths && !paths.includes(f.path))) continue
       this.expectOwnWrite(f.path, f.before)
-      if (f.before === null) await Bun.file(f.path).delete().catch(() => null)
+      if (f.before === null)
+        await Bun.file(f.path)
+          .delete()
+          .catch(() => null)
       else await Bun.write(f.path, f.before)
       n++
     }
@@ -203,7 +209,8 @@ export class TurnLog {
   /** The repository a file belongs to: the innermost one containing it. */
   private repoFor(path: string): GitRepo | null {
     let best: GitRepo | null = null
-    for (const r of this.repos()) if ((path === r.top || path.startsWith(r.top + sep)) && (!best || r.top.length > best.top.length)) best = r
+    for (const r of this.repos())
+      if ((path === r.top || path.startsWith(r.top + sep)) && (!best || r.top.length > best.top.length)) best = r
     return best
   }
 
@@ -219,12 +226,15 @@ export class TurnLog {
     // tracked file held: fall back as without git, so a staged file is never taken for a new one.
     if (repo && sha) {
       const atStart = await repo.showAt(sha, path)
-      if (atStart !== null) return atStart.includes("\0") || atStart.length > MAX_FILE_BYTES ? unknown : { path, before: atStart, known: true }
+      if (atStart !== null)
+        return atStart.includes("\0") || atStart.length > MAX_FILE_BYTES ? unknown : { path, before: atStart, known: true }
       // Not tracked, not untracked: new in this turn, unless git ignores it (then we can't tell).
       if (await repo.isIgnored(path)) return hint !== undefined ? { path, before: hint, known: true } : unknown
       return { path, before: null, known: true }
     }
-    return hint !== undefined && !hint.includes("\0") && hint.length <= MAX_FILE_BYTES ? { path, before: hint, known: true } : unknown
+    return hint !== undefined && !hint.includes("\0") && hint.length <= MAX_FILE_BYTES
+      ? { path, before: hint, known: true }
+      : unknown
   }
 }
 

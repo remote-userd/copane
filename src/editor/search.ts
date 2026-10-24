@@ -25,7 +25,13 @@ export function findAll(text: string, query: string, limit = 10_000): Match[] {
     const hay = sensitive ? raw : raw.toLowerCase()
     for (let i = hay.indexOf(needle); i !== -1 && out.length < limit; i = hay.indexOf(needle, i + Math.max(1, needle.length))) {
       const startCol = Bun.stringWidth(raw.slice(0, i))
-      out.push({ line, start: i, end: i + needle.length, startCol, endCol: startCol + Bun.stringWidth(raw.slice(i, i + needle.length)) })
+      out.push({
+        line,
+        start: i,
+        end: i + needle.length,
+        startCol,
+        endCol: startCol + Bun.stringWidth(raw.slice(i, i + needle.length)),
+      })
     }
   }
   return out

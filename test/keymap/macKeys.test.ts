@@ -86,7 +86,9 @@ test("Mac labels", () => {
   expect(prettyKeys("shift+cmd+p", true)).toBe("⇧⌘P")
   expect(prettyKeys("ctrl+alt+left", true)).toBe("⌃⌥←")
   expect(prettyKeys("ctrl+k ctrl+c", true)).toBe("⌃K ⌃C")
-  expect(keyText("Formatted (Ctrl+Z undoes), Ctrl+K E sends it", { mac: true, cmd: true })).toBe("Formatted (⌘Z undoes), ⌘K E sends it")
+  expect(keyText("Formatted (Ctrl+Z undoes), Ctrl+K E sends it", { mac: true, cmd: true })).toBe(
+    "Formatted (⌘Z undoes), ⌘K E sends it",
+  )
   expect(keyText("Formatted (Ctrl+Z undoes)", { mac: true, cmd: false })).toBe("Formatted (⌃Z undoes)")
   expect(keyText("Formatted (Ctrl+Z undoes)", { mac: false, cmd: true })).toBe("Formatted (Ctrl+Z undoes)")
 })

@@ -34,6 +34,10 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
     setTimeout(() => void saveForCrash(), 0)
   }
   override render() {
-    return this.state.error ? <CrashScreen error={this.state.error} retry={() => this.setState({ error: null })} /> : this.props.children
+    return this.state.error ? (
+      <CrashScreen error={this.state.error} retry={() => this.setState({ error: null })} />
+    ) : (
+      this.props.children
+    )
   }
 }

@@ -22,9 +22,18 @@ const until = (cond: () => boolean | Promise<boolean>, ms = 3000) => waitUntil(c
 function fakeTurns() {
   const store = new Store<{ turns: Turn[] }>({ turns: [] })
   return {
-    log: { store, get turns() { return store.get().turns } } as unknown as TurnLog,
+    log: {
+      store,
+      get turns() {
+        return store.get().turns
+      },
+    } as unknown as TurnLog,
     set(files: { path: string; before: string | null }[], running: boolean) {
-      store.set({ turns: [{ id: 1, startedAt: 0, endedAt: running ? null : 1, prompt: "p", files: files.map((f) => ({ ...f, known: true })) }] })
+      store.set({
+        turns: [
+          { id: 1, startedAt: 0, endedAt: running ? null : 1, prompt: "p", files: files.map((f) => ({ ...f, known: true })) },
+        ],
+      })
     },
   }
 }

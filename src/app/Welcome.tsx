@@ -45,7 +45,11 @@ export function Welcome({
   const [pending, setPending] = useState<string | null>(null)
   const tooBig = (p: string) => p === home || p === "/"
   const onOpen = (p: string) => (tooBig(p) && pending !== p ? setPending(p) : openNow(p))
-  const warning = pending ? (pending === "/" ? "/ is the whole disk" : `${tildify(pending, home)} is your whole home folder`) : null
+  const warning = pending
+    ? pending === "/"
+      ? "/ is the whole disk"
+      : `${tildify(pending, home)} is your whole home folder`
+    : null
   // Started in ~: the second button browses it rather than opening all of it.
   const atHome = tooBig(cwd)
   const openHere = () => (atHome ? setBrowsing(true) : onOpen(cwd))
@@ -96,7 +100,17 @@ export function Welcome({
     }
   })
 
-  if (browsing) return <FolderBrowser start={cwd} width={width} warning={warning} pending={pending} onOpen={onOpen} onBack={() => (setPending(null), setBrowsing(false))} />
+  if (browsing)
+    return (
+      <FolderBrowser
+        start={cwd}
+        width={width}
+        warning={warning}
+        pending={pending}
+        onOpen={onOpen}
+        onBack={() => (setPending(null), setBrowsing(false))}
+      />
+    )
 
   const nameW = Math.min(24, Math.max(8, ...recent.map((r) => Bun.stringWidth(basename(r.path)))))
   const recentRow = (r: RecentFolder, i: number) => {
@@ -200,7 +214,13 @@ export function Welcome({
         <box height={1} />
         <box flexDirection="row" gap={2} flexWrap="wrap">
           <Button label="Open folder…" keyHint="o" strong onPress={() => setBrowsing(true)} />
-          {here ? <Button label={atHome ? `Browse ${tildify(cwd, home)}` : `Open ${basename(cwd) || cwd}`} keyHint="." onPress={openHere} /> : null}
+          {here ? (
+            <Button
+              label={atHome ? `Browse ${tildify(cwd, home)}` : `Open ${basename(cwd) || cwd}`}
+              keyHint="."
+              onPress={openHere}
+            />
+          ) : null}
         </box>
         <box height={1} />
         <box height={1} flexDirection="row">
@@ -296,7 +316,11 @@ function FolderBrowser({
   const f = filter.toLowerCase()
   const matches = (names ?? []).filter((n) => n.toLowerCase().startsWith(f) && (f.startsWith(".") || !n.startsWith(".")))
   type Row = { kind: "open" } | { kind: "up" } | { kind: "dir"; name: string }
-  const rows: Row[] = [{ kind: "open" }, ...(dir !== "/" ? [{ kind: "up" } as const] : []), ...matches.map((name) => ({ kind: "dir" as const, name }))]
+  const rows: Row[] = [
+    { kind: "open" },
+    ...(dir !== "/" ? [{ kind: "up" } as const] : []),
+    ...matches.map((name) => ({ kind: "dir" as const, name })),
+  ]
   const firstDir = rows.findIndex((r) => r.kind === "dir")
   const listH = Math.max(3, Math.min(rows.length, dims.height - 12))
 
@@ -455,10 +479,17 @@ function FolderBrowser({
           />
         </box>
         <box height={1} paddingLeft={2}>
-          <text selectable={false} fg={error ? colors.error : pending === dir ? colors.warn : colors.dim} wrapMode="none" truncate>
+          <text
+            selectable={false}
+            fg={error ? colors.error : pending === dir ? colors.warn : colors.dim}
+            wrapMode="none"
+            truncate
+          >
             {error ??
               (pending === dir && warning ? `⚠ ${warning}: the AI would get all of it. Open it again to go ahead.` : null) ??
-              (names === null ? "Reading…" : `${matches.length} folder${matches.length === 1 ? "" : "s"}${filter ? ` matching “${filter}”` : ""}`)}
+              (names === null
+                ? "Reading…"
+                : `${matches.length} folder${matches.length === 1 ? "" : "s"}${filter ? ` matching “${filter}”` : ""}`)}
           </text>
         </box>
         {shown.map((r, j) => rowView(r, top + j))}
@@ -562,7 +593,11 @@ async function listFolders(dir: string): Promise<string[] | string> {
     return out.sort((a, b) => a.localeCompare(b))
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code
-    return code === "ENOENT" ? `No such folder: ${tildify(dir)}` : code === "ENOTDIR" ? `Not a folder: ${tildify(dir)}` : `Can't read ${tildify(dir)}`
+    return code === "ENOENT"
+      ? `No such folder: ${tildify(dir)}`
+      : code === "ENOTDIR"
+        ? `Not a folder: ${tildify(dir)}`
+        : `Can't read ${tildify(dir)}`
   }
 }
 

@@ -98,7 +98,11 @@ function describeStatus(cmd: string, s: AgentStatus): string {
 }
 
 /** The tabs, which is visible, and each one's state (the header and status bar read it). */
-const tabs = new Store<{ sessions: Session[]; active: number; state: Record<number, SessionState> }>({ sessions: [], active: 0, state: {} })
+const tabs = new Store<{ sessions: Session[]; active: number; state: Record<number, SessionState> }>({
+  sessions: [],
+  active: 0,
+  state: {},
+})
 const setState = (id: number, patch: Partial<SessionState>) => {
   const t = tabs.get()
   const prev = t.state[id] ?? { status: "", busySince: 0, attention: null }
@@ -114,7 +118,16 @@ const handles = new Map<number, AiHandle & { proc: () => AgentProcess | null }>(
 export async function restorableTabs(saved: NonNullable<RestoreState["ai"]>): Promise<RestoreState["ai"]> {
   const shown = saved.tabs[saved.active]
   const kept: RestoredTab[] = []
-  for (const t of saved.tabs) if (await Bun.file(t.cwd).stat().then((s) => s.isDirectory(), () => false)) kept.push(t)
+  for (const t of saved.tabs)
+    if (
+      await Bun.file(t.cwd)
+        .stat()
+        .then(
+          (s) => s.isDirectory(),
+          () => false,
+        )
+    )
+      kept.push(t)
   if (!kept.length) return undefined
   return { tabs: kept, active: Math.max(0, kept.indexOf(shown!)) }
 }
@@ -123,7 +136,13 @@ export async function restorableTabs(saved: NonNullable<RestoreState["ai"]>): Pr
 export function snapshotAgentTabs(): RestoreState["ai"] {
   const { sessions, active } = tabs.get()
   if (!sessions.length) return undefined
-  return { tabs: sessions.map(({ id: _id, ...tab }) => tab), active: Math.max(0, sessions.findIndex((s) => s.id === active)) }
+  return {
+    tabs: sessions.map(({ id: _id, ...tab }) => tab),
+    active: Math.max(
+      0,
+      sessions.findIndex((s) => s.id === active),
+    ),
+  }
 }
 
 export function resetAgentTabs(): void {
@@ -193,77 +212,89 @@ function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: () => 
   }, [anyBusy])
   const one = t.sessions.length === 1
   return (
-    <box height={1} flexShrink={0} flexDirection="row" backgroundColor={colors.headerBg} paddingLeft={1} paddingRight={1} gap={1} overflow="hidden">
+    <box
+      height={1}
+      flexShrink={0}
+      flexDirection="row"
+      backgroundColor={colors.headerBg}
+      paddingLeft={1}
+      paddingRight={1}
+      gap={1}
+      overflow="hidden"
+    >
       {/* The tabs take what is left and clip, so + and the buttons on the right always show. */}
       <box flexDirection="row" flexGrow={1} flexShrink={1} minWidth={0} gap={1} overflow="hidden">
-      {t.sessions.map((s) => {
-        const st = t.state[s.id]
-        const active = s.id === t.active
-        // A terminal shows its health, not activity: dev servers print all the time.
-        const mark = s.terminal
-          ? st?.error
-            ? "✗"
-            : st?.status.endsWith("●")
-              ? "●"
-              : "○"
-          : busy(s.id)
-          ? SPINNER[frame % SPINNER.length]
-          : st?.attention === "waiting"
-            ? "⚠"
-            : st?.attention === "finished"
-              ? "✓"
+        {t.sessions.map((s) => {
+          const st = t.state[s.id]
+          const active = s.id === t.active
+          // A terminal shows its health, not activity: dev servers print all the time.
+          const mark = s.terminal
+            ? st?.error
+              ? "✗"
               : st?.status.endsWith("●")
                 ? "●"
                 : "○"
-        const markColor = s.terminal
-          ? st?.error
-            ? colors.error
-            : st?.status.endsWith("●")
-              ? colors.ok
-              : colors.headerFg
-          : busy(s.id) || st?.attention === "waiting"
-            ? colors.warn
-            : st?.attention
-              ? colors.ok
-              : colors.headerFg
-        const label = tabLabel(s).toUpperCase()
-        return (
-          <box key={s.id} flexDirection="row" flexShrink={0} backgroundColor={active && !one ? colors.segmentBg : undefined}>
-            {/* Click switches to the tab; a middle-click closes it, as editor tabs do. */}
-            <HoverBox onPress={(button) => (button === 1 && !one ? onClose(s.id) : tabs.set({ active: s.id }))} paddingX={one ? 0 : 1}>
-              <text selectable={false} fg={active && focused ? colors.accent : colors.headerFg}>
-                {active && focused ? <strong>{label}</strong> : label}
-              </text>
-              <text selectable={false} fg={markColor}>
-                {" " + mark}
-              </text>
-            </HoverBox>
-            {/* A worktree agent's changed files: a click reviews and merges them. */}
-            {s.branch && st?.changes ? (
-              <HoverBox onPress={() => ws.ui.set({ modal: { kind: "mergeAgent", sessionId: s.id } })} paddingX={0}>
-                <text selectable={false} fg={colors.headerFg}>
-                  {`· ${st.changes} `}
+            : busy(s.id)
+              ? SPINNER[frame % SPINNER.length]
+              : st?.attention === "waiting"
+                ? "⚠"
+                : st?.attention === "finished"
+                  ? "✓"
+                  : st?.status.endsWith("●")
+                    ? "●"
+                    : "○"
+          const markColor = s.terminal
+            ? st?.error
+              ? colors.error
+              : st?.status.endsWith("●")
+                ? colors.ok
+                : colors.headerFg
+            : busy(s.id) || st?.attention === "waiting"
+              ? colors.warn
+              : st?.attention
+                ? colors.ok
+                : colors.headerFg
+          const label = tabLabel(s).toUpperCase()
+          return (
+            <box key={s.id} flexDirection="row" flexShrink={0} backgroundColor={active && !one ? colors.segmentBg : undefined}>
+              {/* Click switches to the tab; a middle-click closes it, as editor tabs do. */}
+              <HoverBox
+                onPress={(button) => (button === 1 && !one ? onClose(s.id) : tabs.set({ active: s.id }))}
+                paddingX={one ? 0 : 1}
+              >
+                <text selectable={false} fg={active && focused ? colors.accent : colors.headerFg}>
+                  {active && focused ? <strong>{label}</strong> : label}
+                </text>
+                <text selectable={false} fg={markColor}>
+                  {" " + mark}
                 </text>
               </HoverBox>
-            ) : null}
-            {/* A dev server's tab: restart it (a fresh shell running its command again). */}
-            {active && s.terminal?.run ? (
-              <HoverBox onPress={() => handles.get(s.id)?.restart()} paddingX={0}>
-                <text selectable={false} fg={colors.headerFg}>
-                  {"↻ "}
-                </text>
-              </HoverBox>
-            ) : null}
-            {one ? null : (
-              <HoverBox onPress={() => onClose(s.id)} paddingX={0}>
-                <text selectable={false} fg={colors.dim}>
-                  {"× "}
-                </text>
-              </HoverBox>
-            )}
-          </box>
-        )
-      })}
+              {/* A worktree agent's changed files: a click reviews and merges them. */}
+              {s.branch && st?.changes ? (
+                <HoverBox onPress={() => ws.ui.set({ modal: { kind: "mergeAgent", sessionId: s.id } })} paddingX={0}>
+                  <text selectable={false} fg={colors.headerFg}>
+                    {`· ${st.changes} `}
+                  </text>
+                </HoverBox>
+              ) : null}
+              {/* A dev server's tab: restart it (a fresh shell running its command again). */}
+              {active && s.terminal?.run ? (
+                <HoverBox onPress={() => handles.get(s.id)?.restart()} paddingX={0}>
+                  <text selectable={false} fg={colors.headerFg}>
+                    {"↻ "}
+                  </text>
+                </HoverBox>
+              ) : null}
+              {one ? null : (
+                <HoverBox onPress={() => onClose(s.id)} paddingX={0}>
+                  <text selectable={false} fg={colors.dim}>
+                    {"× "}
+                  </text>
+                </HoverBox>
+              )}
+            </box>
+          )
+        })}
       </box>
       {/* The visible terminal's error, one click from the AI (Ctrl+K E). */}
       {t.sessions.some((s) => s.id === t.active && s.terminal) && t.state[t.active]?.error ? (
@@ -285,13 +316,22 @@ function AiHeader({ focused, onNew, onClose }: { focused: boolean; onNew: () => 
           {aiFull ? "⤡" : "⤢"}
         </text>
       </HoverBox>
-
     </box>
   )
 }
 
 /** One tab: its terminal and CLI process. Hidden tabs keep running. Memoized: it drives its terminal itself. */
-const AgentSession = memo(function AgentSession({ session, active, focused, config }: { session: Session; active: boolean; focused: boolean; config: AiConfig }) {
+const AgentSession = memo(function AgentSession({
+  session,
+  active,
+  focused,
+  config,
+}: {
+  session: Session
+  active: boolean
+  focused: boolean
+  config: AiConfig
+}) {
   const ws = useWorkspace()
   const renderer = useRenderer()
   const boxRef = useRef<BoxRenderable | null>(null)
@@ -329,7 +369,8 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
     // Legacy terminals send Ctrl+J as a bare line feed, a key the emulator's encoder has no code
     // for: pass the byte on (Claude's new line, as when it runs on its own).
     const encodeKey = term.encodeKey.bind(term)
-    term.encodeKey = (key) => (key.name === "linefeed" && key.eventType !== "release" && !key.ctrl && !key.meta && !key.option ? LINE_FEED : encodeKey(key))
+    term.encodeKey = (key) =>
+      key.name === "linefeed" && key.eventType !== "release" && !key.ctrl && !key.meta && !key.option ? LINE_FEED : encodeKey(key)
     // The cursor shape of editor.cursorStyle (a thin line by default), until the program asks for another.
     const cursor = cursorSequence(ws.config.editor.cursorStyle)
     term.write(cursor)
@@ -346,7 +387,8 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
       setState(id, { error })
       // Say so once per new error, unless you're looking at it.
       const watching = tabs.get().active === id && ws.ui.get().focus === "ai" && ws.ui.get().aiVisible
-      if (error && !watching) ws.notify(`✗ ${name}: ${error.text.split("\n")[0]!.trim().slice(0, 120)}  (Ctrl+K E sends it to the AI)`, "error")
+      if (error && !watching)
+        ws.notify(`✗ ${name}: ${error.text.split("\n")[0]!.trim().slice(0, 120)}  (Ctrl+K E sends it to the AI)`, "error")
     }
     // A CLI that opens with a question (claude's "trust this folder?") waits for an answer the
     // user may not notice while focus is in the tree or editor: bring them to it, once.
@@ -417,7 +459,8 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
         for (const ch of part) {
           if (ch === "\r") submitted()
           else if (ch === "\x7f" || ch === "\b") prompt = prompt.slice(0, -1)
-          else if (ch === "\x15") prompt = "" // Ctrl+U clears the line
+          else if (ch === "\x15")
+            prompt = "" // Ctrl+U clears the line
           else if (ch >= " " || ch === "\n") prompt = (prompt + ch).slice(-500)
         }
       }
@@ -488,12 +531,21 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
           // `exit` (or Ctrl+D) closes the tab, as in VS Code.
           if (s.code === 0) return void setTimeout(() => closeTab(id), 0)
           // A shell that dies is an error even when it printed none we know: show its last lines.
-          if (s.code) setState(id, { error: lastError(output.lines(), session.cwd) ?? { text: output.lines().slice(-15).join("\n"), location: null } })
-          term.write(`\r\n${YELLOW}[${name} stopped${s.code !== null ? ` with code ${s.code}` : ""}. Press Enter to start it again.]${RESET}\r\n`)
+          if (s.code)
+            setState(id, {
+              error: lastError(output.lines(), session.cwd) ?? { text: output.lines().slice(-15).join("\n"), location: null },
+            })
+          term.write(
+            `\r\n${YELLOW}[${name} stopped${s.code !== null ? ` with code ${s.code}` : ""}. Press Enter to start it again.]${RESET}\r\n`,
+          )
         } else if (s.kind === "exited") {
-          term.write(`\r\n${YELLOW}[${name} exited${s.code !== null ? ` with code ${s.code}` : ""}. Press Enter to restart.]${RESET}\r\n`)
+          term.write(
+            `\r\n${YELLOW}[${name} exited${s.code !== null ? ` with code ${s.code}` : ""}. Press Enter to restart.]${RESET}\r\n`,
+          )
         } else if (s.kind === "error") {
-          term.write(`\r\n${YELLOW}${s.message}.${RESET}\r\n${DIM}Install it, or set ai.command (F1 › Open settings).\r\nPress Enter to retry.${RESET}\r\n`)
+          term.write(
+            `\r\n${YELLOW}${s.message}.${RESET}\r\n${DIM}Install it, or set ai.command (F1 › Open settings).\r\nPress Enter to retry.${RESET}\r\n`,
+          )
         }
       },
     })
@@ -611,7 +663,11 @@ const AgentSession = memo(function AgentSession({ session, active, focused, conf
  * matching `root` (the same as `path` unless the editor was opened in a subfolder of the repo `top`).
  */
 export function worktreeFor(root: string, name: string, n: number, top = root): { path: string; branch: string; cwd: string } {
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "agent"
+  const slug =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "agent"
   const path = join(dirname(top), `${basename(top)}-${slug}-${n}`)
   return { path, branch: `copane/${slug}-${n}`, cwd: join(path, relative(top, root)) }
 }
@@ -639,7 +695,21 @@ export function TerminalPane({ config, restored }: { config: AiConfig; restored?
     }
     const name = basename(config.command)
     const claudeSession = newClaudeSession(config.command, config.args)
-    tabs.set({ sessions: [{ id: 1, name, command: config.command, args: config.args, cwd: ws.root, branch: null, ...(claudeSession ? { claudeSession } : {}) }], active: 1, state: {} })
+    tabs.set({
+      sessions: [
+        {
+          id: 1,
+          name,
+          command: config.command,
+          args: config.args,
+          cwd: ws.root,
+          branch: null,
+          ...(claudeSession ? { claudeSession } : {}),
+        },
+      ],
+      active: 1,
+      state: {},
+    })
     nextId.current = 2
   }, [ws, config.command, config.args])
 
@@ -674,7 +744,8 @@ export function TerminalPane({ config, restored }: { config: AiConfig; restored?
       activeId: () => tabs.get().active,
       close: (id) => {
         // The last tab can't go: start a fresh one in the project first.
-        if (tabs.get().sessions.length < 2) addSession({ name: basename(config.command), command: config.command, args: config.args, cwd: ws.root, branch: null })
+        if (tabs.get().sessions.length < 2)
+          addSession({ name: basename(config.command), command: config.command, args: config.args, cwd: ws.root, branch: null })
         closeTab(id)
       },
       stop: async (id) => {
@@ -761,12 +832,22 @@ function terminalSelection(id: number): string {
 
 /** Where a menu opens: at the pointer, or (from a key or a header button) under the AI pane's header. */
 function menuAt(x: number | undefined, y: number | undefined): { x: number; y: number } {
-  return { x: x !== undefined && x >= 0 ? x : Math.max(2, (process.stdout.columns || 80) - 52), y: y !== undefined && y >= 0 ? y : 1 }
+  return {
+    x: x !== undefined && x >= 0 ? x : Math.max(2, (process.stdout.columns || 80) - 52),
+    y: y !== undefined && y >= 0 ? y : 1,
+  }
 }
 
 /** A terminal tab: your shell in `cwd`, optionally typing a command into it (a dev server). */
 function terminalSession(cwd: string, target?: Service): Omit<Session, "id"> {
-  return { name: target?.name ?? basename(shell()), command: shell(), args: [], cwd: target?.cwd ?? cwd, branch: null, terminal: target ? { run: target.command } : {} }
+  return {
+    name: target?.name ?? basename(shell()),
+    command: shell(),
+    args: [],
+    cwd: target?.cwd ?? cwd,
+    branch: null,
+    terminal: target ? { run: target.command } : {},
+  }
 }
 
 /**
@@ -774,8 +855,18 @@ function terminalSession(cwd: string, target?: Service): Omit<Session, "id"> {
  * the project's dev servers to run (configured or detected; ● when running, which shows its tab).
  * `runOnly` lists just the dev servers.
  */
-async function openNewMenu(ws: Workspace, config: AiConfig, x: number | undefined, y: number | undefined, add: (s: Omit<Session, "id">) => void, runOnly = false): Promise<void> {
-  const choices: AgentChoice[] = [{ name: basename(config.command), command: config.command, args: config.args }, ...(config.agents ?? [])]
+async function openNewMenu(
+  ws: Workspace,
+  config: AiConfig,
+  x: number | undefined,
+  y: number | undefined,
+  add: (s: Omit<Session, "id">) => void,
+  runOnly = false,
+): Promise<void> {
+  const choices: AgentChoice[] = [
+    { name: basename(config.command), command: config.command, args: config.args },
+    ...(config.agents ?? []),
+  ]
   const repo = ws.git?.main.repo ?? null
   const count = (name: string) => tabs.get().sessions.filter((s) => s.name === name || s.name.startsWith(`${name} `)).length
   const inWorktree = async (c: AgentChoice) => {
@@ -783,11 +874,19 @@ async function openNewMenu(ws: Workspace, config: AiConfig, x: number | undefine
     let n = count(c.name) + 1
     let wt = worktreeFor(ws.root, c.name, n, repo.top)
     // Skip numbers still taken: a worktree folder, or a branch kept after its worktree was removed.
-    while ((await Bun.file(join(wt.path, ".git")).exists()) || (await repo.branchExists(wt.branch))) wt = worktreeFor(ws.root, c.name, ++n, repo.top)
+    while ((await Bun.file(join(wt.path, ".git")).exists()) || (await repo.branchExists(wt.branch)))
+      wt = worktreeFor(ws.root, c.name, ++n, repo.top)
     ws.notify(`Creating worktree ${wt.path}…`)
     const err = await repo.addWorktree(wt.path, wt.branch)
     if (err) return ws.notify(`Could not create the worktree: ${err}`, "error")
-    add({ name: c.name, command: c.command, args: c.args, cwd: wt.cwd, branch: wt.branch, ...(wt.cwd !== wt.path ? { worktree: wt.path } : {}) })
+    add({
+      name: c.name,
+      command: c.command,
+      args: c.args,
+      cwd: wt.cwd,
+      branch: wt.branch,
+      ...(wt.cwd !== wt.path ? { worktree: wt.path } : {}),
+    })
     ws.notify(`${c.name} works in ${wt.path} on branch ${wt.branch}`)
   }
   let targets: Service[] = []
@@ -795,8 +894,14 @@ async function openNewMenu(ws: Workspace, config: AiConfig, x: number | undefine
     targets = await servicesFor(ws.root, config.services ?? [])
   } catch {}
   // Agent worktrees left from before (their tab closed, or ce restarted): open one again.
-  const open = new Set(tabs.get().sessions.map((s) => s.branch).filter(Boolean))
-  const leftover = runOnly || !repo ? [] : (await repo.worktrees()).filter((w) => w.branch?.startsWith("copane/") && !open.has(w.branch))
+  const open = new Set(
+    tabs
+      .get()
+      .sessions.map((s) => s.branch)
+      .filter(Boolean),
+  )
+  const leftover =
+    runOnly || !repo ? [] : (await repo.worktrees()).filter((w) => w.branch?.startsWith("copane/") && !open.has(w.branch))
   const resumeItems: MenuItem[] = leftover.map((w) => {
     const branch = w.branch!
     // copane/claude-4 was made for the "claude" agent: start that CLI again (else the first one).
@@ -811,7 +916,10 @@ async function openNewMenu(ws: Workspace, config: AiConfig, x: number | undefine
     }
   })
   if (runOnly && !targets.length)
-    return ws.notify('No dev servers found: add a "dev" script to a package.json, or list them in the config ("ai": { "services": [...] })', "warn")
+    return ws.notify(
+      'No dev servers found: add a "dev" script to a package.json, or list them in the config ("ai": { "services": [...] })',
+      "warn",
+    )
   const tabOf = (t: Service) => tabs.get().sessions.find((o) => o.terminal?.run === t.command && o.cwd === t.cwd)
   const runItems: MenuItem[] = targets.map((t) => ({
     label: `${tabOf(t) ? "●" : "▶"} Run ${t.name}`,
@@ -831,7 +939,10 @@ async function openNewMenu(ws: Workspace, config: AiConfig, x: number | undefine
         ? runItems
         : [
             ...choices.flatMap((c): MenuItem[] => [
-              { label: `New ${c.name}`, run: () => add({ name: c.name, command: c.command, args: c.args, cwd: ws.root, branch: null }) },
+              {
+                label: `New ${c.name}`,
+                run: () => add({ name: c.name, command: c.command, args: c.args, cwd: ws.root, branch: null }),
+              },
               { label: `New ${c.name} in a git worktree`, disabled: !repo, run: () => void inWorktree(c) },
             ]),
             ...resumeItems,
@@ -850,7 +961,9 @@ function sendTerminalError(ws: Workspace): boolean {
     return false
   }
   const { session, error } = first
-  const what = session.terminal?.run ? `The ${session.name} dev server (${session.terminal.run})` : `My terminal (${session.name})`
+  const what = session.terminal?.run
+    ? `The ${session.name} dev server (${session.terminal.run})`
+    : `My terminal (${session.name})`
   const at = error.location ? ` @${relative(ws.root, error.location.path)}#L${error.location.line}` : ""
   ws.ai?.type(`${what} shows this error. Find the cause and fix it.${at} `)
   ws.ai?.paste(`\n\n${error.text}\n`)
@@ -909,7 +1022,10 @@ function closeSession(ws: Workspace, id: number): void {
             ws.ui.set({ modal: null })
             close()
             const err = await repo?.removeWorktree(worktreeOf(session))
-            ws.notify(err ? `Worktree kept: ${err}` : `Removed ${worktreeOf(session)} (branch ${session.branch} kept)`, err ? "warn" : "info")
+            ws.notify(
+              err ? `Worktree kept: ${err}` : `Removed ${worktreeOf(session)} (branch ${session.branch} kept)`,
+              err ? "warn" : "info",
+            )
           },
         },
         {

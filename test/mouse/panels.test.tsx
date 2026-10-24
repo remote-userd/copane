@@ -18,7 +18,11 @@ async function app(files: Record<string, string>, open: string[] = [], size = { 
   const ws = createWorkspace(root, {}, editorShown())
   const tree = new TreeModel(root)
   for (const f of open) await ws.buffers.open(f)
-  h = await renderApp(ws, { tree: <FileTree tree={tree} height={size.height - 1} />, picker: <FilePicker tree={tree} />, ai: <text>AI-PANE</text> }, size)
+  h = await renderApp(
+    ws,
+    { tree: <FileTree tree={tree} height={size.height - 1} />, picker: <FilePicker tree={tree} />, ai: <text>AI-PANE</text> },
+    size,
+  )
   await Bun.sleep(50)
   await h.setup.renderOnce()
   return { h, ws, tree, root }
@@ -110,7 +114,9 @@ test("picker: hover selects, wheel moves, click opens, click outside closes", as
   // hover highlights a row; the wheel moves the highlight
   await h.step(() => h.mouse.moveTo(one.x, one.y))
   const selBg = (y: number) =>
-    h.setup.renderer.currentRenderBuffer.withBuffers((c) => c.bg.slice((y * c.width + one.x) * 4, (y * c.width + one.x) * 4 + 3).join())
+    h.setup.renderer.currentRenderBuffer.withBuffers((c) =>
+      c.bg.slice((y * c.width + one.x) * 4, (y * c.width + one.x) * 4 + 3).join(),
+    )
   const highlighted = selBg(one.y)
   expect(highlighted).not.toBe(selBg(two.y))
   await h.step(() => h.mouse.scroll(one.x, one.y, "down"))

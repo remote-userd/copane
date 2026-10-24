@@ -203,7 +203,10 @@ export function openTreeMenu(ws: Workspace, tree: TreeModel, row: TreeRow | null
             if (at) ws.ui.set({ hunkPeek: { ...at, kind: "ai" } })
           },
         },
-        { label: "Accept AI Changes", run: () => (review.acceptFile(row.entry.path), ws.notify(`Accepted the AI changes in ${rel(ws, row.entry.path)}`)) },
+        {
+          label: "Accept AI Changes",
+          run: () => (review.acceptFile(row.entry.path), ws.notify(`Accepted the AI changes in ${rel(ws, row.entry.path)}`)),
+        },
       )
     }
     if (review && row.entry.isDir && review.files().some((p) => p.startsWith(row.entry.path + "/"))) {
