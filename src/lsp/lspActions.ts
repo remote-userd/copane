@@ -3,6 +3,7 @@ import { sendProblems } from "../ai/askAi"
 import { lineAt, type CodeEditorRenderable } from "../editor/CodeEditorRenderable"
 import { openAt, recordJump } from "../app/navHistory"
 import { findPrettier, prettierHandles, runPrettier } from "../editor/prettier"
+import { hasFormatConfig, NoParser, runBunFmt } from "../editor/bunFmt"
 import type { CodeAction, Diagnostic, Range } from "./LspManager"
 import { applyTextEdits, type TextEdit } from "./edits"
 import { applyToFiles } from "../app/fileEdits"
@@ -157,17 +158,30 @@ export async function formatDocument(ws: Workspace, { quiet = false } = {}): Pro
   const h = here(ws)
   if (!h) return notify("No file open", "warn")
   const how = ws.config.editor.formatter
+  const path = h.buf.path
+  const bunFmt = (orElse: () => Promise<void> | void) =>
+    formatWith(ws, notify, h, "bun fmt", (text) => runBunFmt(path, text, ws.root), undefined, orElse)
+  /** The language server's formatting; `cannot` when there's none or it can't format. */
+  const viaLsp = async (cannot: () => Promise<void> | void) => {
+    if (!ws.lsp?.hasServer(path)) return cannot()
+    // The server's edits are for the text as sent now: read it before asking, not after.
+    const before = h.ed.plainText
+    const edits = await ws.lsp.format(path)
+    if (edits === null) return cannot()
+    return formatWith(ws, notify, h, "", async (text) => applyTextEdits(text, edits), before)
+  }
+  const none = () => notify("No formatter for this file", "warn")
+
+  if (how === "lsp") return viaLsp(() => notify("No language server that formats this file", "warn"))
+  if (how === "bun") return bunFmt(() => viaLsp(none))
   // Projects that use Prettier get Prettier, as with VS Code's Prettier extension.
-  const prettier = how !== "lsp" && prettierHandles(h.buf.path) ? await findPrettier(h.buf.path, ws.root) : null
-  if (prettier) return formatWith(ws, notify, h, "Prettier", async (text) => runPrettier(prettier, h.buf.path, text, ws.root))
+  const prettier = prettierHandles(path) ? await findPrettier(path, ws.root) : null
+  if (prettier) return formatWith(ws, notify, h, "Prettier", async (text) => runPrettier(prettier, path, text, ws.root))
   if (how === "prettier") return notify("Prettier not found for this file", "warn")
-  if (!ws.lsp?.hasServer(h.buf.path)) return notify("No language server or Prettier for this file", "warn")
-  const lsp = ws.lsp
-  // The server's edits are for the text as sent now: read it before asking, not after.
-  const before = h.ed.plainText
-  const edits = await lsp.format(h.buf.path)
-  if (edits === null) return notify("This language server cannot format", "warn")
-  return formatWith(ws, notify, h, "", async (text) => applyTextEdits(text, edits), before)
+  // A Prettier or bun fmt config but no Prettier installed: Bun's own formatter reads that config.
+  if (await hasFormatConfig(path, ws.root)) return bunFmt(() => viaLsp(none))
+  // Otherwise the language server, and bun fmt for what it doesn't format (Markdown, YAML, CSS…).
+  return viaLsp(() => bunFmt(none))
 }
 
 async function formatWith(
@@ -177,11 +191,14 @@ async function formatWith(
   by: string,
   format: (text: string) => Promise<string>,
   before = h.ed.plainText,
+  /** When the formatter has no parser for the file (bun fmt). */
+  orElse?: () => Promise<void> | void,
 ) {
   let after: string
   try {
     after = (await format(before)).replace(/\r\n/g, "\n")
   } catch (err) {
+    if (err instanceof NoParser && orElse) return orElse()
     return notify(`${by || "Format"}: ${(err as Error).message}`, "error")
   }
   // The text may have changed while the formatter ran; don't overwrite those edits.

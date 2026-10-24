@@ -52,10 +52,12 @@ export const configSchema = z
         /** Typing a bracket or quote adds its closer; over a selection it wraps the selection. */
         autoClosingBrackets: z.boolean().default(true),
         /**
-         * Format document (Shift+Alt+F): "auto" uses the project's Prettier when it has one and
-         * the language server otherwise; "prettier" or "lsp" force one.
+         * Format document (Shift+Alt+F): "auto" uses the project's Prettier when it has one, Bun's
+         * built-in formatter (bun fmt) when the project has a Prettier or bunfig [fmt] config but no
+         * Prettier, and otherwise the language server, with bun fmt for files it can't format
+         * (Markdown, YAML, CSS…). "bun", "prettier" or "lsp" force one.
          */
-        formatter: z.enum(["auto", "prettier", "lsp"]).default("auto"),
+        formatter: z.enum(["auto", "bun", "prettier", "lsp"]).default("auto"),
         /** Format the file on Ctrl+S, like VS Code's editor.formatOnSave. */
         formatOnSave: z.boolean().default(false),
         /** Glide when scrolling (mouse wheel, PageUp/PageDown, the Markdown preview) instead of jumping. */

@@ -32,7 +32,7 @@ export function prettierHandles(path: string): boolean {
 }
 
 /** Folders from the file's up to the project root (inclusive). */
-function foldersUp(path: string, root: string): string[] {
+export function foldersUp(path: string, root: string): string[] {
   const out: string[] = []
   let dir = dirname(path)
   while (true) {
@@ -45,7 +45,7 @@ function foldersUp(path: string, root: string): string[] {
   return out
 }
 
-async function hasConfig(dir: string): Promise<boolean> {
+export async function hasPrettierConfig(dir: string): Promise<boolean> {
   for (const name of CONFIGS) if (await Bun.file(join(dir, name)).exists()) return true
   const pkg = Bun.file(join(dir, "package.json"))
   if (!(await pkg.exists())) return false
@@ -65,7 +65,7 @@ export async function findPrettier(path: string, root: string): Promise<string |
   }
   const global = Bun.which("prettier")
   if (!global) return null
-  for (const dir of dirs) if (await hasConfig(dir)) return global
+  for (const dir of dirs) if (await hasPrettierConfig(dir)) return global
   return null
 }
 

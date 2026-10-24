@@ -8,6 +8,7 @@ All notable changes to copane are listed here. The format follows
 ### Added
 - **Mac keys** (`keyStyle`, on by default on macOS): ⌘ works for every Ctrl shortcut (⌘S, ⌘P, ⌘⇧P, ⌘K chords…) in terminals that send it (Ghostty, kitty, WezTerm, iTerm2), ⌘A selects all, ⌘1–9 and ⌘⇧[ / ⌘⇧] switch tabs. ⌥←/→ jumps a word, ⌘←/→ goes to the line's start and end, ⌘⌫ deletes to the line's start, also as Ghostty and iTerm2 send them (Ctrl+A / Ctrl+E / Ctrl+U, ESC b / ESC f). The palette, cheat sheet, menus and notices show ⌘⇧P-style keys (⌃ where the terminal can't send ⌘). The first start on a Mac says how to set up the terminal; the README has a macOS section.
 - `cmd+…` in `keys` config bindings (also `command+` / `super+`).
+- **Format with Bun's formatter** (`bun fmt`, built into `ce`): Shift+Alt+F uses it in projects with a Prettier config or bunfig.toml `[fmt]` but no Prettier installed, and for files the language server can't format (Markdown, YAML, CSS, JSON…), which used to say "No language server". Projects with Prettier keep Prettier. `"editor": { "formatter": "bun" }` always uses it.
 
 ### Changed
 - On a Mac, back / forward move from ⌥←/→ to ⌃⌥←/→ (also ⌃- / ⌃⇧-), and file blame from ⌥B to ⌥⇧B, since Mac terminals use those keys for word movement.
