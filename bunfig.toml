@@ -1,5 +1,5 @@
 [test]
-preload = []
+preload = ["./test/setup.ts"]
 
 # `bun run format` (bun fmt); the editor's Shift+Alt+F uses the same settings here.
 [fmt]

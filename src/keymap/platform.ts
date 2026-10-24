@@ -1,8 +1,15 @@
 import type { Config } from "../config/schema"
 
+let autoMac = process.platform === "darwin"
+
 /** Mac keys (Cmd shortcuts, Option/Cmd text navigation, ⌘ labels): config.keyStyle, "auto" = on macOS. */
 export function macKeys(config: Pick<Config, "keyStyle">): boolean {
-  return config.keyStyle === "mac" || (config.keyStyle === "auto" && process.platform === "darwin")
+  return config.keyStyle === "mac" || (config.keyStyle === "auto" && autoMac)
+}
+
+/** Tests: what "auto" means, so they see the same keys on a Mac as on Linux. */
+export function setAutoMac(on: boolean): void {
+  autoMac = on
 }
 
 /**

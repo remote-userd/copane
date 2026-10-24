@@ -27,10 +27,12 @@ test("the word under the cursor marks its other uses without losing their syntax
   // Start on the "1": a word with no other uses.
   ws.buffers.active!.textarea!.setCursor(0, 17)
   ws.buffers.onCursorChange(ws.buffers.active!.id)
-  // Syntax colours first: "export" and "const" are both keywords.
+  // Syntax colours first: "export" and "const" are both keywords. The editor opens with the cursor
+  // on "export", so also wait for that word's marks to go (same background as "const").
   await until(() => {
     const p = second()
-    return cell(p.x, p.y).fg === cell(p.x + 7, p.y).fg && cell(p.x, p.y).fg !== cell(p.x + 13, p.y).fg
+    const [e, c] = [cell(p.x, p.y), cell(p.x + 7, p.y)]
+    return e.fg === c.fg && e.bg === c.bg && e.fg !== cell(p.x + 13, p.y).fg
   })
   const plain = cell(second().x, second().y)
   ws.buffers.active!.textarea!.setCursor(0, 2) // on "export"
